@@ -1,0 +1,27 @@
+# WSL2 resource limits — TEMPLATE
+#
+# WSL2 caps guest RAM at ~50% of host by default, so this machine's 32 GB host
+# only exposes ~15 GB to Ubuntu. That is below what bigger local models need
+# (e.g. DiffusionGemma Q4_K_M wants ~18 GB total). Raise the cap here.
+#
+# HOW TO APPLY (from Windows, NOT inside WSL):
+#   1. Copy this file to:  C:\Users\<YourWindowsUser>\.wslconfig
+#   2. In a Windows terminal (PowerShell/cmd):  wsl --shutdown
+#   3. Reopen Ubuntu. Verify with:  free -h   (should now show ~24Gi)
+#
+# NOTE: `wsl --shutdown` closes ALL WSL sessions (including this VS Code one).
+# Save your work first. Tune `memory` to leave Windows ~8 GB headroom.
+
+[wsl2]
+# Give the Linux guest 24 GB of the 32 GB host (leaves ~8 GB for Windows).
+memory=24GB
+
+# Logical processors (this CPU exposes 24). Leave a couple for Windows if desired.
+processors=20
+
+# Swap as a safety net for occasional overflow during big-model loads.
+swap=8GB
+
+# Optional niceties:
+# localhostForwarding=true
+# nestedVirtualization=false

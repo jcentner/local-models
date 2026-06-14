@@ -1,0 +1,43 @@
+# --- Model weights & artifacts (huge; never commit) ---
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+models/
+
+# --- Raw sources are local-only (copyright + size). Keep folder structure only. ---
+raw/*
+!raw/.gitkeep
+!raw/README.md
+!raw/assets
+raw/assets/*
+!raw/assets/.gitkeep
+
+# --- Python envs ---
+.venv/
+venv/
+env/.venv/
+__pycache__/
+*.pyc
+.python-version
+
+# --- Secrets (so this stays public-ready) ---
+.env
+.env.*
+*.key
+*.token
+hf_token*
+**/secrets*
+
+# --- Benchmark scratch / large logs ---
+lab/benchmarks/runs/
+*.log
+
+# --- OS / editor / Obsidian local state ---
+.DS_Store
+Thumbs.db
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache

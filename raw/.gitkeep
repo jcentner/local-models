@@ -1,0 +1,1 @@
+# Keeps raw/ in git structure; raw/ contents are git-ignored (see ../.gitignore).
