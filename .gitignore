@@ -37,6 +37,9 @@ hf_token*
 lab/benchmarks/runs/
 *.log
 
+# --- Local scratch / planning (not committed) ---
+/tmp/
+
 # --- OS / editor / Obsidian local state ---
 # Use **/ so these match the vault at wiki/.obsidian/ (and anywhere else) -
 # a bare `.obsidian/...` pattern has a slash and so anchors to the repo root only.
