@@ -5,7 +5,9 @@
 *.pt
 *.pth
 *.onnx
-models/
+# Leading slash anchors this to the repo root only, so it ignores top-level
+# weight downloads WITHOUT also matching the tracked wiki/models/ pages.
+/models/
 
 # --- Raw sources are local-only (copyright + size). Keep folder structure only. ---
 raw/*
