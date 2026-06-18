@@ -1,0 +1,74 @@
+---
+mode: agent
+description: Recommend relevant benchmarks for a documented model, estimate cost, then run them via the harness and record results.
+---
+
+# /benchmark — run benchmarks against a model
+
+The model to benchmark is whatever I name after the command (e.g.
+`/benchmark vibethinker-3b`, an Ollama tag, or a slug). Call it `${input:model}`.
+
+Read the benchmark system first: [wiki/benchmarks/README.md](../../wiki/benchmarks/README.md).
+Honor the methodology there (pass@k, pinned config, contamination, sandboxing,
+cost awareness). Results are **per-machine**.
+
+## 1. Load context
+- Read the model's `wiki/models/<slug>.md` - especially **what it's for / not for**,
+  recommended **sampling** (temp/top_p/top_k) and **context** needs, and quant.
+- List documented benchmarks from [wiki/benchmarks/](../../wiki/benchmarks/) and
+  any authored datasets in [benchmarks/](../../benchmarks/).
+- Confirm the model is runnable here (pulled in `ollama list`, or staged in its
+  model page). If not pulled, say so - don't pull without my go-ahead.
+
+## 2. Recommend (with reasoning)
+Propose which benchmarks to run and why, ranked by **relevance to this model's
+declared purpose** and to the priority use-cases (creative writing, tool-use/
+agentic, coding, then math/reasoning). Call out:
+- Strong fits (matches the model's specialty).
+- **Negative controls** worth running (e.g. a general-knowledge or tool-use eval
+  on a math specialist - expected to be weak, confirms the specialty).
+- **Contamination caveats** per benchmark (prefer fresh/held-out where it matters;
+  cross-check published claims on contamination-resistant sets).
+
+## 3. Estimate cost before running
+For the proposed set, estimate token volume and rough wall-clock on **this
+machine** (8 GB GPU is memory-bandwidth bound; long reasoning traces x pass@k can
+be hours). Give a **quick subset** vs **full run** option. Then **ask me** to
+confirm the set, k, and sampling via a short question
+(`vscode_askQuestions`) - don't start a long run unprompted.
+
+## 4. Run
+Use the harness ([lab/benchmarks/harness](../../lab/benchmarks/harness/README.md)):
+
+```bash
+cd lab/benchmarks
+python3 -m harness.run --benchmark ../../benchmarks/<name> --model <tag> \
+  --k <k> --temperature <t> --top-p <p> --top-k <tk> --num-ctx <ctx> --seed <s>
+```
+
+- Use the model's **recommended sampling** from its page (e.g. VibeThinker = temp
+  1.0, top_p 0.95, top_k 0); for deterministic suites use temp 0.
+- Set `--num-ctx` large enough for long-CoT models (avoid mid-thought truncation).
+- For standard public suites that have an upstream framework (HumanEval+/MBPP+ via
+  **evalplus**, broad coverage via **lm-eval-harness**), run that framework against
+  Ollama's `:11434/v1` endpoint per the benchmark's wiki page - don't reimplement.
+  Record results in the same `results.csv` schema.
+- For `llm_judge` (creative-writing/agentic) benchmarks, pin a strong judge
+  (opus-4.8 or gpt-5.5) and record the judge config; you may drive the judge via a
+  subagent for higher quality, but always record model+version+rubric.
+- Sandbox any code execution. Don't run unsandboxed model-written code.
+
+## 5. Record
+- The harness appends a row to [lab/benchmarks/results.csv](../../lab/benchmarks/README.md)
+  (raw output in git-ignored `runs/`). Verify the row; add any missing fields
+  (quant, VRAM from `ollama ps`, tok/s).
+- Create/append `lab/experiments/<YYYY-MM-DD-slug>/README.md` with the run
+  (hypothesis -> method -> result -> learnings) and the **per-machine** verdict.
+- Update the model page's results/verdict link and append a
+  `## [YYYY-MM-DD] bench | <model> on <benchmarks>` line to [wiki/log.md](../../wiki/log.md).
+
+## 6. Report back
+Lead with the scores in context (vs published claims, vs other models in the
+wiki), the cost it took, what it means for this model on this machine, and any
+follow-up (quant sweep, a fresher/contamination-resistant benchmark, or an
+`/author-benchmark` for a gap the public sets don't cover).

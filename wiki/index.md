@@ -24,6 +24,11 @@ on every ingest. Timeline lives in [log.md](log.md).
 - [models/diffusiongemma.md](models/diffusiongemma.md) — diffusion/block-AR MoE (26B-A4B); first model to try.
 - [models/vibethinker-3b.md](models/vibethinker-3b.md) — WeiboAI 3B dense reasoning specialist (Qwen2.5-based, MIT); frontier-ish math/code scores, runs full-GPU here.
 
+## Benchmarks
+- [benchmarks/README.md](benchmarks/README.md) — how the benchmark system works: definitions vs results, the harness, scoring per domain, the four workflow verbs.
+- [benchmarks/humaneval-plus.md](benchmarks/humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk, pair with LiveCodeBench.
+- [benchmarks/example-arithmetic.md](benchmarks/example-arithmetic.md) — tiny authored arithmetic set; format reference + harness smoke test.
+
 ## Concepts
 - [concepts/llm-wiki-method.md](concepts/llm-wiki-method.md) — the Karpathy LLM-wiki pattern this repo runs on.
 - [concepts/quantization.md](concepts/quantization.md) — GGUF K-quants, AWQ/GPTQ, FP8/NVFP4, and the 8 GB VRAM math.

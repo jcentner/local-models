@@ -86,7 +86,26 @@ Types: `ingest`, `query`, `bench`, `experiment`, `lint`, `note`.
   record: model, quant, runner+version, context length, GPU layers offloaded,
   tok/s (prompt + gen), VRAM/RAM used, date.
 
-## Environment & commands
+### Benchmarks (definitions vs results)
+A benchmark = **prompts + a scoring harness**, not just a list of questions. The
+two halves split across the wiki/lab boundary:
+- `wiki/benchmarks/<name>.md` — the **definition** (machine-independent): what it
+  measures, format, scoring method + harness command, reference/SOTA scores,
+  **contamination/freshness status**, which model-types it's relevant for, gotchas.
+- `benchmarks/<name>/` — **authored custom datasets** (version-controlled): the
+  prompts, a **separate answer key** (never pasted into model context except via
+  the harness), an optional rubric, and a README with provenance + critic sign-off.
+- `lab/benchmarks/` — the **harness** (`harness/`) and **results** (`results.csv`,
+  per-machine; raw run output in git-ignored `runs/`).
+
+Scoring is per-domain: math = answer extraction + equivalence; code = execute
+against tests **in a sandbox**; open-ended (creative writing, agentic) = rubric
+LLM-judge (pin judge model + version). **Prefer wrapping existing eval frameworks**
+(lm-eval-harness, evalplus, livecodebench, BFCL); hand-roll a scorer only when
+needed. Definitions are machine-independent (wiki); results are per-machine (lab),
+tagged with the machine. Workflow verbs: `/new-benchmark` (ingest an existing one),
+`/benchmark <model>` (run + recommend), `/author-benchmark` (create a custom one
+with a critic loop). Log type: `bench`.
 
 Machine facts: [wiki/hardware/proart-p16.md](wiki/hardware/proart-p16.md).
 **WSL2 caveat:** WSL sees ~15 GB RAM by default; raise via

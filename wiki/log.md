@@ -26,3 +26,13 @@ Qwen2.5-based verifiable-reasoning specialist, MIT, released 2026-06-16. Wrote
 models/vibethinker-3b.md (benchmarks, run paths, caveats) and staged a first-run
 experiment. Fits 8 GB full-GPU at Q8_0; watch context size (long CoT) and
 benchmaxxing skepticism. See lab/experiments/2026-06-18-vibethinker-3b-first-run.
+
+## [2026-06-18] note | Benchmark framework — M1 + M2
+Stood up the benchmark system. Schema in AGENTS.md (definitions vs results;
+benchmark = prompts + scoring harness). New wiki/benchmarks/ (overview + 2 pages:
+humaneval-plus wrapping evalplus, example-arithmetic authored), top-level
+benchmarks/ for authored datasets, extended lab/benchmarks/ results schema
+(sampling/seed/k/judge/machine). Built lab/benchmarks/harness/ (Ollama client +
+equivalence/code_exec/llm_judge scorers + run.py CLI); offline selftest passes
+10/10. Plan: tmp/benchmark-framework-plan.md. Next: /benchmark, /new-benchmark,
+/author-benchmark prompts.
