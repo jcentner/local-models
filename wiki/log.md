@@ -18,3 +18,11 @@ ingest/query/lint loop into concepts/llm-wiki-method.md.
 Seeded hardware/ (proart-p16, blackwell-rtx5070, xdna2-npu), stacks/ (ollama,
 llama-cpp, vllm, lemonade, unsloth), models/diffusiongemma, and concepts/
 (quantization, wsl2-memory) from initial research.
+
+## [2026-06-18] ingest | VibeThinker-3B model page
+First `/new-model` run. Researched WeiboAI VibeThinker-3B via last30days (Reddit/
+X/YouTube/GitHub) + primary sources (GitHub, HF card, arXiv 2606.16140). 3B dense
+Qwen2.5-based verifiable-reasoning specialist, MIT, released 2026-06-16. Wrote
+models/vibethinker-3b.md (benchmarks, run paths, caveats) and staged a first-run
+experiment. Fits 8 GB full-GPU at Q8_0; watch context size (long CoT) and
+benchmaxxing skepticism. See lab/experiments/2026-06-18-vibethinker-3b-first-run.

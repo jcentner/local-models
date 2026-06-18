@@ -22,6 +22,7 @@ on every ingest. Timeline lives in [log.md](log.md).
 
 ## Models
 - [models/diffusiongemma.md](models/diffusiongemma.md) — diffusion/block-AR MoE (26B-A4B); first model to try.
+- [models/vibethinker-3b.md](models/vibethinker-3b.md) — WeiboAI 3B dense reasoning specialist (Qwen2.5-based, MIT); frontier-ish math/code scores, runs full-GPU here.
 
 ## Concepts
 - [concepts/llm-wiki-method.md](concepts/llm-wiki-method.md) — the Karpathy LLM-wiki pattern this repo runs on.
