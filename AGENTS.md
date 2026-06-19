@@ -5,10 +5,17 @@ repository is structured and how to maintain it. It is the **schema** layer of
 the [LLM Wiki pattern](wiki/concepts/llm-wiki-method.md). Co-evolve it as the
 workflow matures. `.github/copilot-instructions.md` defers to this file.
 
+> **North star:** evaluate models — **local *and* API** — to decide which should
+> run a local-agent **home-automation** system. External benchmarks where they fit
+> my interests (decision-making, agentic/triage); custom benchmarks for my
+> use-cases (home automation, email triage); capability **and cost** captured
+> uniformly.
+
 ## What this repo is
 
-A personal playground + knowledge base for running LLMs locally on my own
-hardware. Two intertwined jobs:
+A personal playground + knowledge base for running LLMs (local on my own hardware,
+and via API where it makes sense) and benchmarking them toward a home-automation
+agent. Two intertwined jobs:
 
 1. **Knowledge base** (`raw/` -> `wiki/`): compile durable, cross-linked notes
    about models, serving stacks, quantization, optimization, and benchmarks.
@@ -96,7 +103,7 @@ two halves split across the wiki/lab boundary:
   prompts, a **separate answer key** (never pasted into model context except via
   the harness), an optional rubric, and a README with provenance + critic sign-off.
 - `lab/benchmarks/` — the **harness** (`harness/`) and **results** (`results.csv`,
-  per-machine; raw run output in git-ignored `runs/`).
+  per-environment; raw run output in git-ignored `runs/`).
 
 Scoring is per-domain: math = answer extraction + equivalence; code = execute
 against tests **in a sandbox** (Podman, `--code-sandbox podman`); open-ended
@@ -105,8 +112,15 @@ rubric LLM-judge by a **frontier model** (claude-opus-4.8 via the Copilot CLI -
 never a local small model; see `.github/skills/copilot-cli`), pinned (model +
 version + rubric). **Prefer wrapping existing eval frameworks**
 (lm-eval-harness, evalplus, livecodebench, BFCL); hand-roll a scorer only when
-needed. Definitions are machine-independent (wiki); results are per-machine (lab),
-tagged with the machine. Workflow verbs: `/new-benchmark` (ingest an existing one),
+needed. **External** benchmarks where they fit my interests (decision-making,
+agentic/triage); **custom** benchmarks for my use-cases (home automation, email
+triage). Models under test run **local (Ollama, the daily driver) or API
+(OpenAI-compatible, e.g. Z.AI GLM)** via the harness `--provider` flag; record
+**capability and cost** (`cost_usd` from `--price-in/--price-out`). Running the
+same benchmark local vs API and comparing capability + cost is a first-class goal.
+Definitions are machine-independent (wiki); results are **per-environment** (lab):
+per-machine for local, per-provider + per-date for API (prices/models drift).
+Workflow verbs: `/new-benchmark` (ingest an existing one),
 `/benchmark <model>` (run + recommend), `/author-benchmark` (create a custom one
 with a critic loop). Log type: `bench`.
 

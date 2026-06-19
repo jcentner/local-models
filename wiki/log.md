@@ -76,3 +76,18 @@ Added `--no-think` - thinking models over-think trivial code tasks and exhaust
 `code-basics` smoke set, qwen3.5:4b **3/4** with `--no-think`. Image:
 docker.io/library/python:3.12-slim (WSL2 podman per jcentner/podman-wsl-setup).
 `code_tests` is the third fully-working scorer.
+
+## [2026-06-19] note | API inference first-class + vision pass (docs)
+Gave the project a lighthouse: **evaluate models local AND API to pick the brain
+for a local-agent home-automation system** (external benchmarks for my interests -
+decision-making, agentic/triage; custom for my use-cases - home automation, email
+triage; capability AND cost). Top-down docs pass before any runtime change: vision
+in README + AGENTS north-star; schema generalized **per-machine -> per-environment**
+(per-provider + per-date for API); API inference named a first-class runner with
+`cost_usd`; copilot-instructions + all four workflow prompts taught `--provider`/
+cost; wiki benchmark overview rewritten around **external-first** + a local-vs-API
+section; BFCL identified as the first external wrap (runs here via Ollama
+`:11434/v1` `--skip-server-setup`, or an API model directly; install `bfcl-eval`).
+Journal: lab/journal/2026-06-19-api-first-class-and-vision.md. Plan (local scratch):
+tmp/api-inference-refactor-plan.md. Next: harness provider code (L3) + the
+`benchmark-harness` skill.

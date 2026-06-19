@@ -14,7 +14,11 @@ before using any of the benchmark prompts.
 Copilot CLI); `equivalence` works; `code_tests` works via a locked-down **Podman**
 sandbox (`--code-sandbox podman`). Two authored benchmarks have run end to end:
 [decision-reasoning](decision-reasoning.md) (VibeThinker-3B) and a `code-basics`
-smoke set (qwen3.5:4b 3/4).
+smoke set (qwen3.5:4b 3/4). Models under test run **local (Ollama) or API
+(OpenAI-compatible, e.g. Z.AI GLM)** via `--provider`; results record **cost**
+alongside capability. **External-first:** wrap existing benchmarks aligned with my
+interests (decision-making, agentic/triage) before authoring custom ones; custom
+benchmarks earn their keep for my own use-cases (home automation, email triage).
 
 ## A benchmark = prompts + a scoring harness
 
@@ -46,14 +50,28 @@ good one exists (mostly our custom use-case evals).
   per-machine `results.csv`.
 
 Same portability rule as models: **definitions are machine-independent (wiki);
-results are per-machine (lab), tagged with the machine.**
+results are per-environment (lab)** — per-machine for local models, per-provider +
+per-date for API models (prices and hosted models drift).
+
+### Local vs API (a first-class comparison)
+
+The harness runs the same benchmark against either a **local** model (Ollama,
+`--provider ollama`) or an **API** model (OpenAI-compatible, `--provider
+openai-compatible` + `--base-url` + `--api-key-env`). Each run records token
+totals and `cost_usd` (from `--price-in/--price-out`, USD per 1M tokens; local =
+0). Running both and putting **capability next to cost** is the core decision for
+the home agent: a $20/mo API may beat buying hardware to run a weaker local model.
+Ollama also serves an OpenAI-compatible endpoint on `:11434/v1`, so the
+`openai-compatible` path can target a local model too (handy for wrapping external
+harnesses like BFCL).
 
 ## Methodology (non-negotiable)
 
 - **Stochasticity:** reasoning models run at high temperature (VibeThinker uses
   temp 1.0). A single pass is noise — report **pass@k / avg@k**, not one sample.
-- **Pin everything:** model+quant, runner+version, sampling (temp/top_p/top_k),
-  context length, seed, n-samples/k, judge config, machine, date. See the
+- **Pin everything:** model+quant, **provider** (local/API), runner+version,
+  sampling (temp/top_p/top_k), context length, seed, n-samples/k, judge config,
+  machine/endpoint, **cost** (`cost_usd`), date. See the
   [results schema](../../lab/benchmarks/README.md).
 - **Contamination is the whole game.** Public benchmarks leak into training data
   (we hit this with [VibeThinker](../models/vibethinker-3b.md) — "benchmaxxing"
@@ -73,9 +91,12 @@ results are per-machine (lab), tagged with the machine.**
 
 ## Priority use-cases (build scorers for these first)
 
-Creative writing, tool-use/agentic workflows, and coding — plus standard
-math/reasoning for cross-checking published claims. See the
-[buildout plan](../../tmp/benchmark-framework-plan.md) (local scratch) for milestones.
+Aligned with the [vision](../../README.md#vision): **LLMs as decision-makers**,
+**agentic workflows / triage**, and **coding** — building toward a home-automation
+agent (with email triage as a sibling use-case) — plus standard math/reasoning for
+cross-checking published claims. **External-first:** wrap an existing benchmark
+that fits these interests before hand-authoring. See the
+[refactor plan](../../tmp/api-inference-refactor-plan.md) (local scratch).
 
 ### Scoring approach per use-case
 - **Coding** — `code_tests` (execute against tests). Runs in a locked-down **Podman**
@@ -88,10 +109,13 @@ math/reasoning for cross-checking published claims. See the
   fresh prompt set via `/author-benchmark`.*
 - **Tool-use / agentic** — needs a rollout harness: give the model tools (real or
   mocked), run a multi-step task, and check success (right tools, right order,
-  goal achieved). *Planned* — wrap an existing agentic eval (BFCL for
-  function-calling; tau-bench-style for workflows) or build a minimal
-  transcript-checking scorer tied to our own tool defs. VibeThinker is a good
-  **negative control** here (explicitly not trained for tool use).
+  goal achieved). *Planned, external-first* — **wrap [BFCL](https://github.com/ShishirPatil/gorilla)**
+  (`pip install bfcl-eval`) as the first target: it runs here against a local model
+  via Ollama's `:11434/v1` (`--skip-server-setup`) **or** an API model directly,
+  and its hardest categories (irrelevance / missing-parameter / missing-function =
+  “act vs ask vs do-nothing”) are exactly the home-agent decision skill. tau-bench
+  for fuller workflows. Build a minimal transcript-checking scorer tied to our own
+  tool defs only if no wrap fits. VibeThinker is a good **negative control** here.
 
 ## Documented benchmarks
 

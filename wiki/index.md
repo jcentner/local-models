@@ -6,7 +6,9 @@ updated: 2026-06-19
 # Index
 
 The catalog of this wiki. Read this first to find a page, then drill in. Updated
-on every ingest. Timeline lives in [log.md](log.md).
+on every ingest. Timeline lives in [log.md](log.md). North-star
+[vision](../README.md#vision): evaluate models (local **and** API) toward a
+local-agent home-automation system.
 
 ## Hardware
 - [hardware/proart-p16.md](hardware/proart-p16.md) — this machine (ASUS ProArt P16): verified specs, WSL2 setup, what fits.
@@ -25,7 +27,7 @@ on every ingest. Timeline lives in [log.md](log.md).
 - [models/vibethinker-3b.md](models/vibethinker-3b.md) — WeiboAI 3B dense reasoning specialist (Qwen2.5-based, MIT); frontier-ish math/code scores, runs full-GPU here.
 
 ## Benchmarks
-- [benchmarks/README.md](benchmarks/README.md) — how the benchmark system works: definitions vs results, the harness, scoring per domain, the four workflow verbs.
+- [benchmarks/README.md](benchmarks/README.md) — how the benchmark system works: definitions vs results, local/API providers + cost, scoring per domain, external-first strategy, the four workflow verbs.
 - [benchmarks/humaneval-plus.md](benchmarks/humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk, pair with LiveCodeBench.
 - [benchmarks/decision-reasoning.md](benchmarks/decision-reasoning.md) — authored decision-making/reasoning scenarios, opus-4.8-judged; first run: VibeThinker 1/6.
 

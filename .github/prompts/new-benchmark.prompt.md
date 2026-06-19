@@ -30,7 +30,9 @@ Retrieve, at minimum:
   dated/held-out variant? This is the most important field.
 - **Which model-types it's relevant for** (and which it's a poor/negative fit for).
 - **Harness**: is there an upstream framework to wrap (evalplus, lm-eval, LCB,
-  BFCL)? The exact run command against Ollama's `:11434/v1` endpoint. Gotchas.
+  BFCL)? The exact run command against an **OpenAI-compatible endpoint** - Ollama's
+  `:11434/v1` for a local model, or a hosted API (e.g. Z.AI GLM) for an API model.
+  Gotchas.
 - Cost/size: number of items, tokens per item, anything that makes it expensive
   on an 8 GB machine.
 
@@ -48,6 +50,15 @@ Reference scores / **Contamination-freshness** / Relevant model-types / How to r
 - If it's best run via an upstream framework, document that command on the page
   and in [lab/benchmarks/harness/README.md](../../lab/benchmarks/harness/README.md)
   if it's a new framework we haven't wrapped before.
+
+**Worked example — BFCL (tool-use, the first external wrap target):**
+`pip install bfcl-eval` (NOT `bfcl` - that's an unrelated package). Two phases:
+`bfcl generate` then `bfcl evaluate`. Run a **local** model by pointing it at
+Ollama's OpenAI shim with `--skip-server-setup` (`LOCAL_SERVER_ENDPOINT`/`PORT`),
+or an **API** model directly (`bfcl generate --model <api-model>`). Use
+`--test-category simple_python,live_multiple,irrelevance` + `--run-ids` /
+`--partial-eval` to run a **cheap subset** (full suite is ~4,400 items - too slow
+on 8 GB). Then fold the resulting score into our `results.csv` schema by hand.
 
 ## 4. Update index + log
 - Add a line under **## Benchmarks** in [wiki/index.md](../../wiki/index.md) and

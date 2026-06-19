@@ -39,7 +39,7 @@ pass on **opus-4.8** - both are available). Sending the answer keys to the criti
 is the **recorded "critic exception"** to answer-key hygiene
 ([policy](../../benchmarks/README.md)) - it's a deliberate design-review choice,
 and you log which critic model/provider saw the keys (step 5). Keys still stay
-held out from the local models under test. Give the critic the drafted items +
+held out from the models under test. Give the critic the drafted items +
 keys and this rubric; have it score each item and the set:
 - **Unambiguous?** Exactly one defensible interpretation.
 - **Machine-verifiable?** The declared scoring method actually works for this item.

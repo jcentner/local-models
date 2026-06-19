@@ -56,7 +56,8 @@ Slash-prompts in [`.github/prompts/`](.github/prompts/) drive the recurring work
 | `/author-benchmark <scenario>` | author a fresh held-out benchmark with a gpt-5.5/opus-4.8 critic loop |
 
 Benchmark scoring is `equivalence` (math), `code_tests` (sandboxed execution), or
-`llm_judge` (frontier judge = opus-4.8 via Copilot CLI). See
+`llm_judge` (frontier judge = opus-4.8 via Copilot CLI). Models can be **local
+(Ollama) or API (OpenAI-compatible)** — results capture capability *and* cost. See
 [wiki/benchmarks/README.md](wiki/benchmarks/README.md).
 
 ## Quickstart
@@ -80,6 +81,17 @@ ASUS ProArt P16 — RTX 5070 Laptop (8 GB), Ryzen AI 9 HX 370 (NPU), 32 GB host 
 > (e.g. DiffusionGemma needs ~18 GB) require raising the cap via
 > [`env/wslconfig.template`](env/wslconfig.template). See
 > [wiki/concepts/wsl2-memory.md](wiki/concepts/wsl2-memory.md).
+
+## Vision
+
+**Evaluate models — local *and* API — to decide which should run a local-agent
+home-automation system.** The benchmark wiki is flexible but not overcomplicated:
+**external** benchmarks where they match my interests (LLMs as decision-makers,
+agentic workflows / triage) and **custom** benchmarks for my use-cases (home
+automation, email triage), runnable against local or API inference, with results
+(capability + cost) captured uniformly. Local (Ollama) is the daily driver and the
+bias; API inference (e.g. Z.AI GLM) is a first-class comparison point — a $20/mo
+API may beat buying hardware to run a weaker model. Build toward the lighthouse.
 
 ## Status
 

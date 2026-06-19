@@ -1,6 +1,6 @@
 ---
 mode: agent
-description: Research a new local model with the last30days skill, then update the wiki and stage it for testing on whatever machine is current.
+description: Research a new model (local or API) with the last30days skill, then update the wiki and stage it for testing on whatever environment is current.
 ---
 
 # /new-model — research, document, and stage a new model for testing
@@ -17,7 +17,10 @@ before writing if anything is ambiguous.
 benchmarks, support status) as durable wiki content. Anything tied to a specific
 box (does it fit *this* VRAM, WSL RAM tweaks) is a per-machine verdict computed at
 test time against the relevant [hardware](../../wiki/hardware/) page - keep it out
-of the model's core facts so the page stays true on every machine.
+of the model's core facts so the page stays true on every machine. For an **API
+model** (OpenAI-compatible, e.g. Z.AI GLM), the footprint facts become **pricing**
+(per-1M in/out) + **context window** + provider/endpoint; the per-environment
+verdict is per-provider + per-date (prices drift). Keys via env var only.
 
 ## 1. Research (use the last30days skill)
 
