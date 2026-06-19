@@ -26,9 +26,11 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from harness.client import ChatClient, SamplingConfig
+    from harness.judge_copilot import CopilotCLIJudge
     from harness.scorers import code_exec, equivalence, llm_judge
 else:
     from .client import ChatClient, SamplingConfig
+    from .judge_copilot import CopilotCLIJudge
     from .scorers import code_exec, equivalence, llm_judge
 
 HERE = Path(__file__).resolve().parent          # lab/benchmarks/harness
@@ -110,7 +112,7 @@ def score_one(method: str, manifest: dict, item: dict, completion: str, judge=No
         return code_exec.score(completion, key.get("tests", ""))
     if method == "llm_judge":
         if judge is None:
-            raise SystemExit("llm_judge benchmark needs --judge-model")
+            raise SystemExit("llm_judge benchmark needs a judge (default claude-opus-4.8 via Copilot CLI)")
         return llm_judge.score(item["prompt"], completion, manifest["_rubric"], judge,
                                pass_threshold=manifest.get("judge", {}).get("pass_threshold", 6.0))
     raise SystemExit(f"unknown scoring method: {method}")
@@ -129,8 +131,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--num-ctx", type=int, default=8192)
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--base-url", default="http://localhost:11434")
-    ap.add_argument("--judge-model", default=None, help="model tag for llm_judge")
-    ap.add_argument("--judge-base-url", default="http://localhost:11434")
+    ap.add_argument("--judge-model", default="claude-opus-4.8",
+                    help="Copilot CLI model id for llm_judge (a FRONTIER model; "
+                         "never a local small model). e.g. claude-opus-4.8, gpt-5.5.")
+    ap.add_argument("--judge-effort", default=None,
+                    choices=["low", "medium", "high", "xhigh", "max"],
+                    help="reasoning effort for the judge (Copilot CLI --reasoning-effort)")
     ap.add_argument("--results", default=str(LAB_BENCH / "results.csv"))
     ap.add_argument("--dry-run", action="store_true", help="print config + first prompt, don't call the model")
     ap.add_argument("--code-sandbox", choices=["local-unsafe"], default=None,
@@ -153,9 +159,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     client = ChatClient(model=args.model, base_url=args.base_url, sampling=sampling)
     judge = None
-    if args.judge_model:
-        judge = ChatClient(model=args.judge_model, base_url=args.judge_base_url,
-                           sampling=SamplingConfig(temperature=0.0, num_predict=1024))
+    if method == "llm_judge":
+        judge = CopilotCLIJudge(model=args.judge_model, effort=args.judge_effort)
 
     print(f"benchmark={manifest['name']} v{manifest.get('version','?')} method={method} "
           f"items={len(prompts)} k={args.k}")
@@ -239,7 +244,7 @@ def main(argv: list[str] | None = None) -> int:
         "prompt_tokens_total": prompt_tok_sum,
         "gen_tokens_total": gen_tok_sum,
         "wall_s_total": round(wall_sum, 1),
-        "judge": args.judge_model or "",
+        "judge": f"copilot:{args.judge_model}" if method == "llm_judge" else "",
         "code_sandbox": args.code_sandbox or "",
         "raw_file": raw_path.name,
         "platform": platform.platform(),

@@ -1,0 +1,1 @@
+{"name": "decision-reasoning", "version": "0.1", "scoring": "llm_judge", "system": "You are reasoning about a real decision. Think it through, then END with a clear final recommendation in 1-2 sentences prefixed with 'Recommendation:'. State the key assumptions and tradeoffs that drive your choice.", "judge": {"pass_threshold": 6.0}}

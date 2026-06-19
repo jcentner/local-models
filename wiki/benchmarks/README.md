@@ -90,3 +90,4 @@ math/reasoning for cross-checking published claims. See the
 ## Documented benchmarks
 
 - [humaneval-plus.md](humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk.
+- [decision-reasoning.md](decision-reasoning.md) — authored decision-making/reasoning scenarios; `llm_judge` (opus-4.8); fresh/held-out.

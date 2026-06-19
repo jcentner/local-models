@@ -16,9 +16,13 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from harness.scorers import code_exec, equivalence
     from harness import run as runmod
+    from harness import judge_copilot
+    from harness.scorers import llm_judge
 else:
     from .scorers import code_exec, equivalence
     from . import run as runmod
+    from . import judge_copilot
+    from .scorers import llm_judge
 
 
 def check(name: str, cond: bool):
@@ -103,10 +107,48 @@ def test_validation():
           not _rejects(_manifest(scoring="llm_judge", key={}, rubric="score it")))
 
 
+def test_judge():
+    print("copilot judge (mocked subprocess):")
+    import subprocess
+    from unittest import mock
+
+    class _Proc:
+        def __init__(self, stdout, stderr=""):
+            self.stdout, self.stderr, self.returncode = stdout, stderr, 0
+
+    # valid JSON judgement -> llm_judge parses + thresholds
+    judge = judge_copilot.CopilotCLIJudge(model="claude-opus-4.8")
+    with mock.patch.object(subprocess, "run", return_value=_Proc('{"score": 8, "rationale": "good"}')):
+        res = llm_judge.score("task", "response", "rubric", judge, pass_threshold=6.0)
+    check("judge JSON parsed + passes threshold", res.get("correct") is True and res.get("score") == 8)
+
+    with mock.patch.object(subprocess, "run", return_value=_Proc('{"score": 3, "rationale": "weak"}')):
+        res = llm_judge.score("task", "response", "rubric", judge, pass_threshold=6.0)
+    check("judge below threshold fails", res.get("correct") is False)
+
+    # empty stdout (or "Error: Model ...") must raise, not silently pass
+    raised = False
+    with mock.patch.object(subprocess, "run", return_value=_Proc("")):
+        try:
+            judge.complete([{"role": "user", "content": "hi"}])
+        except RuntimeError:
+            raised = True
+    check("empty judge output raises", raised)
+
+    raised = False
+    with mock.patch.object(subprocess, "run", return_value=_Proc("Error: Model \"x\" not available.")):
+        try:
+            judge.complete([{"role": "user", "content": "hi"}])
+        except RuntimeError:
+            raised = True
+    check("judge error string raises", raised)
+
+
 if __name__ == "__main__":
     test_equivalence()
     test_code_exec()
     test_loaders()
     test_validation()
+    test_judge()
     print(f"\n{'ALL PASS' if check.failed == 0 else str(check.failed) + ' FAILED'}")
     raise SystemExit(1 if check.failed else 0)

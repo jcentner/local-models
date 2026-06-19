@@ -1,8 +1,8 @@
 ---
 title: VibeThinker-3B
-tags: [model, reasoning, dense, small, qwen2.5, math, code, to-try]
-updated: 2026-06-18
-status: to-try
+tags: [model, reasoning, dense, small, qwen2.5, math, code, tested]
+updated: 2026-06-19
+status: tried
 ---
 
 # VibeThinker-3B
@@ -152,9 +152,33 @@ room to spare; [WSL RAM](../concepts/wsl2-memory.md) is not a constraint at this
 size. The thing to watch is generation *time* on long reasoning traces, which is
 memory-bandwidth bound.
 
+## Evaluated as a decision-maker / reasoner (2026-06-19)
+
+First real benchmark run on this machine, testing it **outside its specialty** on a
+fresh, hand-authored [decision-reasoning](../benchmarks/decision-reasoning.md) set
+(6 real operational tradeoff scenarios), judged by **claude-opus-4.8**. Verdict:
+**decisive but unreliable - 1/6 above bar, mean ~4.3/10** (`observed_pass@1=0.167`).
+Runs at **~71 tok/s** (Q8, full GPU, 32K ctx) and completed its `<think>` reasoning
+with a clear `Recommendation:` on every item, so the low scores are genuine
+judgment failures, not truncation.
+
+Failure pattern (per the judge): it commits hard to a clean recommendation - its
+reasoning-model training showing - but frequently **misreads the scenario or
+inverts the crux**: a quantitative miscalculation that argued for the opposite
+choice (d1), inventing a nonexistent option (d2), inverting the risk logic (claimed
+low oversight *reduces* corner-cutting risk - backwards) (d6), and assuming instead
+of proposing the cheap investigation the scenario invited (d5). Its narrow
+verifiable-reasoning (math/code) training does **not** transfer to messy practical
+judgment, and the hard-commit style makes its misreads more dangerous. This matches
+the makers' own warning that it is **not for general use**.
+
+Run + per-item rationales: [lab/experiments/2026-06-19-vibethinker-decision-reasoning](../../lab/experiments/2026-06-19-vibethinker-decision-reasoning/README.md).
+
 ## Open questions
-- Do the headline benchmark scores hold on *fresh* problems, or is it overfit?
-  (Run unseen prompts, not the published sets.)
+- Does it actually deliver on its *home turf*? Benchmark it on competitive coding
+  (sandboxed `code_tests` / LiveCodeBench) - the decision-reasoning result only
+  tests the out-of-domain boundary.
 - Quant sensitivity: does Q4_K_M measurably degrade reasoning vs Q8_0? Good
   [quant-sweep](../concepts/quantization.md) candidate.
-- Real tok/s and time-to-answer on this GPU for a hard AIME-style problem.
+- Did any decision failures stem from the "I am ChatGPT" identity confusion in its
+  CoT, or purely from reasoning transfer limits?

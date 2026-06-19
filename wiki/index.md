@@ -27,6 +27,7 @@ on every ingest. Timeline lives in [log.md](log.md).
 ## Benchmarks
 - [benchmarks/README.md](benchmarks/README.md) — how the benchmark system works: definitions vs results, the harness, scoring per domain, the four workflow verbs.
 - [benchmarks/humaneval-plus.md](benchmarks/humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk, pair with LiveCodeBench.
+- [benchmarks/decision-reasoning.md](benchmarks/decision-reasoning.md) — authored decision-making/reasoning scenarios, opus-4.8-judged; first run: VibeThinker 1/6.
 
 ## Concepts
 - [concepts/llm-wiki-method.md](concepts/llm-wiki-method.md) — the Karpathy LLM-wiki pattern this repo runs on.

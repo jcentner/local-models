@@ -47,3 +47,13 @@ to observed_pass_at_k with a caveat; the runner now records full perf metadata
 answer-key exception. Dropped the math benchmark (example-arithmetic) per user.
 Selftest now 24/24. Deferred to Batch B: locked-down Podman sandbox mode, a proven
 upstream coding wrapper, and a minimal agentic scorer.
+
+## [2026-06-19] bench | VibeThinker-3B as a decision-maker (first real run)
+End-to-end: local model under test (Ollama) + frontier judge (claude-opus-4.8 via
+Copilot CLI). Built the copilot-cli skill + CopilotCLIJudge (opus-4.8 is now the
+only judge; local-model judge removed; selftest 28/28). Pulled VibeThinker Q8 GGUF
+(~71 tok/s, full GPU). Authored a fresh decision-reasoning set (6 tradeoff
+scenarios) and ran it: **1/6 above bar, mean ~4.3/10** - decisive but frequently
+misreads the crux (math slip, inverted risk logic). Specialty doesn't transfer to
+practical judgment; confirms "not for general use". First results.csv row. See
+lab/experiments/2026-06-19-vibethinker-decision-reasoning.
