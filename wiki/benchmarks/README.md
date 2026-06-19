@@ -11,9 +11,10 @@ How this repo thinks about, documents, runs, and authors benchmarks. Read this
 before using any of the benchmark prompts.
 
 **Status (2026-06-19):** `llm_judge` fully working (frontier judge = opus-4.8 via
-Copilot CLI); `equivalence` works; `code_tests` is **gated pending the Podman
-sandbox**. One authored benchmark has run end to end:
-[decision-reasoning](decision-reasoning.md) (VibeThinker-3B, 1/6).
+Copilot CLI); `equivalence` works; `code_tests` works via a locked-down **Podman**
+sandbox (`--code-sandbox podman`). Two authored benchmarks have run end to end:
+[decision-reasoning](decision-reasoning.md) (VibeThinker-3B) and a `code-basics`
+smoke set (qwen3.5:4b 3/4).
 
 ## A benchmark = prompts + a scoring harness
 
@@ -23,7 +24,7 @@ scoring**, and it differs by domain:
 | Domain | Scoring method | Notes |
 |---|---|---|
 | Math (AIME/HMMT/IMO-style) | answer extraction + symbolic/numeric equivalence | scorer exists; not a current focus |
-| Code (HumanEval+/MBPP+/LiveCodeBench) | execute candidate code against hidden tests, **gated** behind `--code-sandbox` | untrusted generated code — best-effort host isolation today, Podman mode coming |
+| Code (HumanEval+/MBPP+/LiveCodeBench) | execute candidate code against hidden tests in a **Podman sandbox** (`--code-sandbox podman`) | locked-down container; `--no-think` for thinking models |
 | Open-ended (creative writing, agentic, reasoning) | **rubric LLM-judge** by a frontier model (opus-4.8 via Copilot CLI; never a local small model) | pin judge model+version+rubric; judge config is part of the result |
 
 **Prefer wrapping existing eval frameworks** ([evalplus](https://github.com/evalplus/evalplus),
@@ -77,10 +78,10 @@ math/reasoning for cross-checking published claims. See the
 [buildout plan](../../tmp/benchmark-framework-plan.md) (local scratch) for milestones.
 
 ### Scoring approach per use-case
-- **Coding** — `code_tests` (execute against tests). Local execution is **gated**
-  behind `--code-sandbox` (best-effort host isolation today; locked-down Podman
-  mode coming). Wrap [evalplus](humaneval-plus.md) for HumanEval+/MBPP+; add
-  LiveCodeBench for contamination-resistance. *Scorer built; sandbox WIP.*
+- **Coding** — `code_tests` (execute against tests). Runs in a locked-down **Podman**
+  sandbox (`--code-sandbox podman`; `local-unsafe` host exec is opt-in). Wrap
+  [evalplus](humaneval-plus.md) for HumanEval+/MBPP+; add LiveCodeBench for
+  contamination-resistance. *Working.*
 - **Creative writing** — `llm_judge` with a pinned strong judge (opus-4.8 / gpt-5.5)
   against the reusable [creative-writing rubric](../../benchmarks/_rubrics/creative-writing.md).
   Prefer pairwise-vs-reference to cut judge variance. *Judge path built; author a

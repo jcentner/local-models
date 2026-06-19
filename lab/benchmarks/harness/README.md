@@ -49,7 +49,7 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> \
 
 # code_tests is GATED - it must be opted into a sandbox mode:
 python3 -m harness.run --benchmark ../../benchmarks/<code-bench> \
-  --model qwen3.5:4b --code-sandbox local-unsafe
+  --model qwen3.5:4b --code-sandbox podman --no-think
 
 # llm-judged (open-ended) benchmark - judge is opus-4.8 via Copilot CLI (default):
 python3 -m harness.run --benchmark ../../benchmarks/<name> \
@@ -64,12 +64,18 @@ created with `/author-benchmark`. Output: a row appended to
 
 - **equivalence** — extracts `\boxed{}` / "answer is" / last number, compares
   numerically (sympy if installed). Deterministic.
-- **code_tests** — strips code fences, appends the test snippet, runs in a
-  subprocess with a timeout + (Linux) CPU/memory rlimits. **This is best-effort,
-  NOT real isolation** - it runs as you on the host. It is therefore **gated**:
-  the runner refuses `code_tests` unless you pass `--code-sandbox local-unsafe` to
-  accept the risk. Prefer an upstream runner (evalplus) for public suites; a
-  locked-down Podman mode is the next build (Batch B).
+- **code_tests** — strips code fences, appends the test snippet, runs the program,
+  and checks the exit code. **Gated**: the runner refuses `code_tests` unless you
+  pass `--code-sandbox`:
+  - `podman` (recommended) — throwaway locked-down container (`--network none`,
+    read-only rootfs, tmpfs workdir, memory/pid/cpu caps, non-root, caps dropped).
+    Needs Podman ([WSL2 setup](https://github.com/jcentner/podman-wsl-setup)) and a
+    Python image (`podman pull docker.io/library/python:3.12-slim`; override via
+    `HARNESS_PODMAN_IMAGE`).
+  - `local-unsafe` — host subprocess + rlimits; weak isolation, explicit opt-in.
+  For public suites prefer an upstream runner (evalplus). **Thinking-model gotcha:**
+  pass `--no-think` for code tasks - a model that over-thinks can exhaust
+  `--num-predict` before emitting code, yielding empty output (scored as a fail).
 - **observed pass@k** — the runner reports `observed_pass_at_k` = fraction of
   items with >=1 correct sample in k. This is **not** the formal unbiased pass@k
   estimator used on public leaderboards; don't compare the two directly.

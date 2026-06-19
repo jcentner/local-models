@@ -104,12 +104,13 @@ def validate_benchmark(manifest: dict) -> None:
             raise SystemExit("llm_judge benchmark needs a non-empty rubric.md")
 
 
-def score_one(method: str, manifest: dict, item: dict, completion: str, judge=None) -> dict:
+def score_one(method: str, manifest: dict, item: dict, completion: str, judge=None,
+              sandbox: str = "local-unsafe") -> dict:
     key = manifest["_key"].get(item["id"], {})
     if method == "equivalence":
         return equivalence.score(completion, key.get("answer", ""))
     if method == "code_tests":
-        return code_exec.score(completion, key.get("tests", ""))
+        return code_exec.score(completion, key.get("tests", ""), mode=sandbox)
     if method == "llm_judge":
         if judge is None:
             raise SystemExit("llm_judge benchmark needs a judge (default claude-opus-4.8 via Copilot CLI)")
@@ -130,6 +131,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--num-predict", type=int, default=4096)
     ap.add_argument("--num-ctx", type=int, default=8192)
     ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--think", action=argparse.BooleanOptionalAction, default=None,
+                    help="--no-think disables a thinking model's CoT (recommended for "
+                         "deterministic code/equivalence scorers to avoid empty output).")
     ap.add_argument("--base-url", default="http://localhost:11434")
     ap.add_argument("--judge-model", default="claude-opus-4.8",
                     help="Copilot CLI model id for llm_judge (a FRONTIER model; "
@@ -139,10 +143,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="reasoning effort for the judge (Copilot CLI --reasoning-effort)")
     ap.add_argument("--results", default=str(LAB_BENCH / "results.csv"))
     ap.add_argument("--dry-run", action="store_true", help="print config + first prompt, don't call the model")
-    ap.add_argument("--code-sandbox", choices=["local-unsafe"], default=None,
-                    help="execution mode for code_tests. Only 'local-unsafe' (host "
-                         "subprocess, weak isolation) exists today and is REQUIRED to run "
-                         "code_tests. A locked-down Podman mode lands in Batch B.")
+    ap.add_argument("--code-sandbox", choices=["podman", "local-unsafe"], default=None,
+                    help="execution mode for code_tests (REQUIRED for code_tests). "
+                         "'podman' = locked-down throwaway container (recommended); "
+                         "'local-unsafe' = host subprocess, weak isolation (opt-in).")
     args = ap.parse_args(argv)
 
     bench_dir = Path(args.benchmark).resolve()
@@ -156,6 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     sampling = SamplingConfig(
         temperature=args.temperature, top_p=args.top_p, top_k=args.top_k,
         num_predict=args.num_predict, num_ctx=args.num_ctx, seed=args.seed,
+        think=args.think,
     )
     client = ChatClient(model=args.model, base_url=args.base_url, sampling=sampling)
     judge = None
@@ -170,12 +175,15 @@ def main(argv: list[str] | None = None) -> int:
             print("\n--- first prompt ---\n" + prompts[0]["prompt"][:500])
         return 0
 
-    if method == "code_tests" and args.code_sandbox != "local-unsafe":
-        raise SystemExit(
-            "code_tests is gated: it executes model-written code on the host with only "
-            "best-effort isolation (timeout + rlimits; no filesystem/network sandbox). "
-            "Re-run with --code-sandbox=local-unsafe to accept that risk, or use an "
-            "upstream runner (evalplus). A locked-down Podman mode is coming in Batch B.")
+    if method == "code_tests":
+        if args.code_sandbox is None:
+            raise SystemExit(
+                "code_tests requires --code-sandbox: 'podman' (recommended, locked-down "
+                "container) or 'local-unsafe' (host subprocess, weak isolation; opt-in).")
+        if not code_exec.sandbox_available(args.code_sandbox):
+            raise SystemExit(
+                f"--code-sandbox {args.code_sandbox}: podman is not available. Install/configure "
+                "it (see github.com/jcentner/podman-wsl-setup) or use --code-sandbox local-unsafe.")
 
     runs_dir = LAB_BENCH / "runs"
     runs_dir.mkdir(exist_ok=True)
@@ -195,7 +203,8 @@ def main(argv: list[str] | None = None) -> int:
             for s in range(args.k):
                 comp = client.complete([{"role": "user", "content": item["prompt"]}],
                                        system=manifest.get("system"))
-                res = score_one(method, manifest, item, comp.text, judge)
+                res = score_one(method, manifest, item, comp.text, judge,
+                                sandbox=args.code_sandbox or "local-unsafe")
                 total_samples += 1
                 tok_s_sum += comp.gen_tok_per_s
                 prompt_tok_sum += comp.prompt_tokens

@@ -21,6 +21,7 @@ class SamplingConfig:
     num_predict: int = 4096  # max new tokens
     num_ctx: int = 8192      # context window; raise for long-CoT models
     seed: int | None = None
+    think: bool | None = None  # None = model default; False disables CoT (thinking models)
 
     def to_options(self) -> dict:
         opts = {
@@ -61,6 +62,8 @@ class ChatClient:
             "stream": False,
             "options": self.sampling.to_options(),
         }
+        if self.sampling.think is not None:
+            payload["think"] = self.sampling.think
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
             f"{self.base_url}/api/chat",

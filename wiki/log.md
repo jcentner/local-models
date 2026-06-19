@@ -65,3 +65,14 @@ Copilot CLI everywhere (llm_judge.py, harness + benchmark READMEs, AGENTS.md,
 entry for benchmarks/ + .github/ and a Workflows section; wiki/benchmarks overview
 got a current-state status line. Added the first lab/journal entry since kickoff
 (benchmark framework + VibeThinker arc).
+
+## [2026-06-19] note | Podman sandbox for code_tests (now working)
+Built the locked-down Podman runner (scorers/code_exec.py): `--network none`,
+read-only rootfs, tmpfs workdir, memory/pid/cpu caps, non-root, no-new-privileges,
+caps dropped. `--code-sandbox {podman|local-unsafe}` (podman recommended, gated).
+Verified: network blocked + real passes/fails (selftest 31/31, incl 3 podman).
+Added `--no-think` - thinking models over-think trivial code tasks and exhaust
+`--num-predict` before emitting code (empty output). First sandboxed run: authored
+`code-basics` smoke set, qwen3.5:4b **3/4** with `--no-think`. Image:
+docker.io/library/python:3.12-slim (WSL2 podman per jcentner/podman-wsl-setup).
+`code_tests` is the third fully-working scorer.

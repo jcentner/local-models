@@ -1,0 +1,4 @@
+{"id": "c1", "tests": "assert running_max([1,3,2,5,4])==[1,3,3,5,5]; assert running_max([])==[]; assert running_max([5])==[5]; assert running_max([3,1,2])==[3,3,3]"}
+{"id": "c2", "tests": "assert is_balanced('()[]{}')==True; assert is_balanced('([{}])')==True; assert is_balanced('(]')==False; assert is_balanced('([)]')==False; assert is_balanced('')==True; assert is_balanced('(')==False; assert is_balanced('a(b)c')==True"}
+{"id": "c3", "tests": "assert merge_intervals([[1,3],[2,6],[8,10],[15,18]])==[[1,6],[8,10],[15,18]]; assert merge_intervals([[1,4],[4,5]])==[[1,5]]; assert merge_intervals([])==[]; assert merge_intervals([[1,4],[0,4]])==[[0,4]]"}
+{"id": "c4", "tests": "assert word_count('Hello, hello world!')=={'hello':2,'world':1}; assert word_count('')=={}; assert word_count('A a a.')=={'a':3}"}

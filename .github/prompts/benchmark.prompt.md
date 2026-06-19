@@ -58,10 +58,11 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model <tag> \
   `claude-opus-4.8` (use `gpt-5.5` for a second opinion). **Never a local small
   model.** The judge config is recorded automatically; you may also drive a
   subagent judge for interactive runs.
-- **Code execution is gated.** The harness refuses `code_tests` unless you pass
-  `--code-sandbox local-unsafe` (best-effort host isolation). Prefer an upstream
-  runner (evalplus) for public coding suites; the locked-down Podman mode is the
-  next build. Never run model-written code outside the gate.
+- **Code execution is gated.** Run `code_tests` with `--code-sandbox podman`
+  (recommended - locked-down container) or `local-unsafe` (host exec, opt-in). For
+  thinking models add `--no-think` so CoT doesn't eat the token budget before the
+  code. Prefer an upstream runner (evalplus) for public coding suites. Never run
+  model-written code outside the gate.
 
 ## 5. Record
 - The harness appends a row to [lab/benchmarks/results.csv](../../lab/benchmarks/README.md)

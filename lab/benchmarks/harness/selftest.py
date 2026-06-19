@@ -144,11 +144,26 @@ def test_judge():
     check("judge error string raises", raised)
 
 
+def test_podman_sandbox():
+    print("podman sandbox:")
+    if not code_exec.podman_available():
+        print("  SKIP  podman not available")
+        return
+    good = "```python\ndef add(a, b):\n    return a + b\n```"
+    r = code_exec.score(good, "assert add(2, 3) == 5", mode="podman")
+    check("podman: passing code", r.get("correct") and r.get("sandbox") == "podman")
+    bad = "```python\ndef add(a, b):\n    return a - b\n```"
+    check("podman: failing code rejected", not code_exec.score(bad, "assert add(2, 3) == 5", mode="podman")["correct"])
+    net = "```python\nimport socket\nsocket.create_connection(('1.1.1.1', 80), timeout=3)\n```"
+    check("podman: network blocked", not code_exec.score(net, "", mode="podman")["correct"])
+
+
 if __name__ == "__main__":
     test_equivalence()
     test_code_exec()
     test_loaders()
     test_validation()
     test_judge()
+    test_podman_sandbox()
     print(f"\n{'ALL PASS' if check.failed == 0 else str(check.failed) + ' FAILED'}")
     raise SystemExit(1 if check.failed else 0)
