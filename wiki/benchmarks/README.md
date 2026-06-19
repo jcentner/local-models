@@ -109,16 +109,18 @@ that fits these interests before hand-authoring. See the
   fresh prompt set via `/author-benchmark`.*
 - **Tool-use / agentic** — needs a rollout harness: give the model tools (real or
   mocked), run a multi-step task, and check success (right tools, right order,
-  goal achieved). *Planned, external-first* — **wrap [BFCL](https://github.com/ShishirPatil/gorilla)**
-  (`pip install bfcl-eval`) as the first target: it runs here against a local model
-  via Ollama's `:11434/v1` (`--skip-server-setup`) **or** an API model directly,
-  and its hardest categories (irrelevance / missing-parameter / missing-function =
-  “act vs ask vs do-nothing”) are exactly the home-agent decision skill. tau-bench
-  for fuller workflows. Build a minimal transcript-checking scorer tied to our own
-  tool defs only if no wrap fits. VibeThinker is a good **negative control** here.
+  goal achieved). **Primary path: a lightweight tau-bench-style scorer in our
+  harness** — model-agnostic (runs any Ollama tag or API model, so brand-new
+  models like MiniCPM-5 work day one), with the **Copilot CLI as the user-simulator**
+  (same frontier-model mechanism as the judge) and state/policy-based scoring on
+  *our* use-cases (home automation, email-triage escalation). External cross-check:
+  **[tau³-bench](https://github.com/sierra-research/tau2-bench)** (model-agnostic via
+  litellm). **[BFCL](bfcl.md)** is a rigid **reference** (registered models only —
+  it lags new models), good for published comparisons, not the daily driver.
+  VibeThinker is a good **negative control** here.
 
 ## Documented benchmarks
 
-- [bfcl.md](bfcl.md) — Berkeley Function-Calling Leaderboard (tool-use/agentic; wraps bfcl-eval); irrelevance/missing-* = the home-agent act-vs-ask-vs-nothing skill. **First external wrap target.**
+- [bfcl.md](bfcl.md) — Berkeley Function-Calling Leaderboard (tool-use/agentic; wraps bfcl-eval); **reference only** — registered-models-only rigidity lags new models; use for published comparisons, not the daily agentic driver.
 - [humaneval-plus.md](humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk.
 - [decision-reasoning.md](decision-reasoning.md) — authored decision-making/reasoning scenarios; `llm_judge` (opus-4.8); fresh/held-out.

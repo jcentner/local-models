@@ -2,7 +2,7 @@
 title: BFCL (Berkeley Function-Calling Leaderboard)
 tags: [benchmark, tool-use, agentic, wrapped]
 updated: 2026-06-19
-status: documented
+status: reference
 ---
 
 # BFCL (Berkeley Function-Calling Leaderboard)
@@ -12,6 +12,18 @@ local **home-automation agent** needs. We **wrap** the upstream
 [`bfcl-eval`](https://github.com/ShishirPatil/gorilla/tree/main/berkeley-function-call-leaderboard)
 package rather than reimplementing it. Current installed version: `bfcl-eval
 2026.3.23`, datasets tagged `BFCL_v4`.
+
+> **Status: deprioritized (reference, not our daily agentic driver).** BFCL only
+> runs **registered models** — it ships a per-model handler that formats tool defs
+> and parses each model's tool-call dialect, because tool-call output isn't
+> standardized. That makes it precise and leaderboard-comparable, but it
+> **structurally lags the frontier**: a brand-new small model (e.g. MiniCPM-5,
+> Qwen3.5-4B) can't be scored until someone writes its handler. For a fast-moving
+> space we instead use a **model-agnostic** agentic eval (a lightweight
+> tau-bench-style scorer in our harness, Copilot-CLI user-simulator; tau³-bench as
+> the external cross-check). Keep BFCL for comparing against published numbers. The
+> local `~/.venvs/bfcl` was removed after this finding; reinstall via the recipe
+> below if needed.
 
 Most relevant to our [vision](../README.md#vision): its hardest categories test the
 **act-vs-ask-vs-do-nothing** judgment — *irrelevance* (don't call a tool that

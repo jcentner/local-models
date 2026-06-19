@@ -106,3 +106,19 @@ stretch). Practical route = an API model (`glm-4.6-FC`/`qwen3-4b-FC`, needs a ke
 or pulling the matching GGUF. Subset run pending a model decision. Skill:
 .github/skills/wrap-external-benchmark. Experiment:
 lab/experiments/2026-06-19-bfcl-wrap-setup.
+
+## [2026-06-19] note | BFCL deprioritized -> model-agnostic agentic scorer
+Decision after the BFCL finding + a last30days scan of current 8 GB models. BFCL's
+**registered-models-only** design (per-model tool-call parsers) structurally lags
+the frontier - it can't score brand-new small models (MiniCPM-5, Qwen3.5-4B) until
+someone writes a handler. For a fast-moving space that's the wrong daily driver.
+Pivot: the **primary** agentic eval becomes a **lightweight tau-bench-style scorer
+in our harness** - model-agnostic (any Ollama tag / API model, day one), with the
+**Copilot CLI as the user-simulator** (same mechanism as the judge) and
+state/policy scoring on our use-cases (home automation, email-triage escalation).
+[tau3-bench](https://github.com/sierra-research/tau2-bench) is the external
+cross-check. BFCL kept as a published-comparison **reference** (status: reference);
+demoted in wiki/benchmarks/README + index + bfcl.md. Removed the local
+`~/.venvs/bfcl` (5.5 GB) + runs/bfcl. last30days standout new model: **MiniCPM-5**
+(agentic tool-use, 4-8 GB tier) - queued for `/new-model`. GLM-5.2 = the new
+open-weights leader but API-scale, not 8 GB-local.
