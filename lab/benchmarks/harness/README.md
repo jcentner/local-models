@@ -1,7 +1,8 @@
 # lab/benchmarks/harness
 
-A thin, local-first benchmark runner. Samples prompts against a local model
-(Ollama) and scores them. It is the engine for our **authored** datasets under
+A thin benchmark runner. Samples prompts against a model under test — **local
+(Ollama) or API (OpenAI-compatible, e.g. Z.AI GLM)** — and scores them. It is the
+engine for our **authored** datasets under
 [`benchmarks/<name>/`](../../../benchmarks/README.md); for standard public suites
 we wrap the upstream framework instead (see the per-benchmark wiki pages).
 
@@ -9,7 +10,8 @@ we wrap the upstream framework instead (see the per-benchmark wiki pages).
 
 ```
 harness/
-  client.py            Ollama /api/chat client (sampling + num_ctx + tok/s)
+  client.py            OllamaClient (native /api/chat) + OpenAICompatibleClient (/v1)
+                       + make_client factory; sampling + num_ctx + tok/s
   run.py               CLI: load dataset -> sample k -> score -> results.csv + runs/
   selftest.py          offline test of the scoring core (no model needed)
   scorers/
@@ -39,9 +41,18 @@ python3 -m harness.selftest
 # dry run (prints config + first prompt, no model call):
 python3 -m harness.run --benchmark ../../benchmarks/<name> --model qwen3.5:4b --dry-run
 
-# real run against a pulled Ollama model:
+# real run against a pulled Ollama model (local, the default provider):
 python3 -m harness.run --benchmark ../../benchmarks/<name> \
   --model qwen3.5:4b --k 1 --temperature 0.0 --num-ctx 8192 --seed 0
+
+# real run against an API model (OpenAI-compatible; records cost_usd):
+python3 -m harness.run --benchmark ../../benchmarks/<name> \
+  --model glm-4.6 --provider openai-compatible --base-url https://api.z.ai/api/paas/v4 \
+  --api-key-env ZAI_API_KEY --price-in 0.6 --price-out 2.2 --temperature 0.0
+
+# same harness can target a LOCAL model over Ollama's OpenAI shim (no key):
+python3 -m harness.run --benchmark ../../benchmarks/<name> \
+  --model qwen3.5:4b --provider openai-compatible --base-url http://localhost:11434/v1
 
 # observed pass@k for a stochastic reasoning model:
 python3 -m harness.run --benchmark ../../benchmarks/<name> \
@@ -60,6 +71,18 @@ Datasets live under [`benchmarks/<name>/`](../../../benchmarks/README.md) and ar
 created with `/author-benchmark`. Output: a row appended to
 [`../results.csv`](../README.md) and raw completions under `../runs/` (git-ignored).
 
+## Providers & cost
+
+- `--provider ollama` (default) — native `/api/chat`; full `options` control
+  (`num_ctx`, `think`) + native `eval_count`/`eval_duration` tok/s.
+- `--provider openai-compatible` — `{--base-url}/chat/completions` (base_url ends
+  in `/v1`). Targets hosted APIs **or** Ollama's `:11434/v1` shim. tok/s is
+  wall-based. The API key is read from the env var named by `--api-key-env`
+  (**never** put a key on the CLI or in `results.csv`); localhost needs none.
+- `--price-in` / `--price-out` (USD per 1M tokens) — compute `cost_usd` from token
+  totals (local default 0 -> `cost_usd=0.0`). Running the same benchmark local vs
+  API and comparing capability + `cost_usd` is a first-class goal.
+
 ## Scoring methods
 
 - **equivalence** — extracts `\boxed{}` / "answer is" / last number, compares
@@ -76,6 +99,9 @@ created with `/author-benchmark`. Output: a row appended to
   For public suites prefer an upstream runner (evalplus). **Thinking-model gotcha:**
   pass `--no-think` for code tasks - a model that over-thinks can exhaust
   `--num-predict` before emitting code, yielding empty output (scored as a fail).
+  `--no-think` only works on the **ollama** provider; over `openai-compatible`
+  (incl. Ollama's `/v1` shim) you can't disable CoT, so give a thinking model a
+  generous `--num-predict` or run it via the `ollama` provider.
 - **observed pass@k** — the runner reports `observed_pass_at_k` = fraction of
   items with >=1 correct sample in k. This is **not** the formal unbiased pass@k
   estimator used on public leaderboards; don't compare the two directly.

@@ -25,11 +25,11 @@ from pathlib import Path
 # Allow running both as ``-m harness.run`` and as a direct script.
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from harness.client import ChatClient, SamplingConfig
+    from harness.client import make_client, SamplingConfig
     from harness.judge_copilot import CopilotCLIJudge
     from harness.scorers import code_exec, equivalence, llm_judge
 else:
-    from .client import ChatClient, SamplingConfig
+    from .client import make_client, SamplingConfig
     from .judge_copilot import CopilotCLIJudge
     from .scorers import code_exec, equivalence, llm_judge
 
@@ -49,6 +49,12 @@ def _ollama_version(base_url: str) -> str:
             return json.loads(r.read().decode()).get("version", "")
     except Exception:
         return ""
+
+
+def compute_cost(prompt_tokens: int, gen_tokens: int,
+                 price_in: float, price_out: float) -> float:
+    """USD cost from token totals + per-1M-token prices (local default 0 -> 0.0)."""
+    return round(prompt_tokens / 1e6 * price_in + gen_tokens / 1e6 * price_out, 6)
 
 
 def load_benchmark(bench_dir: Path) -> dict:
@@ -122,7 +128,12 @@ def score_one(method: str, manifest: dict, item: dict, completion: str, judge=No
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Run a benchmark against a local model.")
     ap.add_argument("--benchmark", required=True, help="path to benchmarks/<name>/ dir")
-    ap.add_argument("--model", required=True, help="Ollama model tag under test")
+    ap.add_argument("--model", required=True,
+                    help="model under test: an Ollama tag (provider ollama) or an "
+                         "API model ref (provider openai-compatible)")
+    ap.add_argument("--provider", choices=["ollama", "openai-compatible"], default="ollama",
+                    help="ollama = native local daily driver; openai-compatible = a "
+                         "hosted API (e.g. Z.AI GLM) or Ollama's :11434/v1 shim.")
     ap.add_argument("--k", type=int, default=1, help="samples per prompt (pass@k)")
     ap.add_argument("--limit", type=int, default=0, help="limit number of prompts (0 = all)")
     ap.add_argument("--temperature", type=float, default=1.0)
@@ -134,7 +145,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--think", action=argparse.BooleanOptionalAction, default=None,
                     help="--no-think disables a thinking model's CoT (recommended for "
                          "deterministic code/equivalence scorers to avoid empty output).")
-    ap.add_argument("--base-url", default="http://localhost:11434")
+    ap.add_argument("--base-url", default=None,
+                    help="endpoint override; default per provider (ollama: "
+                         "http://localhost:11434, openai-compatible: "
+                         "http://localhost:11434/v1).")
+    ap.add_argument("--api-key-env", default=None,
+                    help="name of the env var holding the API key (openai-compatible "
+                         "remote hosts). Never pass the key itself on the CLI.")
+    ap.add_argument("--price-in", type=float, default=0.0,
+                    help="USD per 1M input tokens (for cost_usd; default 0 = local).")
+    ap.add_argument("--price-out", type=float, default=0.0,
+                    help="USD per 1M output tokens (for cost_usd; default 0 = local).")
     ap.add_argument("--judge-model", default="claude-opus-4.8",
                     help="Copilot CLI model id for llm_judge (a FRONTIER model; "
                          "never a local small model). e.g. claude-opus-4.8, gpt-5.5.")
@@ -162,14 +183,20 @@ def main(argv: list[str] | None = None) -> int:
         num_predict=args.num_predict, num_ctx=args.num_ctx, seed=args.seed,
         think=args.think,
     )
-    client = ChatClient(model=args.model, base_url=args.base_url, sampling=sampling)
+    resolved_base = args.base_url or (
+        "http://localhost:11434/v1" if args.provider == "openai-compatible"
+        else "http://localhost:11434")
+    if args.think is not None and args.provider != "ollama":
+        print("note: --think/--no-think only applies to the ollama provider; ignored.")
+    client = make_client(args.provider, args.model, resolved_base, sampling, args.api_key_env)
     judge = None
     if method == "llm_judge":
         judge = CopilotCLIJudge(model=args.judge_model, effort=args.judge_effort)
 
     print(f"benchmark={manifest['name']} v{manifest.get('version','?')} method={method} "
           f"items={len(prompts)} k={args.k}")
-    print(f"model={args.model} sampling={sampling.to_options()}")
+    print(f"provider={args.provider} model={args.model} endpoint={resolved_base} "
+          f"sampling={sampling.to_options()}")
     if args.dry_run:
         if prompts:
             print("\n--- first prompt ---\n" + prompts[0]["prompt"][:500])
@@ -228,8 +255,9 @@ def main(argv: list[str] | None = None) -> int:
     observed_pass_at_k = item_pass / n
     avg_correct = sample_correct / (total_samples or 1)
     mean_tok_s = round(tok_s_sum / (total_samples or 1), 2)
+    cost_usd = compute_cost(prompt_tok_sum, gen_tok_sum, args.price_in, args.price_out)
     print(f"\nobserved_pass@{args.k}={observed_pass_at_k:.3f}  avg_correct={avg_correct:.3f}  "
-          f"mean_gen_tok/s={mean_tok_s}  raw={raw_path.name}")
+          f"mean_gen_tok/s={mean_tok_s}  cost_usd={cost_usd}  raw={raw_path.name}")
     print("  (observed_pass@k = fraction of items with >=1 correct in k samples; "
           "not the formal unbiased pass@k estimator)")
 
@@ -237,8 +265,10 @@ def main(argv: list[str] | None = None) -> int:
         "date": dt.date.today().isoformat(),
         "machine": socket.gethostname(),
         "model": args.model,
-        "runner": "ollama-harness",
-        "ollama_version": _ollama_version(args.base_url),
+        "provider": args.provider,
+        "runner": f"{args.provider}-harness",
+        "runner_version": _ollama_version(resolved_base) if args.provider == "ollama" else "",
+        "endpoint": resolved_base,
         "benchmark": f"{manifest['name']} v{manifest.get('version','?')}",
         "scoring": method,
         "num_ctx": args.num_ctx,
@@ -253,6 +283,7 @@ def main(argv: list[str] | None = None) -> int:
         "prompt_tokens_total": prompt_tok_sum,
         "gen_tokens_total": gen_tok_sum,
         "wall_s_total": round(wall_sum, 1),
+        "cost_usd": cost_usd,
         "judge": f"copilot:{args.judge_model}" if method == "llm_judge" else "",
         "code_sandbox": args.code_sandbox or "",
         "raw_file": raw_path.name,

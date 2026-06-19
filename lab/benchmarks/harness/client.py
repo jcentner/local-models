@@ -1,12 +1,21 @@
-"""Chat client for a local model served by Ollama (native /api/chat).
+"""Chat clients for models under test.
 
-Uses the native Ollama endpoint (not /v1) so we get full control over
-``options`` - temperature, top_p, top_k, seed, and crucially ``num_ctx`` for
-long-reasoning models - plus token-timing fields for tok/s. stdlib only.
+Two providers, one ``complete() -> Completion`` contract:
+
+- ``OllamaClient`` (local daily driver) uses the native ``/api/chat`` endpoint so
+  we keep full control over ``options`` - temperature, top_p, top_k, seed, and
+  crucially ``num_ctx`` / ``think`` for long-reasoning models - plus native
+  ``eval_count``/``eval_duration`` tok/s timing.
+- ``OpenAICompatibleClient`` hits ``{base_url}/chat/completions`` (base_url already
+  ends in ``/v1``). Covers hosted APIs (e.g. Z.AI GLM) AND a local model via
+  Ollama's OpenAI shim on ``:11434/v1``. tok/s is wall-based (no eval_duration).
+
+stdlib only. Cost is computed by the caller (run.py) from token totals + prices.
 """
 from __future__ import annotations
 
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -46,7 +55,7 @@ class Completion:
 
 
 @dataclass
-class ChatClient:
+class OllamaClient:
     """Minimal Ollama chat client. One request per sample (Ollama has no n=k)."""
 
     model: str
@@ -94,4 +103,106 @@ class ChatClient:
         )
 
     def describe(self) -> dict:
-        return {"model": self.model, "base_url": self.base_url, **asdict(self.sampling)}
+        return {"provider": "ollama", "model": self.model, "base_url": self.base_url,
+                **asdict(self.sampling)}
+
+
+@dataclass
+class OpenAICompatibleClient:
+    """OpenAI-compatible chat client (hosted APIs or Ollama's :11434/v1 shim).
+
+    ``base_url`` must already include ``/v1`` (e.g. ``http://localhost:11434/v1``
+    or ``https://api.z.ai/api/paas/v4``). The API key, when needed, is read from
+    the environment variable named by ``api_key_env`` - never passed literally.
+    """
+
+    model: str
+    base_url: str = "http://localhost:11434/v1"
+    sampling: SamplingConfig = field(default_factory=SamplingConfig)
+    api_key_env: str | None = None
+    timeout: int = 600
+
+    def _auth_header(self) -> dict:
+        if not self.api_key_env:
+            return {}
+        key = os.environ.get(self.api_key_env)
+        if not key:
+            # localhost (Ollama shim) needs no key; a remote host does.
+            host = self.base_url.split("//", 1)[-1]
+            if host.startswith(("localhost", "127.0.0.1")):
+                return {}
+            raise RuntimeError(
+                f"--api-key-env {self.api_key_env} is set but env var is empty; "
+                f"export it (never put the key on the CLI) for {self.base_url}."
+            )
+        return {"Authorization": f"Bearer {key}"}
+
+    def complete(self, messages: list[dict], system: str | None = None) -> Completion:
+        msgs = ([{"role": "system", "content": system}] if system else []) + messages
+        s = self.sampling
+        payload = {
+            "model": self.model,
+            "messages": msgs,
+            "stream": False,
+            "temperature": s.temperature,
+            "top_p": s.top_p,
+            "max_tokens": s.num_predict,
+        }
+        if s.seed is not None:
+            payload["seed"] = s.seed
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            f"{self.base_url}/chat/completions",
+            data=data,
+            headers={"Content-Type": "application/json", **self._auth_header()},
+            method="POST",
+        )
+        t0 = time.monotonic()
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:  # pragma: no cover - network dependent
+            detail = e.read().decode("utf-8", "replace")[:300]
+            raise RuntimeError(
+                f"OpenAI-compatible request to {self.base_url} failed: {e.code} {detail}"
+            ) from e
+        except urllib.error.URLError as e:  # pragma: no cover - network dependent
+            raise RuntimeError(
+                f"OpenAI-compatible request to {self.base_url} failed: {e}."
+            ) from e
+        wall = time.monotonic() - t0
+        choices = body.get("choices") or [{}]
+        text = ((choices[0] or {}).get("message") or {}).get("content", "") or ""
+        usage = body.get("usage") or {}
+        gen_tokens = int(usage.get("completion_tokens") or 0)
+        tok_s = (gen_tokens / wall) if wall else 0.0  # wall-based; no eval_duration
+        return Completion(
+            text=text,
+            prompt_tokens=int(usage.get("prompt_tokens") or 0),
+            gen_tokens=gen_tokens,
+            gen_tok_per_s=round(tok_s, 2),
+            wall_s=round(wall, 2),
+        )
+
+    def describe(self) -> dict:
+        return {"provider": "openai-compatible", "model": self.model,
+                "base_url": self.base_url, "api_key_env": self.api_key_env,
+                **asdict(self.sampling)}
+
+
+# Back-compat alias (older imports expect ChatClient = the Ollama client).
+ChatClient = OllamaClient
+
+
+def make_client(provider: str, model: str, base_url: str | None,
+                sampling: SamplingConfig, api_key_env: str | None = None,
+                timeout: int = 600):
+    """Factory: pick a client by provider. ``base_url=None`` uses the provider default."""
+    if provider == "ollama":
+        return OllamaClient(model=model, base_url=base_url or "http://localhost:11434",
+                            sampling=sampling, timeout=timeout)
+    if provider == "openai-compatible":
+        return OpenAICompatibleClient(
+            model=model, base_url=base_url or "http://localhost:11434/v1",
+            sampling=sampling, api_key_env=api_key_env, timeout=timeout)
+    raise ValueError(f"unknown provider {provider!r} (expected ollama|openai-compatible)")

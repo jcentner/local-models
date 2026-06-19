@@ -17,11 +17,15 @@ if __package__ in (None, ""):
     from harness.scorers import code_exec, equivalence
     from harness import run as runmod
     from harness import judge_copilot
+    from harness import client as clientmod
+    from harness.client import OpenAICompatibleClient, SamplingConfig
     from harness.scorers import llm_judge
 else:
     from .scorers import code_exec, equivalence
     from . import run as runmod
     from . import judge_copilot
+    from . import client as clientmod
+    from .client import OpenAICompatibleClient, SamplingConfig
     from .scorers import llm_judge
 
 
@@ -158,6 +162,49 @@ def test_podman_sandbox():
     check("podman: network blocked", not code_exec.score(net, "", mode="podman")["correct"])
 
 
+def test_cost_computation():
+    print("cost computation:")
+    check("priced run computes USD",
+          runmod.compute_cost(1_000_000, 2_000_000, 1.0, 3.0) == 7.0)
+    check("local run is free", runmod.compute_cost(100, 200, 0.0, 0.0) == 0.0)
+
+
+class _Resp:
+    def __init__(self, payload):
+        self._b = json.dumps(payload).encode("utf-8")
+    def read(self):
+        return self._b
+    def __enter__(self):
+        return self
+    def __exit__(self, *a):
+        return False
+
+
+def test_openai_compatible_client():
+    print("openai-compatible client (mocked):")
+    from unittest import mock
+    payload = {"choices": [{"message": {"content": "hello world"}}],
+               "usage": {"prompt_tokens": 11, "completion_tokens": 5}}
+    c = OpenAICompatibleClient(model="m", base_url="http://localhost:11434/v1",
+                              sampling=SamplingConfig(seed=0))
+    with mock.patch.object(clientmod.urllib.request, "urlopen", return_value=_Resp(payload)):
+        comp = c.complete([{"role": "user", "content": "hi"}], system="sys")
+    check("parses content", comp.text == "hello world")
+    check("parses token usage", comp.prompt_tokens == 11 and comp.gen_tokens == 5)
+    check("wall-based tok/s set", comp.gen_tok_per_s >= 0.0)
+    # remote host + named-but-empty key must raise (secrets path)
+    import os
+    raised = False
+    bad = OpenAICompatibleClient(model="m", base_url="https://api.example.com/v1",
+                                api_key_env="DEFINITELY_UNSET_KEY_XYZ")
+    os.environ.pop("DEFINITELY_UNSET_KEY_XYZ", None)
+    try:
+        bad._auth_header()
+    except RuntimeError:
+        raised = True
+    check("remote host w/ empty key env raises", raised)
+
+
 if __name__ == "__main__":
     test_equivalence()
     test_code_exec()
@@ -165,5 +212,7 @@ if __name__ == "__main__":
     test_validation()
     test_judge()
     test_podman_sandbox()
+    test_cost_computation()
+    test_openai_compatible_client()
     print(f"\n{'ALL PASS' if check.failed == 0 else str(check.failed) + ' FAILED'}")
     raise SystemExit(1 if check.failed else 0)

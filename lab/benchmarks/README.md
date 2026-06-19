@@ -9,8 +9,10 @@ Numbers, captured consistently so they're comparable over time.
 | date | 2026-06-14 |
 | machine | proart-p16 |
 | model | qwen3.5:9b-q4_K_M |
+| provider | ollama / openai-compatible |
 | quant | Q4_K_M |
-| runner + version | ollama 0.20.2 / llama.cpp <sha> |
+| runner + version | ollama-harness 0.20.2 / openai-compatible-harness |
+| endpoint | http://localhost:11434 / https://api.z.ai/.../v1 |
 | context length | 4096 |
 | GPU layers (-ngl) | 99 (full) / 20 (partial) |
 | sampling | temp 1.0, top_p 0.95, top_k 0 |
@@ -18,6 +20,7 @@ Numbers, captured consistently so they're comparable over time.
 | n-samples / k | observed_pass@1 (1) / observed_pass@16 (16) |
 | benchmark + version | humaneval-plus v0.2 |
 | score | observed_pass_at_k 0.78, avg_correct 0.71 |
+| cost (API) | cost_usd 0.0042 (from --price-in/--price-out) |
 | judge (if LLM-judged) | opus-4.8 @ 2026-06-18, rubric v1 |
 | prompt tok/s | |
 | generation tok/s | |
@@ -26,11 +29,13 @@ Numbers, captured consistently so they're comparable over time.
 | notes | thermal, throttling, fit |
 
 **The harness writes most of this automatically** (`harness/run.py` -> `results.csv`):
-date, machine, model, runner, ollama_version, benchmark+version, scoring, num_ctx,
-num_predict, sampling, seed, k, n_items, observed_pass_at_k, avg_correct,
-mean_gen_tok_s, prompt/gen token totals, wall_s_total, judge, code_sandbox,
-raw_file, platform. Add the few it can't know (quant, VRAM/RAM, -ngl, notes) by
-hand. `observed_pass_at_k` = fraction of items with >=1 correct in k - **not** the
+date, machine, model, **provider**, runner, **runner_version**, **endpoint**,
+benchmark+version, scoring, num_ctx, num_predict, sampling, seed, k, n_items,
+observed_pass_at_k, avg_correct, mean_gen_tok_s, prompt/gen token totals,
+wall_s_total, **cost_usd**, judge, code_sandbox, raw_file, platform. Add the few it
+can't know (quant, VRAM/RAM, -ngl, notes) by hand. Results are **per-environment**:
+per-machine for local, per-provider + per-date for API (prices drift).
+`observed_pass_at_k` = fraction of items with >=1 correct in k - **not** the
 formal unbiased pass@k estimator; don't compare it to public-leaderboard pass@k.
 
 ## Where results live
