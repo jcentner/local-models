@@ -27,3 +27,23 @@ python3 -m harness.run --benchmark ../../benchmarks/decision-reasoning \
   --model vibethinker-3b --num-ctx 32768 --num-predict 4096 \
   --temperature 1.0 --top-p 0.95 --top-k 0 --judge-model claude-opus-4.8
 ```
+
+## Backlog (v0.2 — come back to this)
+
+v0.1 is a flat 6-item set. Expand it into a structured eval, **built via
+`/author-benchmark`** (interview + verifiability gate + gpt-5.5/opus-4.8 critic
+loop) rather than hand-seeded:
+
+- **Difficulty tiers** (tag each item `meta.tier`): T1 = a defensible best answer
+  exists; T2 = genuine tradeoff, no single right call; T3 = adversarial /
+  under-specified — rewards spotting missing info or resisting a tempting-but-wrong
+  option. The v0.1 misreads suggest T3 is where models like VibeThinker fail hardest.
+- **Categories** (tag `meta.category`): prioritization, risk/uncertainty, resource
+  allocation, people/hiring, ethics/stakeholder tradeoffs, ambiguous-information,
+  reversible-vs-irreversible. ~3-4 items each → ~20-25 total.
+- **Slice results by tier + category** so the score is diagnostic ("strong on
+  prioritization, fails under-specified") not just one number. (Harness change:
+  aggregate `observed_pass_at_k` per `meta` group.)
+- Add a couple of **trap items** with a tempting-but-wrong obvious answer to test
+  whether a model resists the bait.
+
