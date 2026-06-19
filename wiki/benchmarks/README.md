@@ -119,5 +119,6 @@ that fits these interests before hand-authoring. See the
 
 ## Documented benchmarks
 
+- [bfcl.md](bfcl.md) — Berkeley Function-Calling Leaderboard (tool-use/agentic; wraps bfcl-eval); irrelevance/missing-* = the home-agent act-vs-ask-vs-nothing skill. **First external wrap target.**
 - [humaneval-plus.md](humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk.
 - [decision-reasoning.md](decision-reasoning.md) — authored decision-making/reasoning scenarios; `llm_judge` (opus-4.8); fresh/held-out.

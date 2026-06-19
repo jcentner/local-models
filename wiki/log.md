@@ -91,3 +91,18 @@ section; BFCL identified as the first external wrap (runs here via Ollama
 Journal: lab/journal/2026-06-19-api-first-class-and-vision.md. Plan (local scratch):
 tmp/api-inference-refactor-plan.md. Next: harness provider code (L3) + the
 `benchmark-harness` skill.
+
+## [2026-06-19] ingest | BFCL benchmark page + bfcl-eval wrap setup
+First external benchmark wrap (the external-first strategy in action). Wrote
+wiki/benchmarks/bfcl.md (BFCL_v4 categories, FC/Prompt, AST+state+subset scoring,
+contamination, run recipe). Installed `bfcl-eval 2026.3.23` in `~/.venvs/bfcl`
+(outside repo); needed a manual `pip install soundfile` (transitive qwen_agent
+gap). **Key finding (verified in base_oss_handler.py):** BFCL has NO generic
+Ollama handler. `--skip-server-setup` loads the model's HF tokenizer and sends
+BFCL's *exact registered model name* to the endpoint, so a tag like `qwen3.5:4b`
+won't run; the local route needs Ollama serving the registered name (e.g.
+`Qwen/Qwen3-4B-Instruct-2507`) + matching tokenizer, or vLLM/sglang (the 8 GB
+stretch). Practical route = an API model (`glm-4.6-FC`/`qwen3-4b-FC`, needs a key)
+or pulling the matching GGUF. Subset run pending a model decision. Skill:
+.github/skills/wrap-external-benchmark. Experiment:
+lab/experiments/2026-06-19-bfcl-wrap-setup.
