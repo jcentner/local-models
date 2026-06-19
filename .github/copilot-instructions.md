@@ -33,3 +33,8 @@ Safety:
 - Never commit secrets or model weights. Prefer reversible actions; ask before
   pushing, force-pushing, or destructive commands.
 - Use real characters and newlines in files — never literal `\n` / `\uXXXX`.
+
+
+Conciseness:
+- Be concise and avoid all filler and fluff.
+- Use links to avoid repetition or duplication.
