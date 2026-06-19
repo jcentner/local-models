@@ -1,7 +1,7 @@
 ---
 title: Benchmarks — overview
 tags: [benchmark, concept, index]
-updated: 2026-06-18
+updated: 2026-06-19
 status: living
 ---
 
@@ -9,6 +9,11 @@ status: living
 
 How this repo thinks about, documents, runs, and authors benchmarks. Read this
 before using any of the benchmark prompts.
+
+**Status (2026-06-19):** `llm_judge` fully working (frontier judge = opus-4.8 via
+Copilot CLI); `equivalence` works; `code_tests` is **gated pending the Podman
+sandbox**. One authored benchmark has run end to end:
+[decision-reasoning](decision-reasoning.md) (VibeThinker-3B, 1/6).
 
 ## A benchmark = prompts + a scoring harness
 
@@ -19,7 +24,7 @@ scoring**, and it differs by domain:
 |---|---|---|
 | Math (AIME/HMMT/IMO-style) | answer extraction + symbolic/numeric equivalence | scorer exists; not a current focus |
 | Code (HumanEval+/MBPP+/LiveCodeBench) | execute candidate code against hidden tests, **gated** behind `--code-sandbox` | untrusted generated code — best-effort host isolation today, Podman mode coming |
-| Open-ended (creative writing, agentic) | **rubric LLM-judge** | pin judge model+version+rubric; judge config is part of the result |
+| Open-ended (creative writing, agentic, reasoning) | **rubric LLM-judge** by a frontier model (opus-4.8 via Copilot CLI; never a local small model) | pin judge model+version+rubric; judge config is part of the result |
 
 **Prefer wrapping existing eval frameworks** ([evalplus](https://github.com/evalplus/evalplus),
 [lm-eval-harness](https://github.com/EleutherAI/lm-evaluation-harness),

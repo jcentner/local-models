@@ -30,14 +30,34 @@ wiki/        LLM-maintained knowledge base
   hardware/  this machine, the GPU, the NPU
   stacks/    ollama, llama.cpp, vllm, lemonade, unsloth
   models/    one page per model tried
+  benchmarks/ what each benchmark measures + how it's scored (definitions)
   concepts/  quantization, the llm-wiki method, wsl2 memory, ...
+benchmarks/  authored benchmark datasets (prompts + separate answer keys)
 lab/         the playground
   journal/   dated narrative entries (history, insights, questions)
   experiments/  one folder per run: hypothesis -> method -> result -> learnings
-  benchmarks/   harness + results
+  benchmarks/   harness (runner + scorers) + results.csv (per-machine)
 env/         environment setup, pinned versions, .wslconfig template
 scripts/     helper CLIs (verify-stack, ...)
+.github/
+  prompts/   workflow slash-prompts (see Workflows below)
+  skills/    agent skills (e.g. copilot-cli: frontier-model judge backend)
 ```
+
+## Workflows
+
+Slash-prompts in [`.github/prompts/`](.github/prompts/) drive the recurring work:
+
+| Prompt | Does |
+|---|---|
+| `/new-model <model>` | research a model (last30days + primary sources), write its wiki page, stage testing |
+| `/new-benchmark <name>` | ingest + document an existing public benchmark |
+| `/benchmark <model>` | recommend relevant benchmarks, estimate cost, run via the harness, record results |
+| `/author-benchmark <scenario>` | author a fresh held-out benchmark with a gpt-5.5/opus-4.8 critic loop |
+
+Benchmark scoring is `equivalence` (math), `code_tests` (sandboxed execution), or
+`llm_judge` (frontier judge = opus-4.8 via Copilot CLI). See
+[wiki/benchmarks/README.md](wiki/benchmarks/README.md).
 
 ## Quickstart
 

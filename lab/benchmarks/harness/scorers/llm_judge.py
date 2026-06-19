@@ -1,15 +1,15 @@
-"""Rubric LLM-judge scorer for open-ended benchmarks (creative writing, agentic).
+"""Rubric LLM-judge scorer for open-ended benchmarks (creative writing, agentic, reasoning).
 
-The judge is a pinned model (ideally stronger than the model under test, e.g.
-opus-4.8 or gpt-5.5) served over an OpenAI-compatible or Ollama endpoint. The
-judge config (model + version + rubric) is part of the result and must be
-recorded - LLM-judged scores are only comparable against the same judge config.
+The judge MUST be a frontier model - never a local small model. The default
+backend is ``judge_copilot.CopilotCLIJudge`` (claude-opus-4.8 via the GitHub
+Copilot CLI; see ``../judge_copilot.py`` and the copilot-cli skill). The judge
+config (model + version + rubric) is part of the result and must be recorded -
+LLM-judged scores are only comparable against the same judge config.
 
-This module is endpoint-agnostic: pass any object with a ``complete(messages,
-system=...) -> Completion`` interface (e.g. ``client.ChatClient`` for a local
-judge model). For judging via a frontier model you can point ChatClient at an
-OpenAI-compatible base_url, or drive the judge from the /benchmark prompt using
-the agent / a subagent instead of this code path.
+This module is backend-agnostic: it accepts any object exposing a
+``complete(messages, system=...) -> Completion`` interface, so a different
+frontier backend (or the hosting agent / a subagent) can be swapped in. It is
+never wired to a local Ollama judge.
 """
 from __future__ import annotations
 

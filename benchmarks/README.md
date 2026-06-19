@@ -38,7 +38,7 @@ scoring, reference scores, contamination status). This folder holds the *data*.
 Declared in `wiki/benchmarks/<name>.md` and consumed by the harness:
 - `equivalence` — short-answer/numeric matching (sympy + normalizer)
 - `code_tests` — execute candidate against `tests` (gated; best-effort local exec today, Podman mode coming)
-- `llm_judge` — rubric-scored by a pinned judge model
+- `llm_judge` — rubric-scored by a **frontier** judge (claude-opus-4.8 via Copilot CLI; never a local small model)
 
 ## Creating one
 

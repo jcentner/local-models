@@ -51,9 +51,9 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> \
 python3 -m harness.run --benchmark ../../benchmarks/<code-bench> \
   --model qwen3.5:4b --code-sandbox local-unsafe
 
-# llm-judged (open-ended) benchmark with a local judge model:
+# llm-judged (open-ended) benchmark - judge is opus-4.8 via Copilot CLI (default):
 python3 -m harness.run --benchmark ../../benchmarks/<name> \
-  --model <under-test> --judge-model <strong-judge-tag>
+  --model <under-test> --judge-model claude-opus-4.8
 ```
 
 Datasets live under [`benchmarks/<name>/`](../../../benchmarks/README.md) and are
@@ -73,12 +73,11 @@ created with `/author-benchmark`. Output: a row appended to
 - **observed pass@k** — the runner reports `observed_pass_at_k` = fraction of
   items with >=1 correct sample in k. This is **not** the formal unbiased pass@k
   estimator used on public leaderboards; don't compare the two directly.
-- **llm_judge** — a pinned judge model scores the response against `rubric.md`
-  and returns JSON. The judge config (model+version+rubric) is recorded with the
-  result; LLM-judged scores only compare within the same judge config. For
-  highest-quality judging (creative writing), the `/benchmark` and
-  `/author-benchmark` prompts can drive a frontier judge (gpt-5.5 / opus-4.8) via
-  the agent or a subagent instead of this code path.
+- **llm_judge** — a **frontier** judge scores the response against `rubric.md` and
+  returns JSON. The default backend is `judge_copilot.CopilotCLIJudge`
+  (`claude-opus-4.8` via the Copilot CLI; use `gpt-5.5` for a second opinion).
+  **Never a local small model.** The judge config (model+version+rubric) is
+  recorded with the result; LLM-judged scores only compare within the same config.
 
 ## Wrapping upstream frameworks
 

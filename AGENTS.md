@@ -99,8 +99,10 @@ two halves split across the wiki/lab boundary:
   per-machine; raw run output in git-ignored `runs/`).
 
 Scoring is per-domain: math = answer extraction + equivalence; code = execute
-against tests **in a sandbox**; open-ended (creative writing, agentic) = rubric
-LLM-judge (pin judge model + version). **Prefer wrapping existing eval frameworks**
+against tests **in a sandbox**; open-ended (creative writing, agentic, reasoning) =
+rubric LLM-judge by a **frontier model** (claude-opus-4.8 via the Copilot CLI -
+never a local small model; see `.github/skills/copilot-cli`), pinned (model +
+version + rubric). **Prefer wrapping existing eval frameworks**
 (lm-eval-harness, evalplus, livecodebench, BFCL); hand-roll a scorer only when
 needed. Definitions are machine-independent (wiki); results are per-machine (lab),
 tagged with the machine. Workflow verbs: `/new-benchmark` (ingest an existing one),

@@ -53,9 +53,11 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model <tag> \
   **evalplus**, broad coverage via **lm-eval-harness**), run that framework against
   Ollama's `:11434/v1` endpoint per the benchmark's wiki page - don't reimplement.
   Record results in the same `results.csv` schema.
-- For `llm_judge` (creative-writing/agentic) benchmarks, pin a strong judge
-  (opus-4.8 or gpt-5.5) and record the judge config; you may drive the judge via a
-  subagent for higher quality, but always record model+version+rubric.
+- For `llm_judge` (creative-writing/agentic/reasoning) benchmarks the harness judge
+  is a **frontier model via Copilot CLI** - `--judge-model` defaults to
+  `claude-opus-4.8` (use `gpt-5.5` for a second opinion). **Never a local small
+  model.** The judge config is recorded automatically; you may also drive a
+  subagent judge for interactive runs.
 - **Code execution is gated.** The harness refuses `code_tests` unless you pass
   `--code-sandbox local-unsafe` (best-effort host isolation). Prefer an upstream
   runner (evalplus) for public coding suites; the locked-down Podman mode is the

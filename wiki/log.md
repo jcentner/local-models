@@ -57,3 +57,11 @@ scenarios) and ran it: **1/6 above bar, mean ~4.3/10** - decisive but frequently
 misreads the crux (math slip, inverted risk logic). Specialty doesn't transfer to
 practical judgment; confirms "not for general use". First results.csv row. See
 lab/experiments/2026-06-19-vibethinker-decision-reasoning.
+
+## [2026-06-19] note | Docs consistency pass
+Brought docs in sync with the current state: judge backend is now opus-4.8 via
+Copilot CLI everywhere (llm_judge.py, harness + benchmark READMEs, AGENTS.md,
+/benchmark prompt - "never a local small model"); root README gained a repo-map
+entry for benchmarks/ + .github/ and a Workflows section; wiki/benchmarks overview
+got a current-state status line. Added the first lab/journal entry since kickoff
+(benchmark framework + VibeThinker arc).
