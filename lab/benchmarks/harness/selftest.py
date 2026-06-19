@@ -61,9 +61,52 @@ def test_loaders():
         check("score_one routes correctly", res["correct"])
 
 
+def _manifest(scoring="equivalence", prompts=None, key=None, rubric=""):
+    return {
+        "name": "t", "version": "0.0", "scoring": scoring,
+        "_prompts": prompts if prompts is not None else [{"id": "q1", "prompt": "p"}],
+        "_key": key if key is not None else {"q1": {"answer": "4"}},
+        "_rubric": rubric,
+    }
+
+
+def _rejects(manifest) -> bool:
+    try:
+        runmod.validate_benchmark(manifest)
+        return False
+    except SystemExit:
+        return True
+
+
+def test_validation():
+    print("fail-closed validation:")
+    check("valid passes", not _rejects(_manifest()))
+    bad = _manifest(); bad.pop("scoring")
+    check("missing scoring rejected", _rejects(bad))
+    check("unknown method rejected", _rejects(_manifest(scoring="vibes")))
+    check("empty prompts rejected", _rejects(_manifest(prompts=[])))
+    check("blank id rejected", _rejects(_manifest(prompts=[{"id": "", "prompt": "p"}])))
+    dupe = _manifest(prompts=[{"id": "q1", "prompt": "a"}, {"id": "q1", "prompt": "b"}],
+                     key={"q1": {"answer": "4"}})
+    check("duplicate ids rejected", _rejects(dupe))
+    check("blank prompt text rejected", _rejects(_manifest(prompts=[{"id": "q1", "prompt": "  "}])))
+    check("missing answer key rejected", _rejects(_manifest(key={})))
+    check("empty answer rejected", _rejects(_manifest(key={"q1": {"answer": ""}})))
+    check("orphan key rejected",
+          _rejects(_manifest(key={"q1": {"answer": "4"}, "q2": {"answer": "5"}})))
+    check("empty tests rejected",
+          _rejects(_manifest(scoring="code_tests", key={"q1": {"tests": ""}})))
+    check("code_tests with tests passes",
+          not _rejects(_manifest(scoring="code_tests", key={"q1": {"tests": "assert True"}})))
+    check("llm_judge needs rubric", _rejects(_manifest(scoring="llm_judge", key={})))
+    check("llm_judge with rubric passes",
+          not _rejects(_manifest(scoring="llm_judge", key={}, rubric="score it")))
+
+
 if __name__ == "__main__":
     test_equivalence()
     test_code_exec()
     test_loaders()
+    test_validation()
     print(f"\n{'ALL PASS' if check.failed == 0 else str(check.failed) + ' FAILED'}")
     raise SystemExit(1 if check.failed else 0)

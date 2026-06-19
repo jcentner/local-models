@@ -35,8 +35,12 @@ known public items. Keep the answer key out of the prompts.
 
 ## 3. Critic loop (generate -> critique -> revise)
 Spawn a subagent critic via `runSubagent` on **gpt-5.5** (and optionally a second
-pass on **opus-4.8** — both are available). Give it the drafted items + keys and
-this rubric; have it score each item and the set:
+pass on **opus-4.8** - both are available). Sending the answer keys to the critic
+is the **recorded "critic exception"** to answer-key hygiene
+([policy](../../benchmarks/README.md)) - it's a deliberate design-review choice,
+and you log which critic model/provider saw the keys (step 5). Keys still stay
+held out from the local models under test. Give the critic the drafted items +
+keys and this rubric; have it score each item and the set:
 - **Unambiguous?** Exactly one defensible interpretation.
 - **Machine-verifiable?** The declared scoring method actually works for this item.
   (Fail -> the item or the scoring must change.)

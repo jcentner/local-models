@@ -56,7 +56,10 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model <tag> \
 - For `llm_judge` (creative-writing/agentic) benchmarks, pin a strong judge
   (opus-4.8 or gpt-5.5) and record the judge config; you may drive the judge via a
   subagent for higher quality, but always record model+version+rubric.
-- Sandbox any code execution. Don't run unsandboxed model-written code.
+- **Code execution is gated.** The harness refuses `code_tests` unless you pass
+  `--code-sandbox local-unsafe` (best-effort host isolation). Prefer an upstream
+  runner (evalplus) for public coding suites; the locked-down Podman mode is the
+  next build. Never run model-written code outside the gate.
 
 ## 5. Record
 - The harness appends a row to [lab/benchmarks/results.csv](../../lab/benchmarks/README.md)

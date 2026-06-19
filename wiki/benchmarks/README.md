@@ -17,8 +17,8 @@ scoring**, and it differs by domain:
 
 | Domain | Scoring method | Notes |
 |---|---|---|
-| Math (AIME/HMMT/IMO-style) | answer extraction + symbolic/numeric equivalence | the hard edge is equivalence; we use sympy + a normalizer |
-| Code (HumanEval+/MBPP+/LiveCodeBench) | execute candidate code against hidden tests **in a sandbox** | untrusted generated code — isolate it |
+| Math (AIME/HMMT/IMO-style) | answer extraction + symbolic/numeric equivalence | scorer exists; not a current focus |
+| Code (HumanEval+/MBPP+/LiveCodeBench) | execute candidate code against hidden tests, **gated** behind `--code-sandbox` | untrusted generated code — best-effort host isolation today, Podman mode coming |
 | Open-ended (creative writing, agentic) | **rubric LLM-judge** | pin judge model+version+rubric; judge config is part of the result |
 
 **Prefer wrapping existing eval frameworks** ([evalplus](https://github.com/evalplus/evalplus),
@@ -72,11 +72,10 @@ math/reasoning for cross-checking published claims. See the
 [buildout plan](../../tmp/benchmark-framework-plan.md) (local scratch) for milestones.
 
 ### Scoring approach per use-case
-- **Coding** — `code_tests` (execute against tests, sandboxed). Wrap
-  [evalplus](humaneval-plus.md) for HumanEval+/MBPP+; add LiveCodeBench for
-  contamination-resistance. *Built.*
-- **Math/reasoning** — `equivalence` (boxed/numeric answer matching). *Built;*
-  see [example-arithmetic](example-arithmetic.md).
+- **Coding** — `code_tests` (execute against tests). Local execution is **gated**
+  behind `--code-sandbox` (best-effort host isolation today; locked-down Podman
+  mode coming). Wrap [evalplus](humaneval-plus.md) for HumanEval+/MBPP+; add
+  LiveCodeBench for contamination-resistance. *Scorer built; sandbox WIP.*
 - **Creative writing** — `llm_judge` with a pinned strong judge (opus-4.8 / gpt-5.5)
   against the reusable [creative-writing rubric](../../benchmarks/_rubrics/creative-writing.md).
   Prefer pairwise-vs-reference to cut judge variance. *Judge path built; author a
@@ -91,4 +90,3 @@ math/reasoning for cross-checking published claims. See the
 ## Documented benchmarks
 
 - [humaneval-plus.md](humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk.
-- [example-arithmetic.md](example-arithmetic.md) — tiny authored arithmetic set; format reference + harness smoke test.

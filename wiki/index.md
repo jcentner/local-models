@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-06-14
+updated: 2026-06-19
 ---
 
 # Index
@@ -27,7 +27,6 @@ on every ingest. Timeline lives in [log.md](log.md).
 ## Benchmarks
 - [benchmarks/README.md](benchmarks/README.md) — how the benchmark system works: definitions vs results, the harness, scoring per domain, the four workflow verbs.
 - [benchmarks/humaneval-plus.md](benchmarks/humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk, pair with LiveCodeBench.
-- [benchmarks/example-arithmetic.md](benchmarks/example-arithmetic.md) — tiny authored arithmetic set; format reference + harness smoke test.
 
 ## Concepts
 - [concepts/llm-wiki-method.md](concepts/llm-wiki-method.md) — the Karpathy LLM-wiki pattern this repo runs on.

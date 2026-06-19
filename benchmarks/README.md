@@ -27,12 +27,17 @@ scoring, reference scores, contamination status). This folder holds the *data*.
   step. Leaking keys contaminates your own eval (and any future fine-tune).
 - For LLM-judged benchmarks, the rubric *may* be shown to the judge but **not** to
   the model under test.
+- **Critic exception (`/author-benchmark`):** the design-review critic (gpt-5.5 /
+  opus-4.8) *may* see answer keys to check verifiability and difficulty. That is an
+  explicit, recorded choice - the benchmark's README logs which critic model/
+  provider saw the keys and when. Keys remain held out from the local models under
+  test; they are only exposed to that one critic path for QA.
 
 ## Scoring method per benchmark
 
 Declared in `wiki/benchmarks/<name>.md` and consumed by the harness:
-- `equivalence` — math/numeric answer matching (sympy + normalizer)
-- `code_tests` — execute candidate against `tests` in a sandbox
+- `equivalence` — short-answer/numeric matching (sympy + normalizer)
+- `code_tests` — execute candidate against `tests` (gated; best-effort local exec today, Podman mode coming)
 - `llm_judge` — rubric-scored by a pinned judge model
 
 ## Creating one

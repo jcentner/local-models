@@ -37,31 +37,42 @@ cd lab/benchmarks
 python3 -m harness.selftest
 
 # dry run (prints config + first prompt, no model call):
-python3 -m harness.run --benchmark ../../benchmarks/example-arithmetic --model qwen3.5:4b --dry-run
+python3 -m harness.run --benchmark ../../benchmarks/<name> --model qwen3.5:4b --dry-run
 
 # real run against a pulled Ollama model:
-python3 -m harness.run --benchmark ../../benchmarks/example-arithmetic \
+python3 -m harness.run --benchmark ../../benchmarks/<name> \
   --model qwen3.5:4b --k 1 --temperature 0.0 --num-ctx 8192 --seed 0
 
-# pass@k for a stochastic reasoning model:
+# observed pass@k for a stochastic reasoning model:
 python3 -m harness.run --benchmark ../../benchmarks/<name> \
   --model vibethinker-3b --k 8 --temperature 1.0 --top-p 0.95 --num-ctx 32768
+
+# code_tests is GATED - it must be opted into a sandbox mode:
+python3 -m harness.run --benchmark ../../benchmarks/<code-bench> \
+  --model qwen3.5:4b --code-sandbox local-unsafe
 
 # llm-judged (open-ended) benchmark with a local judge model:
 python3 -m harness.run --benchmark ../../benchmarks/<name> \
   --model <under-test> --judge-model <strong-judge-tag>
 ```
 
-Output: a row appended to [`../results.csv`](../README.md) and raw completions
-under `../runs/` (git-ignored).
+Datasets live under [`benchmarks/<name>/`](../../../benchmarks/README.md) and are
+created with `/author-benchmark`. Output: a row appended to
+[`../results.csv`](../README.md) and raw completions under `../runs/` (git-ignored).
 
 ## Scoring methods
 
 - **equivalence** — extracts `\boxed{}` / "answer is" / last number, compares
   numerically (sympy if installed). Deterministic.
 - **code_tests** — strips code fences, appends the test snippet, runs in a
-  subprocess with a timeout + (Linux) CPU/memory rlimits. **Best-effort sandbox**
-  — for fully untrusted code use a container. Never run unsandboxed.
+  subprocess with a timeout + (Linux) CPU/memory rlimits. **This is best-effort,
+  NOT real isolation** - it runs as you on the host. It is therefore **gated**:
+  the runner refuses `code_tests` unless you pass `--code-sandbox local-unsafe` to
+  accept the risk. Prefer an upstream runner (evalplus) for public suites; a
+  locked-down Podman mode is the next build (Batch B).
+- **observed pass@k** — the runner reports `observed_pass_at_k` = fraction of
+  items with >=1 correct sample in k. This is **not** the formal unbiased pass@k
+  estimator used on public leaderboards; don't compare the two directly.
 - **llm_judge** — a pinned judge model scores the response against `rubric.md`
   and returns JSON. The judge config (model+version+rubric) is recorded with the
   result; LLM-judged scores only compare within the same judge config. For

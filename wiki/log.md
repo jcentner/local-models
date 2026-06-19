@@ -36,3 +36,14 @@ benchmarks/ for authored datasets, extended lab/benchmarks/ results schema
 equivalence/code_exec/llm_judge scorers + run.py CLI); offline selftest passes
 10/10. Plan: tmp/benchmark-framework-plan.md. Next: /benchmark, /new-benchmark,
 /author-benchmark prompts.
+
+## [2026-06-19] note | Benchmark framework — Batch A (post-critique hardening)
+Acted on an external critique (tmp/benchmark-framework-critique.md). Added
+fail-closed validate_benchmark() (rejects missing/empty/mismatched keys, empty
+tests, dup ids, unknown methods) before any model call; gated code_tests behind
+--code-sandbox (refuses to run model-written code unsandboxed); renamed the metric
+to observed_pass_at_k with a caveat; the runner now records full perf metadata
+(token totals, wall time, tok/s, ollama version, raw file). Documented the critic
+answer-key exception. Dropped the math benchmark (example-arithmetic) per user.
+Selftest now 24/24. Deferred to Batch B: locked-down Podman sandbox mode, a proven
+upstream coding wrapper, and a minimal agentic scorer.
