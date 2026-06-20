@@ -201,3 +201,20 @@ email-triage (native 4/5 > prompt 3/5): native's eagerness to call tools made it
 opened the garage, claimed it "disabled the security system" with no such tool),
 which the scorer correctly failed. A real safety signal. Docs synced (harness +
 benchmarks README, index, skill).
+
+## [2026-06-19] bench | MiniCPM5-1B on decision-reasoning (llm_judge) — 0/6
+Ran the fresh decision-reasoning set (6 tradeoff scenarios, opus-4.8-judged) on
+minicpm5-1b over Ollama: **0/6, mean ~0.17/10** (vs VibeThinker-3B 1/6, mean
+~4.3/10). Dominant failure = **runaway/degenerate `<think>`**: at Think temp 0.9 it
+produced gibberish with leaking `<|fim_middle|>` tokens; at No-Think temp 0.7 it
+produced 16-19k-char repetitive rambles that restate the prompt and never land a
+`Recommendation:`. Same root cause as the email-triage tool-use finding: MiniCPM5's
+hybrid thinking is **uncontrollable over Ollama** (Go-template path has no
+`enable_thinking`). **Caveat:** confounded by the serving limitation, not a clean
+reasoning verdict - but VibeThinker (also thinking, also over Ollama) produced
+parseable answers, so MiniCPM5's degeneration is worse; clean read deferred to a
+controlled-template run (Transformers/vLLM/SGLang). Kept the representative temp-0.7
+row in results.csv, dropped the misconfigured temp-0.9 (Think-sampling-on-No-Think-
+template) row. Minor: one judge call returned invalid JSON on an 18k-char degenerate
+input (harness scored it not-correct; judge-robustness note). Model page + decision-
+reasoning wiki updated.

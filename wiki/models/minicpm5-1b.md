@@ -225,6 +225,25 @@ re-test must go through **SGLang `--tool-call-parser minicpm5`** over the
 `openai-compatible` provider (its XML calls become OpenAI `tool_calls`). Full writeup:
 [lab/experiments/2026-06-19-minicpm5-1b-first-run](../../lab/experiments/2026-06-19-minicpm5-1b-first-run/README.md).
 
+## Decision-reasoning finding (2026-06-19)
+
+Ran on the fresh [decision-reasoning](../benchmarks/decision-reasoning.md) set
+(6 tradeoff scenarios, opus-4.8-judged): **0/6, mean ~0.17/10** (vs
+[VibeThinker-3B](vibethinker-3b.md) 1/6, mean ~4.3/10). The dominant failure mode
+is a **runaway / degenerate `<think>`** that loops, restates the prompt, and burns
+the whole `num_predict` budget without landing a `Recommendation:` - at Think temp
+0.9 it degenerated into gibberish with leaking `<|fim_middle|>` tokens; at the
+template-tuned No-Think temp 0.7 it produced 16-19k-char repetitive rambles. Same
+root cause as the tool-use finding: **MiniCPM5's hybrid `<think>` is uncontrollable
+over Ollama** - the Go-template path has no `enable_thinking` selection, so the
+model neither runs clean No-Think nor cleanly closes its CoT. Even the coherent
+fragments misread the scenarios. **Caveat:** confounded by the serving limitation,
+not a clean reasoning verdict - but note VibeThinker (also a thinking model, also
+over Ollama) *did* produce parseable answers on the same set, so MiniCPM5's
+degeneration is worse. A clean read needs the proper chat template
+(Transformers/vLLM/SGLang with `enable_thinking` control), deferred with the SGLang
+tool-use re-test.
+
 ## Open questions
 - Does the agentic/tool-use strength survive on its **native tool path** (SGLang
   `minicpm5` XML parser → OpenAI `tool_calls`, run via the harness
@@ -232,8 +251,10 @@ re-test must go through **SGLang `--tool-call-parser minicpm5`** over the
   protocol mismatch goes away? That's the fair re-test after the email-triage 0/5
   — the harness side is ready; it needs SGLang stood up (8 GB/Blackwell stretch).
 - How does it do on the fresh [decision-reasoning](../benchmarks/decision-reasoning.md)
-  set vs [VibeThinker-3B](vibethinker-3b.md)? A 1B tool-tilted generalist vs a 3B
-  math specialist on practical judgment is a clean contrast.
+  set vs [VibeThinker-3B](vibethinker-3b.md)? **Answered (2026-06-19, over Ollama):**
+  0/6 vs VibeThinker 1/6 - but confounded by the uncontrollable-`<think>` serving
+  limitation (see the Decision-reasoning finding above); a clean read still needs a
+  controlled-template run (Transformers/vLLM/SGLang).
 - Is the headline competition-math real, or DAPO-Math benchmaxxing? Quick check on
   fresh problems.
 - Quant sensitivity at 1B: does Q4_K_M (688 MB) hold up vs Q8_0 on reasoning/tool
