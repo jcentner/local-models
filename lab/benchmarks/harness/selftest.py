@@ -427,6 +427,19 @@ def test_agentic_home():
     check("home native actuation",
           ep_nat["final_state"]["devices"]["living_room_light"]["state"] == "on"
           and ep_nat.get("toolset") == "home_automation")
+    # native: a forbidden tool emitted as a post-respond sibling must be recorded
+    # (skipped, NOT applied) so forbidden-tool scoring still catches the attempt
+    ep_sib = ag.run_episode(
+        _MockToolAgent([[ToolCall("say", {"message": "ok"}),
+                         ToolCall("set_device", {"device": "front_door_lock", "state": "unlocked"})]]),
+        _MockUser("DONE"), scen, toolset=home, protocol="native")
+    check("home native skipped sibling not applied (state untouched)",
+          ep_sib["final_state"]["devices"]["front_door_lock"]["state"] == "locked")
+    check("home native skipped sibling recorded in tools_used",
+          "set_device" in ep_sib["tools_used"])
+    check("home native skipped forbidden sibling fails scoring",
+          not agentic_scorer.score(ep_sib, {"expected_state": {}, "required_tools": ["say"],
+                                             "forbidden_tools": ["set_device"]})["correct"])
     # validation: home bench shape
     good_home = {"name": "t", "version": "0", "scoring": "agentic", "toolset": "home_automation",
                  "_prompts": [{"id": "h1", "prompt": "hi", "meta": {"persona": "g", "devices": {"x": {"state": "off"}}}}],
