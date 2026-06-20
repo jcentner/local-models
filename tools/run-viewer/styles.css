@@ -119,6 +119,18 @@ a { color: inherit; }
 .matrix.lb td.rank, .matrix.lb th:first-child { font-family: var(--mono); color: var(--dim); width: 28px; }
 .lbname { background: none; border: none; color: var(--fg); cursor: pointer; font-family: var(--mono); font-size: 12px; padding: 0; }
 .lbname:hover { color: var(--good); }
+.lbpk { color: var(--dim); font-size: 10px; margin-left: 4px; }
+
+/* multi-sample item group (k>1) */
+.sgroup { display: flex; flex-direction: column; gap: 8px; }
+.sghead { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; flex-wrap: wrap; }
+.sghead .id { font-weight: 500; }
+.sdots { display: flex; gap: 4px; }
+.sdot { font-family: var(--mono); font-size: 12px; }
+.sdot.ok { color: var(--good); } .sdot.no { color: var(--bad); } .sdot.na { color: var(--dim); }
+.slabel { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.swrap { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.cmpbadge { margin-bottom: 6px; }
 
 /* run/compare controls row */
 .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 16px; }

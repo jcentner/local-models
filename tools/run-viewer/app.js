@@ -316,6 +316,33 @@ function pickRenderer(scoring) {
   return GenericItem;
 }
 
+// Render one benchmark item across its k samples. k==1 -> just the sample card
+// (no extra chrome, no regression). k>1 -> a header with the n/k pass count +
+// per-sample dots, a representative sample (a failing one if any, else the
+// first), and the remaining samples collapsed.
+function SampleGroup({ g, Renderer }) {
+  if (g.k <= 1) return html`<${Renderer} it=${g.samples[0]} />`;
+  const others = g.samples.filter((s) => s !== g.rep);
+  const dotCls = (s) => (s.result && s.result.correct === true ? 'ok'
+    : s.result && s.result.correct === false ? 'no' : 'na');
+  const dotCh = (s) => (s.result && s.result.correct === true ? '✓'
+    : s.result && s.result.correct === false ? '✗' : '·');
+  const repFailed = g.rep.result && g.rep.result.correct === false;
+  return html`
+    <div class="sgroup">
+      <div class="sghead">
+        <span class="id">${g.id}</span>
+        <span class=${'pill ' + sampleBadgeClass(g)}>${g.nCorrect}/${g.k} correct</span>
+        <span class="sdots">${g.samples.map((s) => html`<span class=${'sdot ' + dotCls(s)} title=${'sample ' + (s.sample_index ?? 0)}>${dotCh(s)}</span>`)}</span>
+      </div>
+      <div class="slabel">sample ${g.rep.sample_index ?? 0} · representative${repFailed ? ' (failed)' : ''}</div>
+      <${Renderer} it=${g.rep} />
+      ${others.length ? html`<details><summary>other samples (${others.length})</summary>
+        ${others.map((s) => html`<div class="swrap"><div class="slabel">sample ${s.sample_index ?? 0} · ${dotCh(s)}</div><${Renderer} it=${s} /></div>`)}
+      </details>` : null}
+    </div>`;
+}
+
 // ---------- base-model overview (variant x benchmark matrix) ----------
 function BaseOverview({ runs, base, wikiHas, onOpenWiki, onSelectRun }) {
   const idxs = runs.map((r, i) => i).filter((i) => (runs[i].base_model || runs[i].model) === base);
@@ -326,11 +353,11 @@ function BaseOverview({ runs, base, wikiHas, onOpenWiki, onSelectRun }) {
   });
   const cell = (v, bn) => {
     const ms = idxs.filter((i) => runs[i].model === v && runs[i].benchmark === bn
-      && Number.isFinite(parseFloat(runs[i].observed_pass_at_k)));
+      && Number.isFinite(relK(runs[i])));
     if (!ms.length) return null;
-    ms.sort((a, b) => parseFloat(runs[b].observed_pass_at_k) - parseFloat(runs[a].observed_pass_at_k));
+    ms.sort((a, b) => relK(runs[b]) - relK(runs[a]));
     const i = ms[0];
-    return { i, n: ms.length, pk: parseFloat(runs[i].observed_pass_at_k), openable: !!runs[i].raw_exists };
+    return { i, n: ms.length, ph: relK(runs[i]), pk: parseFloat(runs[i].observed_pass_at_k), openable: !!runs[i].raw_exists };
   };
   const wp = `models/${base}.md`;
   return html`
@@ -350,13 +377,13 @@ function BaseOverview({ runs, base, wikiHas, onOpenWiki, onSelectRun }) {
             <td class="vname">${v}</td>
             ${benches.map((bn) => { const c = cell(v, bn); return html`<td>${c
               ? (c.openable
-                  ? html`<button class=${'pill ' + passClass(c.pk)} onClick=${() => onSelectRun(c.i)} title="open run">${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</button>`
-                  : html`<span class=${'pill ' + passClass(c.pk)} title="raw run file not present">${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</span>`)
+                  ? html`<button class=${'pill ' + passClass(c.ph)} onClick=${() => onSelectRun(c.i)} title=${`open run · pass^k ${fmt(c.ph)} · pass@k ${fmt(c.pk)}`}>${fmt(c.ph)}${c.ph !== c.pk ? html`<span class="lbpk">@${fmt(c.pk)}</span>` : ''}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</button>`
+                  : html`<span class=${'pill ' + passClass(c.ph)} title=${`raw run file not present · pass^k ${fmt(c.ph)} · pass@k ${fmt(c.pk)}`}>${fmt(c.ph)}${c.ph !== c.pk ? html`<span class="lbpk">@${fmt(c.pk)}</span>` : ''}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</span>`)
               : html`<span class="dash">—</span>`}</td>`; })}
           </tr>`)}
         </tbody>
       </table>
-      <div class="hint">best pass@k per variant×benchmark · ×n = multiple runs · click a cell to open the run (greyed = raw file absent here)</div>
+      <div class="hint">best pass^k per variant×benchmark (@ = pass@k capability) · ×n = multiple runs · click a cell to open the run (greyed = raw file absent here)</div>
     </div>`;
 }
 
@@ -376,17 +403,16 @@ function Leaderboard({ runs, onSelectBase, onSelectRun }) {
   });
   benches.sort();
   const cell = (b, bn) => {
-    const ms = b.runs.filter((i) => runs[i].benchmark === bn
-      && Number.isFinite(parseFloat(runs[i].observed_pass_at_k)));
+    const ms = b.runs.filter((i) => runs[i].benchmark === bn && Number.isFinite(relK(runs[i])));
     if (!ms.length) return null;
-    ms.sort((a, c) => parseFloat(runs[c].observed_pass_at_k) - parseFloat(runs[a].observed_pass_at_k));
+    ms.sort((a, c) => relK(runs[c]) - relK(runs[a]));
     const i = ms[0];
-    return { i, n: ms.length, pk: parseFloat(runs[i].observed_pass_at_k), openable: !!runs[i].raw_exists };
+    return { i, n: ms.length, ph: relK(runs[i]), pk: parseFloat(runs[i].observed_pass_at_k), openable: !!runs[i].raw_exists };
   };
   const rows = bases.map((b) => {
     const cells = benches.map((bn) => [bn, cell(b, bn)]);
     const got = cells.filter(([, c]) => c);
-    const avg = got.length ? got.reduce((s, [, c]) => s + c.pk, 0) / got.length : NaN;
+    const avg = got.length ? got.reduce((s, [, c]) => s + c.ph, 0) / got.length : NaN;
     return { b, cells, avg, n: got.length };
   });
   rows.sort((a, c) => (Number.isNaN(c.avg) ? -1 : c.avg) - (Number.isNaN(a.avg) ? -1 : a.avg));
@@ -394,29 +420,55 @@ function Leaderboard({ runs, onSelectBase, onSelectRun }) {
     <div class="detail">
       <div class="crumb">leaderboard · ${bases.length} models · ${benches.length} benchmarks · ${runs.length} runs</div>
       <div class="dhead"><h2>Cross-model leaderboard</h2></div>
-      <div class="meta"><span>best pass@k per model×benchmark, ranked by mean across benchmarks run</span></div>
+      <div class="meta"><span>ranked by mean <b>pass^k</b> (reliability: items correct on all k) · <b>@</b> = pass@k best-of-k capability</span></div>
       <table class="matrix lb">
-        <thead><tr><th>#</th><th>model</th>${benches.map((bn) => html`<th>${bn}</th>`)}<th>avg</th></tr></thead>
+        <thead><tr><th>#</th><th>model</th>${benches.map((bn) => html`<th>${bn}</th>`)}<th>pass^k</th></tr></thead>
         <tbody>
           ${rows.map((row, ri) => html`<tr>
             <td class="rank">${ri + 1}</td>
             <td class="vname"><button class="lbname" onClick=${() => onSelectBase(row.b.base)} title="compare variants">${row.b.base}</button></td>
             ${row.cells.map(([bn, c]) => html`<td>${c
               ? (c.openable
-                  ? html`<button class=${'pill ' + passClass(c.pk)} onClick=${() => onSelectRun(c.i)} title=${`open best ${bn} run`}>${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</button>`
-                  : html`<span class=${'pill ' + passClass(c.pk)} title="raw run file not present">${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</span>`)
+                  ? html`<button class=${'pill ' + passClass(c.ph)} onClick=${() => onSelectRun(c.i)} title=${`open best ${bn} run · pass^k ${fmt(c.ph)} · pass@k ${fmt(c.pk)}`}>${fmt(c.ph)}${c.ph !== c.pk ? html`<span class="lbpk">@${fmt(c.pk)}</span>` : ''}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</button>`
+                  : html`<span class=${'pill ' + passClass(c.ph)} title=${`raw run file not present · pass^k ${fmt(c.ph)} · pass@k ${fmt(c.pk)}`}>${fmt(c.ph)}${c.ph !== c.pk ? html`<span class="lbpk">@${fmt(c.pk)}</span>` : ''}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</span>`)
               : html`<span class="dash">—</span>`}</td>`)}
             <td><span class=${'pill ' + (Number.isNaN(row.avg) ? 'neutral' : passClass(row.avg))}>${Number.isNaN(row.avg) ? '—' : fmt(row.avg)}</span></td>
           </tr>`)}
         </tbody>
       </table>
-      <div class="hint">click a model name to compare its variants · click a cell to open that benchmark's best run</div>
+      <div class="hint">ranked by mean pass^k · @ = pass@k capability · click a model to compare variants · click a cell to open its best run (greyed = raw file absent here)</div>
     </div>`;
 }
 
-// a run item is a "failure" when its scorer marked correctness false (tri-state:
-// undefined/null stays out of the failures bucket).
-const isItemFail = (it) => !!(it.result && it.result.correct === false);
+// Group raw jsonl sample-lines into per-item records. Each raw line is one
+// sample: {id, sample_index, result, completion|episode, ...}; at k>1 there are
+// k lines per id. Output preserves first-seen id order; samples sorted by index.
+function groupSamples(items) {
+  const order = [];
+  const byId = new Map();
+  for (const it of items || []) {
+    const id = it.id != null ? it.id : '(no id)';
+    let g = byId.get(id);
+    if (!g) { g = { id, samples: [] }; byId.set(id, g); order.push(g); }
+    g.samples.push(it);
+  }
+  for (const g of order) {
+    g.samples.sort((x, y) => (x.sample_index ?? 0) - (y.sample_index ?? 0));
+    g.k = g.samples.length;
+    g.nCorrect = g.samples.filter((s) => s.result && s.result.correct === true).length;
+    g.hasFail = g.samples.some((s) => s.result && s.result.correct === false);
+    g.rep = g.samples.find((s) => s.result && s.result.correct === false) || g.samples[0];
+  }
+  return order;
+}
+// item-level reliability colour: all-correct -> pass, mixed -> partial, none -> fail.
+const sampleBadgeClass = (g) => (g.nCorrect >= g.k ? 'pass' : g.nCorrect > 0 ? 'partial' : 'fail');
+// pass^k for a results.csv row, with a k=1 fallback (pass^1 == pass@1).
+function relK(r) {
+  const v = parseFloat(r.pass_hat_k);
+  if (Number.isFinite(v)) return v;
+  return parseInt(r.k, 10) === 1 ? parseFloat(r.observed_pass_at_k) : NaN;
+}
 
 // ---------- side-by-side run compare ----------
 function CompareView({ runs, a, b, da, db, onExit }) {
@@ -424,39 +476,39 @@ function CompareView({ runs, a, b, da, db, onExit }) {
   const ra = runs[a], rb = runs[b];
   if (!da || !db) return html`<div class="detail"><div class="empty">Loading comparison …</div></div>`;
   const RA = pickRenderer(ra.scoring), RB = pickRenderer(rb.scoring);
-  const mapA = new Map(da.map((it) => [it.id, it]));
-  const mapB = new Map(db.map((it) => [it.id, it]));
+  const la = groupSamples(da), lb = groupSamples(db);
+  const ga = new Map(la.map((g) => [g.id, g])), gb = new Map(lb.map((g) => [g.id, g]));
   const ids = [];
   const seen = new Set();
-  for (const it of [...da, ...db]) { if (!seen.has(it.id)) { seen.add(it.id); ids.push(it.id); } }
-  const differs = (ia, ib) => {
-    const ca = ia && ia.result ? ia.result.correct : undefined;
-    const cb = ib && ib.result ? ib.result.correct : undefined;
-    return (ca === true || ca === false) && (cb === true || cb === false) && ca !== cb;
-  };
-  const shown = diffOnly ? ids.filter((id) => differs(mapA.get(id), mapB.get(id))) : ids;
-  const diffCount = ids.filter((id) => differs(mapA.get(id), mapB.get(id))).length;
+  for (const g of [...la, ...lb]) { if (!seen.has(g.id)) { seen.add(g.id); ids.push(g.id); } }
+  const rate = (g) => (g && g.k ? g.nCorrect / g.k : null);
+  const differs = (x, y) => { const rx = rate(x), ry = rate(y); return rx != null && ry != null && rx !== ry; };
+  const shown = diffOnly ? ids.filter((id) => differs(ga.get(id), gb.get(id))) : ids;
+  const diffCount = ids.filter((id) => differs(ga.get(id), gb.get(id))).length;
+  const side = (g, R) => (g
+    ? html`<div>${g.k > 1 ? html`<div class="cmpbadge"><span class=${'pill ' + sampleBadgeClass(g)}>${g.nCorrect}/${g.k} correct</span></div>` : ''}<${R} it=${g.rep} /></div>`
+    : html`<div class="cmpmissing">— not in this run —</div>`);
   return html`
     <div class="detail">
       <div class="crumb">compare · ${ra.benchmark} <button class="linkish" onClick=${onExit}>← back to run</button></div>
       <div class="controls">
         <button class=${'toggle' + (diffOnly ? ' on' : '')} onClick=${() => setDiffOnly((v) => !v)}
-          title="show only items where the two runs disagree">differences ${diffCount}</button>
+          title="show only items where the two runs differ in reliability (pass rate)">differences ${diffCount}</button>
         <span class="hint">${shown.length} of ${ids.length} items</span>
       </div>
       <div class="cmphead">
-        <div class="cmpcol">${ra.model} <span class=${'pill ' + passClass(ra.observed_pass_at_k)}>${fmt(ra.observed_pass_at_k)}</span></div>
-        <div class="cmpcol">${rb.model} <span class=${'pill ' + passClass(rb.observed_pass_at_k)}>${fmt(rb.observed_pass_at_k)}</span></div>
+        <div class="cmpcol">${ra.model} <span class=${'pill ' + passClass(relK(ra))}>pass^k ${fmt(relK(ra))}</span></div>
+        <div class="cmpcol">${rb.model} <span class=${'pill ' + passClass(relK(rb))}>pass^k ${fmt(relK(rb))}</span></div>
       </div>
       ${shown.length === 0 ? html`<div class="empty">No ${diffOnly ? 'differing ' : ''}items.</div>` : null}
       ${shown.map((id) => {
-        const ia = mapA.get(id), ib = mapB.get(id);
+        const ia = ga.get(id), ib = gb.get(id);
         const diff = differs(ia, ib);
         return html`<div class=${'cmprow' + (diff ? ' differ' : '')}>
           <div class="cmpidrow"><span class="cmpid">${id}</span>${diff ? html`<span class="diffbadge">differs</span>` : null}</div>
           <div class="cmpcols">
-            <div>${ia ? html`<${RA} it=${ia} />` : html`<div class="cmpmissing">— not in this run —</div>`}</div>
-            <div>${ib ? html`<${RB} it=${ib} />` : html`<div class="cmpmissing">— not in this run —</div>`}</div>
+            ${side(ia, RA)}
+            ${side(ib, RB)}
           </div>
         </div>`;
       })}
@@ -478,17 +530,27 @@ function RunDetail({ runs, runIndex, run, data, wikiHas, onOpenWiki, onCompare }
     ['cost', '$' + fmt(run.cost_usd, 4)], ['ctx', run.num_ctx], ['date', run.date],
   ];
   const sub = (base !== run.model ? base : '') ;
-  const failCount = data.items.filter(isItemFail).length;
-  const items = failsOnly ? data.items.filter(isItemFail) : data.items;
+  const groups = groupSamples(data.items);
+  const k = groups.reduce((m, g) => Math.max(m, g.k), 1);
+  const failCount = groups.filter((g) => g.hasFail).length;
+  const shown = failsOnly ? groups.filter((g) => g.hasFail) : groups;
+  const obs = parseFloat(run.observed_pass_at_k);
+  const ph = relK(run);
+  const flaky = parseInt(run.flaky_items, 10);
+  const sem = parseFloat(run.sem);
   const targets = runs
     .map((r, i) => ({ r, i }))
     .filter(({ r, i }) => i !== runIndex && r.raw_exists && r.benchmark === run.benchmark);
   return html`
     <div class="detail">
-      <div class="crumb">${run.benchmark} / ${run.scoring} / ${data.n_items} items${data.parse_errors ? ` · ${data.parse_errors} parse errors` : ''}</div>
+      <div class="crumb">${run.benchmark} / ${run.scoring} / ${groups.length} items${k > 1 ? ` × ${k} samples` : ''}${data.parse_errors ? ` · ${data.parse_errors} parse errors` : ''}</div>
       <div class="dhead">
         <h2>${run.model}</h2>
-        <span class=${'pill ' + passClass(run.observed_pass_at_k)}>pass@${run.k || 1} ${fmt(run.observed_pass_at_k)}</span>
+        <span class=${'pill ' + passClass(obs)} title="pass@k: items with >=1 correct sample (best-of-k capability ceiling)">pass@${run.k || 1} ${fmt(obs)}</span>
+        ${(k > 1 || (Number.isFinite(ph) && ph !== obs))
+          ? html`<span class=${'pill ' + (Number.isFinite(ph) ? passClass(ph) : 'neutral')} title="pass^k: items correct on ALL k samples (tau-bench reliability)">pass^${run.k || 1} ${Number.isFinite(ph) ? fmt(ph) : '—'}</span>` : null}
+        ${Number.isFinite(flaky) && flaky > 0 ? html`<span class="pill partial" title="items inconsistent across the k samples">flaky ${flaky}</span>` : null}
+        ${Number.isFinite(sem) ? html`<span class="pill neutral" title="standard error of the per-item mean">±${fmt(sem)}</span>` : null}
       </div>
       ${(sub || wikiHas(wp)) ? html`<div class="subhead">${sub ? html`${base} ` : ''}${wikiHas(wp) ? html`<button class="wikilink" onClick=${() => onOpenWiki(wp)}>model page ↗</button>` : ''}</div>` : null}
       <div class="meta">${meta.map(([k, v]) => html`<span>${k} <b>${v || '—'}</b></span>`)}
@@ -501,10 +563,10 @@ function RunDetail({ runs, runIndex, run, data, wikiHas, onOpenWiki, onCompare }
           <option value="">compare vs…</option>
           ${targets.map(({ r, i }) => html`<option value=${i}>${r.model} · ${fmt(r.observed_pass_at_k)}</option>`)}
         </select>` : null}
-        ${failsOnly ? html`<span class="hint">${items.length} of ${data.n_items} items</span>` : null}
+        ${failsOnly ? html`<span class="hint">${shown.length} of ${groups.length} items</span>` : null}
       </div>
       <div class="cards">
-        ${items.map((it) => html`<${Renderer} it=${it} key=${it.id} />`)}
+        ${shown.map((g) => html`<${SampleGroup} g=${g} Renderer=${Renderer} key=${g.id} />`)}
       </div>
     </div>`;
 }

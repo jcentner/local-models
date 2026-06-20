@@ -24,7 +24,9 @@ no rounded-card-in-card nesting, no Inter, no purple.
 | `--warn` | `#f5a623` | partial / changed state (amber) |
 | `--bad` | `#ff4d4f` | fail / error (red) |
 
-Status mapping for `pass@k`: `≥0.70` mint · `≥0.34` amber · else red.
+Status mapping for `pass@k` / `pass^k` (and per-item `n/k`): `≥0.70` mint ·
+`≥0.34` amber · else red. The leaderboard ranks by `pass^k` (reliability); `pass@k`
+rides along as a muted `@` secondary.
 
 ## 3. Typography
 - Display/body: **Geist** (300–600). Tight tracking (`-.01em` on headings).
