@@ -62,6 +62,32 @@ function parseCompletion(text) {
   return { answer: text, think: '' };
 }
 
+// Split a completion into prose vs fenced ```code``` segments so only real code
+// gets Python highlighting (prose keywords like "while"/"and" stay plain).
+function splitFences(text) {
+  const parts = [];
+  const re = /```[a-zA-Z0-9]*\n?([\s\S]*?)```/g;
+  let last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push({ type: 'prose', text: text.slice(last, m.index).trim() });
+    parts.push({ type: 'code', text: m[1].replace(/\n$/, '') });
+    last = re.lastIndex;
+  }
+  if (last < text.length) parts.push({ type: 'prose', text: text.slice(last).trim() });
+  return parts;
+}
+
+function renderCompletion(text) {
+  const parts = splitFences(text);
+  if (!parts.some((p) => p.type === 'code')) {
+    // no fence -> treat the whole thing as code (matches bare-code completions)
+    return html`<pre class="code" dangerouslySetInnerHTML=${{ __html: highlightPython(text) }}></pre>`;
+  }
+  return parts.filter((p) => p.text).map((p) => (p.type === 'code'
+    ? html`<pre class="code" dangerouslySetInnerHTML=${{ __html: highlightPython(p.text) }}></pre>`
+    : html`<div class="prose">${p.text}</div>`));
+}
+
 async function getJSON(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
@@ -113,7 +139,7 @@ function CodeItem({ it }) {
         <span class=${'pill ' + okClass(res.correct)}>returncode ${res.returncode ?? '—'}</span>
       </div>
       <div class="cb">
-        <pre class="code" dangerouslySetInnerHTML=${{ __html: highlightPython(it.completion || '') }}></pre>
+        ${renderCompletion(it.completion || '')}
         ${res.stderr
           ? html`<div class="label">stderr</div><pre class="think">${res.stderr}</pre>`
           : html`<div class="label">stderr · empty</div>`}
