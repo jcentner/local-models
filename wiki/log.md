@@ -166,3 +166,18 @@ headline. **Harness takeaway:** build a **native-tool-calling mode** (Ollama
 `/api/chat` `tools` + `message.tool_calls`) for a fair re-test. Model page ->
 status tried + finding; experiment writeup updated. results.csv: one representative
 row (kept the 4096/0.7 run, dropped the under-budgeted + duplicate rows).
+
+## [2026-06-19] bench | Native tool-calling mode for the agentic harness
+Built the `--tool-protocol native` path (the planned fair-footing fix): clients
+gained a `tools` arg + normalized `tool_calls` + `tool_result_message` (Ollama
+`/api/chat` `tools` with object-args/`tool_name`; OpenAI `tools` with
+string-args/`tool_call_id`), `agentic.py` got a native branch + tool schema, run.py
+a `--tool-protocol prompt|native` flag (recorded in the judge column). Verified APIs
+against the Ollama + OpenBMB docs. Selftest now 41/41 (added native-episode + both
+client tool-parse cases). **Live-validated** on qwen3.5:4b (tool-capable Ollama
+template): email-triage **3/5 prompt -> 4/5 native** (native correctly escalates the
+refund it flubbed in prompt-mode; the one miss fabricated a "no" instead of
+escalating). **MiniCPM5 caveat:** its stock Ollama template is tool-blind, so its
+fair re-test still needs SGLang `--tool-call-parser minicpm5` over the
+openai-compatible provider — harness side ready, server not yet. Docs synced
+(harness README, email-triage README, model page, experiment writeup, skill).

@@ -71,6 +71,10 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> \
 # agentic rollout (tool-use) - agent under test + Copilot user-simulator:
 python3 -m harness.run --benchmark ../../benchmarks/email-triage \
   --model qwen3.5:4b --no-think --temperature 0 --user-model claude-opus-4.8
+
+# same, but native function-calling (Ollama/OpenAI `tools`) for a tool-capable model:
+python3 -m harness.run --benchmark ../../benchmarks/email-triage \
+  --model qwen3.5:4b --tool-protocol native --no-think --temperature 0
 ```
 
 Datasets live under [`benchmarks/<name>/`](../../../benchmarks/README.md) and are
@@ -117,11 +121,20 @@ created with `/author-benchmark`. Output: a row appended to
   **Never a local small model.** The judge config (model+version+rubric) is
   recorded with the result; LLM-judged scores only compare within the same config.
 - **agentic** — a model-agnostic tau-bench-style **rollout**: the agent under test
-  (any Ollama tag / API model, via a prompt-mode JSON tool protocol) talks to a
-  **Copilot-CLI user-simulator** (`--user-model`, a frontier model playing a
-  persona with a hidden goal) over mocked tools. Scored **deterministically** on
-  the terminal action (reply vs escalate) + required/forbidden tool use - no native
-  function-calling or model registration needed (the flexible alternative to BFCL).
+  (any Ollama tag / API model) talks to a **Copilot-CLI user-simulator**
+  (`--user-model`, a frontier model playing a persona with a hidden goal) over
+  mocked tools. Scored **deterministically** on the terminal action (reply vs
+  escalate) + required/forbidden tool use - no model registration needed (the
+  flexible alternative to BFCL). Two tool protocols via `--tool-protocol`:
+  - `prompt` (default) — the model emits one JSON action per step. Works with
+    **any** tag/API, no native function-calling needed.
+  - `native` — tools are passed via the provider's function-calling API (Ollama
+    `/api/chat` `tools` or OpenAI `tools`) and we read `message.tool_calls`. A
+    **fair footing for thinking / XML-tool models** whose native format isn't bare
+    JSON. Needs a **tool-capable** model/template (Ollama: `ollama show <m>` lists
+    `tools`; MiniCPM5's native XML path needs SGLang `--tool-call-parser minicpm5`
+    over the `openai-compatible` provider — its stock Ollama template is tool-blind).
+    Measured: qwen3.5:4b on email-triage went 3/5 (prompt) -> 4/5 (native).
   Dataset: [benchmarks/email-triage](../../../benchmarks/email-triage/README.md).
 
 ## Wrapping upstream frameworks

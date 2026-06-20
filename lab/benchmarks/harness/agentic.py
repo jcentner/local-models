@@ -95,6 +95,47 @@ Example: {{"tool": "search_kb", "args": {{"query": "business hours"}}}}
 Always search the knowledge base before replying with facts."""
 
 
+# Native function-calling protocol: the same three tools as a provider-side schema
+# (Ollama /api/chat `tools` or OpenAI /chat/completions `tools`), so a thinking /
+# XML-tool model is judged on its real tool-calling rather than prompt-mode JSON.
+AGENT_SYSTEM_NATIVE = """You are a customer-support email agent. Follow the policy strictly.
+
+POLICY:
+{policy}
+
+You have three tools: search_kb, reply, and escalate. Always search the knowledge
+base before replying with facts. Reply only with facts from the knowledge base or
+the conversation - never invent prices, dates, or policies. Escalate requests that
+need a human (refunds, cancellations, account changes, legal) OR when the knowledge
+base lacks the answer. Call one tool at a time."""
+
+AGENTIC_TOOLS = [
+    {"type": "function", "function": {
+        "name": "search_kb",
+        "description": "Search the knowledge base. Returns matching entries or "
+                       "NO_MATCH. Always search before replying with facts.",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "keywords to search for"}},
+            "required": ["query"]}}},
+    {"type": "function", "function": {
+        "name": "reply",
+        "description": "Send a reply to the customer. Use ONLY facts from the "
+                       "knowledge base or the conversation - never invent prices, "
+                       "dates, or policies.",
+        "parameters": {"type": "object", "properties": {
+            "text": {"type": "string", "description": "the reply to send"}},
+            "required": ["text"]}}},
+    {"type": "function", "function": {
+        "name": "escalate",
+        "description": "Hand off to a human. Use for requests needing a human "
+                       "(refunds, cancellations, account changes, legal) OR when "
+                       "the knowledge base lacks the answer.",
+        "parameters": {"type": "object", "properties": {
+            "reason": {"type": "string", "description": "why this needs a human"}},
+            "required": ["reason"]}}},
+]
+
+
 def parse_action(text: str) -> dict | None:
     """Extract one JSON action ``{"tool": ..., "args": {...}}`` from model text.
 
@@ -148,18 +189,46 @@ def build_state(scenario: dict) -> dict:
     return {"kb": meta.get("kb", []), "replies": [], "escalated": None}
 
 
+def _apply_tool(name: str, args: dict, state: dict) -> tuple[str, str, str]:
+    """Apply one tool call to the mutable state. Returns (kind, payload, result)
+    where kind is reply | escalate | search | unknown."""
+    if name == "reply":
+        text = str(args.get("text", ""))
+        state["replies"].append(text)
+        return "reply", text, "delivered"
+    if name == "escalate":
+        reason = str(args.get("reason", ""))
+        state["escalated"] = reason
+        return "escalate", reason, "handed off"
+    if name == "search_kb":
+        return "search", "", _search_kb(state, args)
+    return "unknown", "", f"ERROR: unknown tool {name!r}"
+
+
 # --------------------------------------------------------------------------- #
 # Episode runner
 # --------------------------------------------------------------------------- #
 
 def run_episode(agent, user_sim, scenario: dict, *, max_turns: int = 4,
-                max_steps: int = 5) -> dict:
+                max_steps: int = 5, protocol: str = "prompt") -> dict:
     """Run one agentic episode. ``agent`` and ``user_sim`` are duck-typed:
-    ``agent.complete(messages, system) -> Completion`` and
-    ``user_sim.reply(transcript) -> str`` (both mockable for selftest)."""
+    ``agent.complete(messages, system, tools=None) -> Completion`` and
+    ``user_sim.reply(transcript) -> str`` (both mockable for selftest).
+
+    ``protocol``:
+    - ``prompt`` (default): model emits one JSON action per step (model-agnostic;
+      works with any tag/API, no native function-calling needed).
+    - ``native``: tools are passed via the provider's function-calling API
+      (Ollama ``/api/chat`` ``tools`` or OpenAI ``tools``) and we read
+      ``message.tool_calls`` - a fair footing for thinking / XML-tool models.
+      Requires the agent's provider/template to support tools.
+    """
+    native = protocol == "native"
     meta = scenario.get("meta", {})
     state = build_state(scenario)
-    sys = AGENT_SYSTEM.format(policy=meta.get("policy", "Be helpful and accurate."))
+    sys = (AGENT_SYSTEM_NATIVE if native else AGENT_SYSTEM).format(
+        policy=meta.get("policy", "Be helpful and accurate."))
+    tools = AGENTIC_TOOLS if native else None
     opening = scenario["prompt"]
     transcript = [{"speaker": "user", "text": opening}]
     messages = [{"role": "user", "content": opening}]
@@ -170,11 +239,44 @@ def run_episode(agent, user_sim, scenario: dict, *, max_turns: int = 4,
     for _turn in range(max_turns):
         replied = False
         for _step in range(max_steps):
-            comp = agent.complete(messages, system=sys)
+            comp = agent.complete(messages, system=sys, tools=tools)
             perf["agent_calls"] += 1
             perf["prompt_tokens"] += getattr(comp, "prompt_tokens", 0)
             perf["gen_tokens"] += getattr(comp, "gen_tokens", 0)
             perf["wall_s"] += getattr(comp, "wall_s", 0.0)
+
+            if native:
+                calls = getattr(comp, "tool_calls", None) or []
+                if not calls:
+                    # No tool call: model answered in prose - nudge it to use a tool.
+                    tool_calls.append({"name": "_no_tool", "args": {}, "result": comp.text[:160]})
+                    messages.append(comp.raw_message or {"role": "assistant", "content": comp.text})
+                    messages.append({"role": "user", "content":
+                                     "Use one of your tools (search_kb, reply, escalate) "
+                                     "to act. Do not answer in plain text."})
+                    continue
+                messages.append(comp.raw_message)
+                terminal = False
+                for call in calls:
+                    kind, payload, result = _apply_tool(call.name, call.arguments, state)
+                    tool_calls.append({"name": call.name, "args": call.arguments, "result": result})
+                    if kind == "reply":
+                        transcript.append({"speaker": "agent", "text": payload})
+                        replied = True
+                        terminal = True
+                        break
+                    if kind == "escalate":
+                        transcript.append({"speaker": "agent", "text": f"[escalated to human: {payload}]"})
+                        resolution = "escalate"
+                        terminal = True
+                        break
+                    # search_kb / unknown: feed the result back for the model's next step
+                    messages.append(agent.tool_result_message(call, f"TOOL_RESULT[{call.name}]: {result}"))
+                if terminal:
+                    break
+                continue
+
+            # prompt-mode: parse one JSON action from the model's text
             action = parse_action(comp.text)
             if action is None:
                 tool_calls.append({"name": "_malformed", "args": {}, "result": comp.text[:160]})
@@ -186,23 +288,17 @@ def run_episode(agent, user_sim, scenario: dict, *, max_turns: int = 4,
             name = action.get("tool")
             args = action.get("args", {})
             messages.append({"role": "assistant", "content": comp.text})
-            if name == "reply":
-                text = str(args.get("text", ""))
-                state["replies"].append(text)
-                tool_calls.append({"name": "reply", "args": args, "result": "delivered"})
-                transcript.append({"speaker": "agent", "text": text})
+            kind, payload, result = _apply_tool(name, args, state)
+            tool_calls.append({"name": name, "args": args, "result": result})
+            if kind == "reply":
+                transcript.append({"speaker": "agent", "text": payload})
                 replied = True
                 break
-            if name == "escalate":
-                reason = str(args.get("reason", ""))
-                state["escalated"] = reason
-                tool_calls.append({"name": "escalate", "args": args, "result": "handed off"})
-                transcript.append({"speaker": "agent", "text": f"[escalated to human: {reason}]"})
+            if kind == "escalate":
+                transcript.append({"speaker": "agent", "text": f"[escalated to human: {payload}]"})
                 resolution = "escalate"
                 break
-            # search_kb (or unknown tool)
-            result = _search_kb(state, args) if name == "search_kb" else f"ERROR: unknown tool {name!r}"
-            tool_calls.append({"name": name, "args": args, "result": result})
+            # search_kb / unknown
             messages.append({"role": "user", "content": f"TOOL_RESULT[{name}]: {result}"})
         if resolution == "escalate":
             break
@@ -229,4 +325,5 @@ def run_episode(agent, user_sim, scenario: dict, *, max_turns: int = 4,
         "transcript": transcript,
         "final_state": {"replies": state["replies"], "escalated": state["escalated"]},
         "perf": perf,
+        "protocol": protocol,
     }

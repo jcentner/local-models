@@ -59,11 +59,18 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model glm-4.6 \
   (`--judge-model`, default `claude-opus-4.8`; never a local small model). For the
   judge invocation details see the **copilot-cli** skill.
 - `agentic` — model-agnostic tau-bench-style tool-use **rollout**: the agent under
-  test (prompt-mode JSON tool protocol, so any model works) talks to a **Copilot-CLI
-  user-simulator** (`--user-model`, a frontier model with a hidden goal) over mocked
-  tools; scored deterministically on terminal action (reply vs escalate) +
-  required/forbidden tools. Use `--no-think`. Set:
-  [benchmarks/email-triage](../../../benchmarks/email-triage/README.md). The
+  test talks to a **Copilot-CLI user-simulator** (`--user-model`, a frontier model
+  with a hidden goal) over mocked tools; scored deterministically on terminal action
+  (reply vs escalate) + required/forbidden tools. Use `--no-think`. Two tool
+  protocols via `--tool-protocol`:
+  - `prompt` (default) — one JSON action per step; works with **any** model.
+  - `native` — provider function-calling (Ollama `/api/chat` `tools` or OpenAI
+    `tools`, parsing `message.tool_calls`); a fair footing for thinking/XML-tool
+    models. Needs a **tool-capable** model (`ollama show <m>` must list `tools`);
+    MiniCPM5's native XML needs SGLang `--tool-call-parser minicpm5` over the
+    `openai-compatible` provider (its stock Ollama template is tool-blind).
+    Measured: qwen3.5:4b 3/5 (prompt) → 4/5 (native) on email-triage.
+  Set: [benchmarks/email-triage](../../../benchmarks/email-triage/README.md). The
   flexible alternative to registered-model benchmarks like BFCL.
 
 ## Thinking-model gotcha (bites every time)

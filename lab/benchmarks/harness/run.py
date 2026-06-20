@@ -178,6 +178,11 @@ def main(argv: list[str] | None = None) -> int:
                     help="reasoning effort for the judge (Copilot CLI --reasoning-effort)")
     ap.add_argument("--user-model", default="claude-opus-4.8",
                     help="Copilot CLI model id for the agentic user-simulator (a FRONTIER model).")
+    ap.add_argument("--tool-protocol", choices=["prompt", "native"], default="prompt",
+                    help="agentic tool protocol: 'prompt' = model emits one JSON action "
+                         "per step (model-agnostic); 'native' = provider function-calling "
+                         "(Ollama/OpenAI `tools` + message.tool_calls), a fair footing for "
+                         "thinking/XML-tool models (needs a tool-capable model/template).")
     ap.add_argument("--results", default=str(LAB_BENCH / "results.csv"))
     ap.add_argument("--dry-run", action="store_true", help="print config + first prompt, don't call the model")
     ap.add_argument("--code-sandbox", choices=["podman", "local-unsafe"], default=None,
@@ -246,7 +251,7 @@ def main(argv: list[str] | None = None) -> int:
             for s in range(args.k):
                 if method == "agentic":
                     user_sim = CopilotCLIUser(persona=item["meta"]["persona"], model=args.user_model)
-                    episode = run_episode(client, user_sim, item)
+                    episode = run_episode(client, user_sim, item, protocol=args.tool_protocol)
                     res = agentic_scorer.score(episode, manifest["_key"].get(item["id"], {}))
                     perf = episode["perf"]
                     total_samples += 1
@@ -259,6 +264,7 @@ def main(argv: list[str] | None = None) -> int:
                         any_correct = True
                     raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
                                           "episode": {"resolution": episode["resolution"],
+                                                      "protocol": episode.get("protocol"),
                                                       "tool_calls": episode["tool_calls"],
                                                       "transcript": episode["transcript"]}}) + "\n")
                     continue
@@ -319,7 +325,7 @@ def main(argv: list[str] | None = None) -> int:
         "wall_s_total": round(wall_sum, 1),
         "cost_usd": cost_usd,
         "judge": (f"copilot:{args.judge_model}" if method == "llm_judge"
-                  else f"usersim:copilot:{args.user_model}" if method == "agentic" else ""),
+                  else f"usersim:copilot:{args.user_model}:{args.tool_protocol}" if method == "agentic" else ""),
         "code_sandbox": args.code_sandbox or "",
         "raw_file": raw_path.name,
         "platform": platform.platform(),

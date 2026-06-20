@@ -19,7 +19,7 @@ if __package__ in (None, ""):
     from harness import judge_copilot
     from harness import client as clientmod
     from harness import agentic as ag
-    from harness.client import OpenAICompatibleClient, SamplingConfig, Completion
+    from harness.client import OpenAICompatibleClient, SamplingConfig, Completion, ToolCall
     from harness.scorers import llm_judge
     from harness.scorers import agentic as agentic_scorer
 else:
@@ -28,7 +28,7 @@ else:
     from . import judge_copilot
     from . import client as clientmod
     from . import agentic as ag
-    from .client import OpenAICompatibleClient, SamplingConfig, Completion
+    from .client import OpenAICompatibleClient, SamplingConfig, Completion, ToolCall
     from .scorers import llm_judge
     from .scorers import agentic as agentic_scorer
 
@@ -212,10 +212,23 @@ def test_openai_compatible_client():
 class _MockAgent:
     def __init__(self, actions):
         self.actions, self.i = list(actions), 0
-    def complete(self, messages, system=None):
+    def complete(self, messages, system=None, tools=None):
         a = self.actions[min(self.i, len(self.actions) - 1)]
         self.i += 1
         return Completion(text=a, prompt_tokens=5, gen_tokens=7, wall_s=0.01)
+
+
+class _MockToolAgent:
+    """Native-protocol mock: yields scripted ToolCall lists (no network)."""
+    def __init__(self, scripts):
+        self.scripts, self.i = list(scripts), 0
+    def complete(self, messages, system=None, tools=None):
+        calls = self.scripts[min(self.i, len(self.scripts) - 1)]
+        self.i += 1
+        return Completion(text="", tool_calls=list(calls), prompt_tokens=5, gen_tokens=7,
+                          wall_s=0.01, raw_message={"role": "assistant", "content": ""})
+    def tool_result_message(self, call, content):
+        return {"role": "tool", "content": content, "tool_name": call.name}
 
 
 class _MockUser:
@@ -280,6 +293,66 @@ def test_agentic():
     check("agentic bad expected_terminal rejected", _rejects(bad_terminal))
 
 
+def test_agentic_native():
+    print("agentic rollout - native tool protocol (mocked):")
+    scen_reply = {"id": "t1", "prompt": "what are your hours?",
+                  "meta": {"persona": "goal", "policy": "answer from kb",
+                           "kb": [{"q": "hours", "keywords": "hours when", "a": "9-5 ET"}]}}
+    ep = ag.run_episode(
+        _MockToolAgent([[ToolCall("search_kb", {"query": "hours"})],
+                        [ToolCall("reply", {"text": "We are open 9-5 ET"})]]),
+        _MockUser("DONE"), scen_reply, protocol="native")
+    check("native reply resolution", ep["resolution"] == "reply" and ep["did_reply"] and not ep["did_escalate"])
+    check("native search_kb used", "search_kb" in ep["tools_used"])
+    check("native protocol tagged", ep.get("protocol") == "native")
+    check("native scorer passes good reply",
+          agentic_scorer.score(ep, {"expected_terminal": "reply", "required_tools": ["search_kb"],
+                                     "forbidden_tools": ["escalate"]})["correct"])
+
+    scen_esc = {"id": "t2", "prompt": "refund please",
+                "meta": {"persona": "goal", "policy": "refunds need a human", "kb": []}}
+    ep2 = ag.run_episode(_MockToolAgent([[ToolCall("escalate", {"reason": "refund needs a human"})]]),
+                         _MockUser("DONE"), scen_esc, protocol="native")
+    check("native escalate resolution", ep2["resolution"] == "escalate" and ep2["did_escalate"])
+
+    # empty tool_calls -> nudge, then the model acts on the next step
+    ep3 = ag.run_episode(
+        _MockToolAgent([[], [ToolCall("escalate", {"reason": "needs a human"})]]),
+        _MockUser("DONE"), scen_esc, protocol="native")
+    check("native no-tool nudge then escalate",
+          ep3["did_escalate"] and any(tc["name"] == "_no_tool" for tc in ep3["tool_calls"]))
+
+
+def test_tool_call_parsing():
+    print("native tool_call parsing (mocked clients):")
+    from unittest import mock
+    # OpenAI shape: tool_calls[].function.arguments is a JSON STRING
+    oai = {"choices": [{"message": {"content": "", "tool_calls": [
+        {"id": "call_1", "type": "function",
+         "function": {"name": "search_kb", "arguments": '{"query": "hours"}'}}]}}],
+           "usage": {"prompt_tokens": 9, "completion_tokens": 4}}
+    c = OpenAICompatibleClient(model="m", base_url="http://localhost:11434/v1")
+    with mock.patch.object(clientmod.urllib.request, "urlopen", return_value=_Resp(oai)):
+        comp = c.complete([{"role": "user", "content": "hi"}], tools=ag.AGENTIC_TOOLS)
+    check("openai parses tool_calls", len(comp.tool_calls) == 1 and comp.tool_calls[0].name == "search_kb")
+    check("openai parses string args -> dict", comp.tool_calls[0].arguments == {"query": "hours"})
+    check("openai keeps call id", comp.tool_calls[0].id == "call_1")
+    check("openai tool_result_message uses id",
+          c.tool_result_message(comp.tool_calls[0], "r") == {"role": "tool", "tool_call_id": "call_1", "content": "r"})
+
+    # Ollama shape: arguments is already an OBJECT; no id
+    oll = {"message": {"role": "assistant", "content": "", "tool_calls": [
+        {"function": {"name": "escalate", "arguments": {"reason": "refund"}}}]},
+        "eval_count": 4, "eval_duration": 1, "prompt_eval_count": 9}
+    oc = clientmod.OllamaClient(model="m")
+    with mock.patch.object(clientmod.urllib.request, "urlopen", return_value=_Resp(oll)):
+        comp2 = oc.complete([{"role": "user", "content": "hi"}], tools=ag.AGENTIC_TOOLS)
+    check("ollama parses tool_calls", len(comp2.tool_calls) == 1 and comp2.tool_calls[0].name == "escalate")
+    check("ollama parses object args", comp2.tool_calls[0].arguments == {"reason": "refund"})
+    check("ollama tool_result_message uses tool_name",
+          oc.tool_result_message(comp2.tool_calls[0], "r") == {"role": "tool", "content": "r", "tool_name": "escalate"})
+
+
 if __name__ == "__main__":
     test_equivalence()
     test_code_exec()
@@ -290,5 +363,7 @@ if __name__ == "__main__":
     test_cost_computation()
     test_openai_compatible_client()
     test_agentic()
+    test_agentic_native()
+    test_tool_call_parsing()
     print(f"\n{'ALL PASS' if check.failed == 0 else str(check.failed) + ' FAILED'}")
     raise SystemExit(1 if check.failed else 0)

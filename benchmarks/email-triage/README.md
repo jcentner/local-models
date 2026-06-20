@@ -16,6 +16,10 @@ Ollama tag or API model runs (no native tool-calling required).
   as the judge. The agent never sees the persona.
 - **Tools (mocked):** `search_kb(query)`, `reply(text)`, `escalate(reason)` over a
   per-scenario knowledge base.
+- **Tool protocol (`--tool-protocol`):** `prompt` (default; one JSON action per
+  step, model-agnostic) or `native` (provider function-calling - Ollama/OpenAI
+  `tools` + `message.tool_calls` - a fair footing for thinking/XML-tool models;
+  needs a tool-capable model). qwen3.5:4b: 3/5 prompt -> 4/5 native.
 - **Provenance:** authored 2026-06-19; original scenarios. **Contamination: fresh.**
 
 ## Scenarios (5)
@@ -35,6 +39,10 @@ cd lab/benchmarks
 python3 -m harness.run --benchmark ../../benchmarks/email-triage \
   --model qwen3.5:4b --no-think --temperature 0.0 --num-ctx 8192 \
   --user-model claude-opus-4.8
+
+# native function-calling instead of prompt-mode JSON (tool-capable models):
+python3 -m harness.run --benchmark ../../benchmarks/email-triage \
+  --model qwen3.5:4b --tool-protocol native --no-think --temperature 0.0
 ```
 
 ## Backlog (v0.2)

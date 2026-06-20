@@ -218,13 +218,19 @@ JSON action truncates, (b) never commits to a terminal `reply`/`escalate`, and
 a **protocol mismatch** - our prompt-mode "JSON only" rollout is adversarial to a
 hybrid-thinking model whose native tool format is XML (SGLang `minicpm5` parser).
 It does **not** refute the headline tau-2-Bench number; a fair tool-use test needs
-the native path (or a planned native-tool-calling harness mode). Full writeup:
+the native path. The harness now has a **native-tool-calling mode**
+(`--tool-protocol native`, added 2026-06-19) that reads `message.tool_calls` from
+the provider - but MiniCPM5's **stock Ollama template is tool-blind**, so the fair
+re-test must go through **SGLang `--tool-call-parser minicpm5`** over the
+`openai-compatible` provider (its XML calls become OpenAI `tool_calls`). Full writeup:
 [lab/experiments/2026-06-19-minicpm5-1b-first-run](../../lab/experiments/2026-06-19-minicpm5-1b-first-run/README.md).
 
 ## Open questions
 - Does the agentic/tool-use strength survive on its **native tool path** (SGLang
-  `minicpm5` XML parser), where the prompt-mode protocol mismatch goes away? That's
-  the fair re-test after the email-triage 0/5.
+  `minicpm5` XML parser → OpenAI `tool_calls`, run via the harness
+  `--tool-protocol native --provider openai-compatible`), where the prompt-mode
+  protocol mismatch goes away? That's the fair re-test after the email-triage 0/5
+  — the harness side is ready; it needs SGLang stood up (8 GB/Blackwell stretch).
 - How does it do on the fresh [decision-reasoning](../benchmarks/decision-reasoning.md)
   set vs [VibeThinker-3B](vibethinker-3b.md)? A 1B tool-tilted generalist vs a 3B
   math specialist on practical judgment is a clean contrast.

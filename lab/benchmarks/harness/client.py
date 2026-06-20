@@ -46,12 +46,26 @@ class SamplingConfig:
 
 
 @dataclass
+class ToolCall:
+    """A normalized native tool call (provider-agnostic).
+
+    ``arguments`` is always a parsed dict. ``id`` is the provider's call id
+    (OpenAI needs it to match the tool result; Ollama has none, stays "").
+    """
+    name: str
+    arguments: dict = field(default_factory=dict)
+    id: str = ""
+
+
+@dataclass
 class Completion:
     text: str
     prompt_tokens: int = 0
     gen_tokens: int = 0
     gen_tok_per_s: float = 0.0
     wall_s: float = 0.0
+    tool_calls: list = field(default_factory=list)   # list[ToolCall], native mode
+    raw_message: dict = field(default_factory=dict)  # provider-native assistant msg to echo back
 
 
 @dataclass
@@ -63,7 +77,8 @@ class OllamaClient:
     sampling: SamplingConfig = field(default_factory=SamplingConfig)
     timeout: int = 600
 
-    def complete(self, messages: list[dict], system: str | None = None) -> Completion:
+    def complete(self, messages: list[dict], system: str | None = None,
+                 tools: list[dict] | None = None) -> Completion:
         msgs = ([{"role": "system", "content": system}] if system else []) + messages
         payload = {
             "model": self.model,
@@ -71,6 +86,8 @@ class OllamaClient:
             "stream": False,
             "options": self.sampling.to_options(),
         }
+        if tools:
+            payload["tools"] = tools
         if self.sampling.think is not None:
             payload["think"] = self.sampling.think
         data = json.dumps(payload).encode("utf-8")
@@ -90,17 +107,34 @@ class OllamaClient:
                 "Is `ollama serve` running and the model pulled?"
             ) from e
         wall = time.monotonic() - t0
-        text = (body.get("message") or {}).get("content", "")
+        msg = body.get("message") or {}
+        text = msg.get("content", "")
         gen_tokens = int(body.get("eval_count") or 0)
         eval_ns = int(body.get("eval_duration") or 0)
         tok_s = (gen_tokens / (eval_ns / 1e9)) if eval_ns else 0.0
+        calls = []
+        for tc in (msg.get("tool_calls") or []):
+            fn = tc.get("function") or {}
+            args = fn.get("arguments")
+            if isinstance(args, str):  # some shims return a JSON string
+                try:
+                    args = json.loads(args)
+                except (json.JSONDecodeError, ValueError):
+                    args = {}
+            calls.append(ToolCall(name=fn.get("name", ""), arguments=args or {}))
         return Completion(
             text=text,
             prompt_tokens=int(body.get("prompt_eval_count") or 0),
             gen_tokens=gen_tokens,
             gen_tok_per_s=round(tok_s, 2),
             wall_s=round(wall, 2),
+            tool_calls=calls,
+            raw_message=msg,
         )
+
+    def tool_result_message(self, call: ToolCall, content: str) -> dict:
+        """Build the Ollama-native tool-result message to append to history."""
+        return {"role": "tool", "content": content, "tool_name": call.name}
 
     def describe(self) -> dict:
         return {"provider": "ollama", "model": self.model, "base_url": self.base_url,
@@ -137,7 +171,8 @@ class OpenAICompatibleClient:
             )
         return {"Authorization": f"Bearer {key}"}
 
-    def complete(self, messages: list[dict], system: str | None = None) -> Completion:
+    def complete(self, messages: list[dict], system: str | None = None,
+                 tools: list[dict] | None = None) -> Completion:
         msgs = ([{"role": "system", "content": system}] if system else []) + messages
         s = self.sampling
         payload = {
@@ -148,6 +183,8 @@ class OpenAICompatibleClient:
             "top_p": s.top_p,
             "max_tokens": s.num_predict,
         }
+        if tools:
+            payload["tools"] = tools
         if s.seed is not None:
             payload["seed"] = s.seed
         data = json.dumps(payload).encode("utf-8")
@@ -172,17 +209,36 @@ class OpenAICompatibleClient:
             ) from e
         wall = time.monotonic() - t0
         choices = body.get("choices") or [{}]
-        text = ((choices[0] or {}).get("message") or {}).get("content", "") or ""
+        msg = (choices[0] or {}).get("message") or {}
+        text = msg.get("content", "") or ""
         usage = body.get("usage") or {}
         gen_tokens = int(usage.get("completion_tokens") or 0)
         tok_s = (gen_tokens / wall) if wall else 0.0  # wall-based; no eval_duration
+        calls = []
+        for tc in (msg.get("tool_calls") or []):
+            fn = tc.get("function") or {}
+            raw = fn.get("arguments")
+            if isinstance(raw, str):
+                try:
+                    args = json.loads(raw) if raw.strip() else {}
+                except (json.JSONDecodeError, ValueError):
+                    args = {}
+            else:
+                args = raw or {}
+            calls.append(ToolCall(name=fn.get("name", ""), arguments=args, id=tc.get("id", "")))
         return Completion(
             text=text,
             prompt_tokens=int(usage.get("prompt_tokens") or 0),
             gen_tokens=gen_tokens,
             gen_tok_per_s=round(tok_s, 2),
             wall_s=round(wall, 2),
+            tool_calls=calls,
+            raw_message=msg,
         )
+
+    def tool_result_message(self, call: ToolCall, content: str) -> dict:
+        """Build the OpenAI-native tool-result message (matched by tool_call_id)."""
+        return {"role": "tool", "tool_call_id": call.id, "content": content}
 
     def describe(self) -> dict:
         return {"provider": "openai-compatible", "model": self.model,

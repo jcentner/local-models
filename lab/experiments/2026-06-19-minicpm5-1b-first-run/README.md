@@ -81,15 +81,19 @@ modes (from the raw episodes):
   So this does **not** refute the headline tau-2-Bench 79.5 - it shows the model needs
   its native tool path. A *fair* tool-use number wants **SGLang native parsing**
   (the [8 GB/Blackwell stretch](../../../wiki/stacks/vllm.md)).
-- **Harness implication (high-value):** add a **native tool-calling mode** to the
-  agentic scorer (Ollama `/api/chat` `tools` + parse `message.tool_calls`) as an
-  alternative to prompt-mode, for models with native tool support. That would test
-  MiniCPM5 (and others) on a fair footing - the right v0.2 of the agentic harness.
+- **Harness implication (high-value, now DONE 2026-06-19):** added a **native
+  tool-calling mode** to the agentic harness (`--tool-protocol native`: Ollama
+  `/api/chat` `tools` + OpenAI `tools`, parsing `message.tool_calls`) as an
+  alternative to prompt-mode. Validated live on qwen3.5:4b (3/5 prompt -> 4/5
+  native). **But MiniCPM5's stock Ollama template is tool-blind**, so its fair
+  re-test still needs SGLang `--tool-call-parser minicpm5` over the
+  `openai-compatible` provider - the harness side is ready, the server isn't yet.
 - A 1B model on a strict multi-step custom protocol is unreliable here; whether
   that's the model or the protocol is exactly what the native-mode test would isolate.
 
 ## Next
-- **Build the native-tool-calling agentic mode** (above), then re-run MiniCPM5 fairly.
+- **Re-run MiniCPM5 fairly** via SGLang `minicpm5` parser + `--tool-protocol native
+  --provider openai-compatible` (native mode is built; needs SGLang stood up).
 - Run [decision-reasoning](../../../wiki/benchmarks/decision-reasoning.md) on it
   (llm_judge) to contrast 1B tool-tilted generalist vs VibeThinker-3B math specialist
   on practical judgment - no tool protocol involved, so it isolates reasoning.
