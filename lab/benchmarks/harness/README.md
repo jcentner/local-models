@@ -86,9 +86,17 @@ created with `/author-benchmark`. Output: a row appended to
 - `--provider ollama` (default) — native `/api/chat`; full `options` control
   (`num_ctx`, `think`) + native `eval_count`/`eval_duration` tok/s.
 - `--provider openai-compatible` — `{--base-url}/chat/completions` (base_url ends
-  in `/v1`). Targets hosted APIs **or** Ollama's `:11434/v1` shim. tok/s is
-  wall-based. The API key is read from the env var named by `--api-key-env`
-  (**never** put a key on the CLI or in `results.csv`); localhost needs none.
+  in `/v1`). Targets hosted APIs **or** Ollama's `:11434/v1` shim **or** a local
+  **[SGLang](../../../wiki/stacks/sglang.md)** server. tok/s is wall-based. The API
+  key is read from the env var named by `--api-key-env` (**never** put a key on the
+  CLI or in `results.csv`); localhost needs none.
+- **Thinking control over `openai-compatible`:** `--think/--no-think` is sent as
+  `chat_template_kwargs.enable_thinking` (works on SGLang; ignored by servers that
+  don't support it) — the analogue of Ollama's `think`.
+- **XML tool-call fallback:** when a provider returns no native `tool_calls` but the
+  content holds MiniCPM-style `<function name=...><param ...>` XML,
+  `parse_xml_tool_calls()` recovers it into native calls. Run SGLang **without**
+  `--tool-call-parser` (its `minicpm5` parser is broken in 0.5.13 — swallows the XML).
 - `--price-in` / `--price-out` (USD per 1M tokens) — compute `cost_usd` from token
   totals (local default 0 -> `cost_usd=0.0`). Running the same benchmark local vs
   API and comparing capability + `cost_usd` is a first-class goal.

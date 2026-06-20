@@ -47,6 +47,13 @@ VRAM math and quant trade-offs: [concepts/quantization.md](../concepts/quantizat
   [scripts/check-torch.py](../../scripts/check-torch.py)).
 - **NPU is effectively Windows-only** for LLM work today.
 - Memory bandwidth (~384 GB/s on this GPU) caps token/s more than compute does.
+- **No `gcc`/`nvcc` -> pip SGLang can't JIT its kernels** (FlashInfer Triton wants
+  a C compiler; fused-RoPE `tvm_ffi` wants the CUDA toolkit). Use the **container**
+  for SGLang (bundles the toolchain) - see [stacks/sglang.md](../stacks/sglang.md).
+- **GPU works in rootless Podman** (verified 2026-06-20): `nvidia-container-toolkit`
+  installed + CDI generated (`/etc/cdi/nvidia.yaml`); the RTX 5070 is visible via
+  `--device nvidia.com/gpu=all --security-opt=label=disable`. Base Podman per
+  [github.com/jcentner/podman-wsl-setup](https://github.com/jcentner/podman-wsl-setup).
 
 ## Upgrade notes
 

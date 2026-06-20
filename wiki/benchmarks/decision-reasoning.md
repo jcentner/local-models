@@ -1,7 +1,7 @@
 ---
 title: decision-reasoning (authored)
 tags: [benchmark, reasoning, decision-making, authored, llm-judge]
-updated: 2026-06-19
+updated: 2026-06-20
 status: authored
 ---
 
@@ -34,11 +34,13 @@ Judge config (model + date + rubric) is recorded with each result.
 - [VibeThinker-3B](../models/vibethinker-3b.md) (2026-06-19): **1/6 above bar,
   mean ~4.3/10** - decisive but frequently misreads the crux. See the
   [experiment](../../lab/experiments/2026-06-19-vibethinker-decision-reasoning/README.md).
-- [MiniCPM5-1B](../models/minicpm5-1b.md) (2026-06-19, over Ollama): **0/6, mean
-  ~0.17/10** - runaway/degenerate `<think>` that never lands a recommendation;
-  **confounded** by MiniCPM5's uncontrollable thinking over Ollama (no
-  `enable_thinking` selection), so treat as a serving-path floor, not a clean
-  capability read. See the [model page finding](../models/minicpm5-1b.md).
+- [MiniCPM5-1B](../models/minicpm5-1b.md): over Ollama (2026-06-19) **0/6, mean
+  ~0.17/10** - degenerate `<think>`, **confounded** by uncontrollable thinking.
+  **Clean re-test over [SGLang](../stacks/sglang.md) (2026-06-20):** still **0/6**
+  but now *coherent* - No-Think mean ~2.7/10, Think mean ~3.0/10 (CoT completes, no
+  truncation). The Ollama 0.17 was a **serving artifact**; the real verdict is
+  coherent-but-shallow (a genuine 1B judgment ceiling, same shape as VibeThinker).
+  See the [model page](../models/minicpm5-1b.md).
 - No baseline from a general model yet (run qwen3.5:9b next to calibrate).
 
 ## Contamination / freshness

@@ -15,17 +15,21 @@ before using any of the benchmark prompts.
 > their own track: [concepts/aide-models.md](../concepts/aide-models.md) +
 > [`/new-aide`](../../.github/prompts/new-aide.prompt.md).
 
-**Status (2026-06-19):** **four working scorers** — `llm_judge` (frontier judge =
+**Status (2026-06-20):** **four working scorers** — `llm_judge` (frontier judge =
 opus-4.8 via Copilot CLI), `equivalence`, `code_tests` (locked-down **Podman**
 sandbox, `--code-sandbox podman`), and **`agentic`** (model-agnostic tau-bench-style
 rollout + Copilot-CLI user-simulator; two **tool sets** — `support` (act/ask/escalate)
 and `home_automation` (act/confirm/refuse) — over a `prompt` or `native`
 function-calling protocol). Authored benchmarks run end to end:
-[decision-reasoning](decision-reasoning.md) (VibeThinker 1/6, MiniCPM5 0/6\*),
+[decision-reasoning](decision-reasoning.md) (VibeThinker 1/6, MiniCPM5 0/6),
 `code-basics` (qwen3.5:4b 3/4), [email-triage](../../benchmarks/email-triage/README.md)
-(qwen3.5:4b 4/5 native · 3/5 prompt; MiniCPM5 0/5\*),
+(qwen3.5:4b 4/5 native · 3/5 prompt; MiniCPM5 2/5 native),
 [home-automation](../../benchmarks/home-automation/README.md) (v0.2, 12 scenarios;
-v0.1 6-scenario scores qwen3.5:4b 6/6 prompt · 5/6 native — v0.2 not yet re-run). \*MiniCPM5 confounded by uncontrollable `<think>` over Ollama.
+qwen3.5:4b v0.1 6/6 prompt · 5/6 native; MiniCPM5-1B 7/12 native).
+**MiniCPM5-1B was re-tested over [SGLang](../stacks/sglang.md)** (container,
+controllable thinking) — its Ollama scores were a serving artifact: a **weak
+abstract reasoner** (decision 0/6, now coherent) but a **decent home-automation
+tool-executor** (7/12).
 Models under test run **local (Ollama) or API (OpenAI-compatible,
 e.g. Z.AI GLM)** via `--provider`; results record **cost** alongside capability.
 **External-first:** wrap existing benchmarks aligned with my interests
