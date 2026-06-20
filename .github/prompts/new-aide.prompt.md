@@ -1,6 +1,6 @@
 ---
 mode: agent
-description: Research a new aide model (STT / TTS / embedding / reranker-retriever), document it in the wiki, and stage the right external eval. The support-model sibling of /new-model.
+description: Research a new aide model (STT / TTS / embedding / reranker-retriever), document it in the wiki, and stage a quick get-a-feel test (a fuller external eval optional/later). The support-model sibling of /new-model.
 ---
 
 # /new-aide — research, document, and stage an aide model
@@ -17,8 +17,15 @@ reranking for tool + context selection). Read
 durable schema (taxonomy, eval contract, page schema) this prompt executes.
 
 Follow the repo schema in [AGENTS.md](../../AGENTS.md) and the **ingest** loop:
-research -> write wiki -> update index + log -> stage an eval. Keep me in the loop
+research -> write wiki -> update index + log -> stage a test. Keep me in the loop
 before writing if anything is ambiguous.
+
+> **Near-term posture.** The goal right now is to **store solid info in the wiki
+> and get a *feel*** for each aide model — not a rigorous academic eval. Favor a
+> quick smoke test (a handful of real inputs + latency/RTF) over a full benchmark
+> run; the external eval is staged for later, not required now. **Embeddings are
+> the cheapest, highest-leverage first target** (Ollama already serves some; MTEB
+> is trivial).
 
 **Why this is not `/new-model`.** Aide models break every generative-LLM
 assumption: no chat template / sampling / thinking mode (an **I/O contract** takes
@@ -68,7 +75,7 @@ CTranslate2 / GGUF where they exist; and the **binding constraint** for this cla
 **Runtime / serving** — exact library + command (faster-whisper, piper/Kokoro,
 sentence-transformers, **PyLate + FastPLAID**, etc.); **does Ollama serve it?**
 (only some embedding models do); GPU-arch caveats
-([Blackwell sm_120 -> CUDA 12.8](../../wiki/hardware/blackwell-rtx5070.md)).
+([Blackwell sm_120 -> CUDA >=12.8](../../wiki/hardware/blackwell-rtx5070.md)).
 
 **Benchmarks** — official class-specific metrics with source (WER/CER; NDCG@k /
 Recall@k / MRR; round-trip WER / MOS). Flag benchmaxxing / contamination as usual.
@@ -89,10 +96,22 @@ Recall@k / MRR; round-trip WER / MOS). Flag benchmaxxing / contamination as usua
 - Append one line to [wiki/log.md](../../wiki/log.md):
   `## [YYYY-MM-DD] ingest | <model> aide-model page` + a short body.
 
-## 3. Stage the eval (external-first)
+## 3. Stage the tests (feel first, external eval later)
 
-Pick the **external eval to wrap** for the class — do **not** hand-roll a harness
-up front:
+Two tiers — the **smoke test is the near-term deliverable**; the external eval is
+staged for later and only run on confirmation.
+
+**Tier 1 — smoke / get-a-feel (do this first).** A handful of real inputs through
+the actual runtime, capturing **latency / RTF** and a 1-2 line qualitative read:
+- STT -> transcribe a few clips (clean + one noisy/accented); note WER-by-eye + RTF.
+- TTS -> synthesize a few sentences; listen, note naturalness impression + time-to-first-audio.
+- Embedding -> embed a small home-relevant note set; eyeball whether nearest-neighbour retrieval surfaces the right note.
+- Reranker -> a tiny tool pool (~10-20); does the relevant tool land in the top-k?
+
+This is enough to "get a feel" and decide whether the model is worth a deeper look.
+
+**Tier 2 — formal external eval (optional, deeper, later).** Wrap the mature
+external eval for the class — do **not** hand-roll a harness up front:
 - **STT** -> LibriSpeech / Common Voice / FLEURS + [`jiwer`](https://github.com/jitsi/jiwer) WER (Open ASR Leaderboard methodology).
 - **TTS** -> round-trip WER (synthesize -> trusted STT -> WER) over a fixed sentence set; MOS via human / UTMOS / NISQA (no audio judge).
 - **Embedding** -> [MTEB](https://github.com/embeddings-benchmark/mteb), or a targeted retrieval subset.
@@ -105,14 +124,17 @@ Then, per current machine:
 - Read the [hardware](../../wiki/hardware/) page(s) and compute the fit verdict
   against the **runtime** (not `ollama run`): which format/precision fits, expected
   RTF / throughput / index size. Record as a per-machine note, not a core fact.
-- Scaffold `lab/experiments/<slug>/README.md` (hypothesis -> method with exact
-  commands -> result blank -> learnings blank), recording the class-specific
-  fields (metric, dataset, runtime + version, machine).
+- Scaffold `lab/experiments/<slug>/README.md` (hypothesis -> method -> result blank
+  -> learnings blank). **Method leads with the Tier-1 smoke test** (exact commands
+  for a few inputs + how to read latency/RTF); the Tier-2 external eval follows as
+  an optional deeper pass. Record the class-specific fields (metric, dataset,
+  runtime + version, machine).
 - Do **not** download weights or run anything unless I confirm.
 
 ## 4. Report back
 
 End with: the class + pipeline slot; the verdict (runs on this machine? on which
-runtime? which format?); the exact external eval + metric that will decide
-fitness; the next command to test it; and open questions worth a follow-up
-`/new-aide` or a lint pass.
+runtime? which format?); the **smoke-test feel to capture first** (does it work +
+latency/RTF); the external eval + metric that would decide fitness *later*; the
+next command to test it; and open questions worth a follow-up `/new-aide` or a
+lint pass.
