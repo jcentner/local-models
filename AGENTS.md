@@ -6,16 +6,22 @@ the [LLM Wiki pattern](wiki/concepts/llm-wiki-method.md). Co-evolve it as the
 workflow matures. `.github/copilot-instructions.md` defers to this file.
 
 > **North star:** evaluate models — **local *and* API** — to decide which should
-> run a local-agent **home-automation** system. External benchmarks where they fit
-> my interests (decision-making, agentic/triage); custom benchmarks for my
-> use-cases (home automation, email triage); capability **and cost** captured
-> uniformly.
+> run a **local-agent suite**: home automation, email triage, a website/product
+> support bot (more use-cases as they arise). The dev/test boxes and the eventual
+> deployment targets are **different machines**, so durable capability findings
+> stay portable while hardware/serving facts are per-host. External benchmarks
+> where they fit my interests (decision-making, agentic/triage); custom benchmarks
+> for my use-cases; capability **and cost** captured uniformly.
 
 ## What this repo is
 
 A personal playground + knowledge base for running LLMs (local on my own hardware,
-and via API where it makes sense) and benchmarking them toward a home-automation
-agent. Two intertwined jobs:
+and via API where it makes sense) and benchmarking them toward a **local-agent
+suite** (home automation, email triage, a website/product support bot, ...). The
+wiki is cloned across **multiple test machines**, and the agent will deploy on a
+**different machine** than the dev box — so durable capability knowledge stays
+portable, while hardware/serving facts are per-host (see Conventions). Two
+intertwined jobs:
 
 1. **Knowledge base** (`raw/` -> `wiki/`): compile durable, cross-linked notes
    about models, serving stacks, quantization, optimization, and benchmarks.
@@ -83,6 +89,20 @@ Types: `ingest`, `query`, `bench`, `experiment`, `lint`, `note`.
 - Keep machine-verified facts (from `scripts/verify-stack.sh` or terminal) marked
   as such, with the date verified.
 
+### Hardware & stacks (per-host vs portable)
+The wiki runs on multiple machines; the agent deploys on yet another. Keep two
+things separate so any page stays true on any box:
+- **Portable** (the page's thesis): concepts, model facts, and stack *setup* read
+  machine-independently. Anchor general rules to an example — don't let one box's
+  numbers become the rule (quantization math is general; "8 GB" is a worked
+  example).
+- **Per-host** (clearly fenced): VRAM/RAM budgets, driver/CUDA versions, tok/s,
+  "what fits" live in `hardware/<host>.md` — **one page per machine under test**,
+  not "this machine". Generate/refresh it on a new box with
+  `scripts/host-profile.sh` (driven by `verify-stack.sh`); mark each fact with the
+  host + date verified. [stacks/podman-gpu.md](wiki/stacks/podman-gpu.md) is the
+  template: a machine-independent setup body + a fenced "this box" block.
+
 ### Lab
 - `lab/journal/YYYY-MM-DD-slug.md` — dated narrative: what I did, how, what I
   learned, insights, open questions. This is the blog/Twitter feedstock. Prose,
@@ -146,9 +166,11 @@ Workflow verbs: `/new-benchmark` (ingest an existing one),
 with a critic loop). Log type: `bench`. (Model-ingest verbs `/new-model` and
 `/new-aide` are in the Models & aide models subsection above.)
 
-Machine facts: [wiki/hardware/proart-p16.md](wiki/hardware/proart-p16.md).
-**WSL2 caveat:** WSL sees ~15 GB RAM by default; raise via
-[env/wslconfig.template](env/wslconfig.template) for models > ~12 GB.
+Per-host facts: one page per machine under test in `wiki/hardware/` (first:
+[wiki/hardware/proart-p16.md](wiki/hardware/proart-p16.md)); generate a new host's
+page with `scripts/host-profile.sh`. **WSL2 caveat:** WSL sees ~15 GB RAM by
+default; raise via [env/wslconfig.template](env/wslconfig.template) for models
+> ~12 GB.
 
 ```bash
 bash scripts/verify-stack.sh          # GPU/CUDA/Ollama/RAM readiness

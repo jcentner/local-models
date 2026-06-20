@@ -1,5 +1,5 @@
 ---
-title: Quantization (and the 8 GB VRAM math)
+title: Quantization (and the VRAM math)
 tags: [concept, quantization, optimization]
 updated: 2026-06-14
 status: seed
@@ -8,9 +8,10 @@ status: seed
 # Quantization
 
 Lowering the numeric precision of weights (and sometimes activations / KV cache)
-to shrink memory and speed up inference, trading a little quality. This is the
-single most important lever for fitting models in **8 GB VRAM**. This page is a
-seed — deepen it with experiments under `lab/`.
+to shrink memory and speed up inference, trading a little quality. It is the
+single most important lever for **fitting a model in a given VRAM budget** — and
+on a small GPU it is often the difference between fits-fully and doesn't-run. This
+page is a seed — deepen it with experiments under `lab/`.
 
 ## Quick VRAM math
 
@@ -24,9 +25,12 @@ cache + overhead.
 | Q4 (K-quants) | ~4.5 | ~4–4.5 GB | ~7.5–8 GB |
 | FP4 / NVFP4 | 4 | ~3.5–4 GB | ~7 GB |
 
-On this 8 GB GPU: **~7–9B at Q4 fits fully**; 13B at Q4 is borderline (needs
-partial CPU offload + the [WSL RAM bump](wsl2-memory.md)). KV cache grows with
-context length and competes with weights for VRAM.
+KV cache grows with context length and competes with weights for VRAM, so the
+usable model size is always a bit below the raw weight size.
+
+> **Worked example — an 8 GB GPU:** **~7–9B at Q4 fits fully**; 13B at Q4 is
+> borderline (needs partial CPU offload + the [WSL RAM bump](wsl2-memory.md)).
+> Per-host budgets live under [hardware/](../hardware/).
 
 ## Families to know
 
@@ -38,7 +42,7 @@ context length and competes with weights for VRAM.
 - **AWQ / GPTQ**: 4-bit post-training quant popular with [vLLM](../stacks/vllm.md)
   for fast batched serving.
 - **FP8 (W8A8) / NVFP4 (W4A4)**: hardware-accelerated on Blackwell's 5th-gen
-  tensor cores — a genuinely relevant angle for this GPU. See
+  tensor cores — a genuinely relevant angle on Blackwell GPUs. See
   [hardware/blackwell-rtx5070.md](../hardware/blackwell-rtx5070.md).
 - **KV-cache quantization**: quantize the cache (e.g. to 8-bit) to fit longer
   contexts in limited VRAM.
@@ -53,5 +57,5 @@ partial.
 
 ## Open questions
 - How much does imatrix actually help at Q4 on these models?
-- Where's the quality cliff for this GPU's practical models (7–9B)?
-- Does NVFP4 give usable speed/space wins via a stack that supports it here?
+- Where's the quality cliff for small-GPU practical models (7–9B)?
+- Does NVFP4 give usable speed/space wins via a stack that supports it?

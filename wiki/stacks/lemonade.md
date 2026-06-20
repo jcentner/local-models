@@ -9,7 +9,7 @@ status: researched
 
 An Apache-2.0 local server by AMD that exposes OpenAI / Anthropic / Ollama-
 compatible APIs and can route to CPU, GPU, **and the XDNA2 NPU**. The most likely
-path to actually using this machine's [NPU](../hardware/xdna2-npu.md).
+path to actually using a host [XDNA2 NPU](../hardware/xdna2-npu.md).
 
 ## Why it's interesting here
 
@@ -30,7 +30,7 @@ As a **Windows-side experiment**, not part of the WSL daily flow:
 
 1. Install Lemonade Server on Windows.
 2. `lemonade run Gemma-4-E2B-it-GGUF` (or pull an NPU/ONNX model).
-3. Benchmark the NPU path vs this machine's GPU/CPU paths; write it up under
+3. Benchmark the NPU path vs the host GPU/CPU paths; write it up under
    `lab/experiments/`.
 
 ```bash

@@ -30,7 +30,10 @@ scored 0-10 by a **frontier judge** (default `claude-opus-4.8` via Copilot CLI -
 reasoning quality, handling uncertainty/constraints, decisiveness, practical judgment.
 Judge config (model + date + rubric) is recorded with each result.
 
-## Reference scores
+## Results so far (local)
+Canonical numbers (with cost, host, date) live in
+[`lab/benchmarks/results.csv`](../../lab/benchmarks/results.csv); this is a quick
+orientation, not the source of truth.
 - [VibeThinker-3B](../models/vibethinker-3b.md) (2026-06-19): **1/6 above bar,
   mean ~4.3/10** - decisive but frequently misreads the crux. See the
   [experiment](../../lab/experiments/2026-06-19-vibethinker-decision-reasoning/README.md).

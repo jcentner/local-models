@@ -27,7 +27,7 @@ raw/         immutable source docs (articles, papers, screenshots) — local onl
 wiki/        LLM-maintained knowledge base
   index.md   catalog of every page (read this first)
   log.md     append-only timeline (greppable: "## [date] type | title")
-  hardware/  this machine, the GPU, the NPU
+  hardware/  one page per host under test (dev boxes + the deploy target)
   stacks/    ollama, llama.cpp, vllm, sglang, lemonade, unsloth
   models/    one page per model tried (generative + aide: STT/TTS/embeddings/retrieval)
   benchmarks/ what each benchmark measures + how it's scored (definitions)
@@ -77,11 +77,12 @@ ollama run qwen3.5:4b "Say hi in one short sentence."
 python3 tools/run-viewer/server.py   # → http://127.0.0.1:8777
 ```
 
-## This machine (verified 2026-06-14)
+## Dev box (verified 2026-06-14)
 
 ASUS ProArt P16 — RTX 5070 Laptop (8 GB), Ryzen AI 9 HX 370 (NPU), 32 GB host RAM,
-**WSL2 Ubuntu 24.04 on Windows 11**. Full details + the important WSL RAM caveat:
-[wiki/hardware/proart-p16.md](wiki/hardware/proart-p16.md).
+**WSL2 Ubuntu 24.04 on Windows 11**. One of several hosts under test (generate a
+new host's page with `scripts/host-profile.sh`). Full details + the important WSL
+RAM caveat: [wiki/hardware/proart-p16.md](wiki/hardware/proart-p16.md).
 
 > [!IMPORTANT]
 > WSL2 only sees ~15 GB of the 32 GB host RAM by default. Bigger models
@@ -92,13 +93,16 @@ ASUS ProArt P16 — RTX 5070 Laptop (8 GB), Ryzen AI 9 HX 370 (NPU), 32 GB host 
 ## Vision
 
 **Evaluate models — local *and* API — to decide which should run a local-agent
-home-automation system.** The benchmark wiki is flexible but not overcomplicated:
+suite: home automation, email triage, a website/product support bot (more
+use-cases as they arise).** The dev/test boxes and the eventual deployment target
+are different machines, so capability findings stay portable while hardware facts
+are per-host. The benchmark wiki is flexible but not overcomplicated:
 **external** benchmarks where they match my interests (LLMs as decision-makers,
-agentic workflows / triage) and **custom** benchmarks for my use-cases (home
-automation, email triage), runnable against local or API inference, with results
-(capability + cost) captured uniformly. Local (Ollama) is the daily driver and the
-bias; API inference (e.g. Z.AI GLM) is a first-class comparison point — a $20/mo
-API may beat buying hardware to run a weaker model.
+agentic workflows / triage) and **custom** benchmarks for my use-cases, runnable
+against local or API inference, with results (capability + cost) captured
+uniformly. Local (Ollama) is the daily driver and the bias; API inference (e.g.
+Z.AI GLM) is a first-class comparison point — a $20/mo API may beat buying
+hardware to run a weaker model.
 
 The agent also needs **aide models** around its brain — STT (ears), TTS (voice),
 embeddings (memory), retrieval (the tool router) — tracked separately via

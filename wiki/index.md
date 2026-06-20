@@ -9,7 +9,7 @@ The catalog of this wiki. Read this first to find a page, then drill in. Updated
 on every ingest. Timeline lives in [log.md](log.md). **Forward queue / "what's
 next" lives in [backlog.md](backlog.md).** North-star
 [vision](../README.md#vision): evaluate models (local **and** API) toward a
-local-agent home-automation system.
+local-agent **suite** (home automation, email triage, a website/product support bot).
 
 ## Hardware
 - [hardware/proart-p16.md](hardware/proart-p16.md) — this machine (ASUS ProArt P16): verified specs, WSL2 setup, what fits.

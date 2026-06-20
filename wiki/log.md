@@ -473,3 +473,17 @@ never says what model it is". Two gpt-5.5 background reviews; the 2nd caught a r
 `.crit`-grid regression + 3 robustness fixes. Narrative:
 [lab/journal/2026-06-20-run-viewer.md](../lab/journal/2026-06-20-run-viewer.md).
 ## [2026-06-20] note | run-viewer: cross-model leaderboard landing + failures toggle + side-by-side compare
+
+## [2026-06-20] note | de-localize wiki: per-host hardware convention + suite north-star
+Tightened the schema so the wiki stays true across the multiple machines it's
+cloned to (and the different box the agent will deploy on). AGENTS.md + README:
+north-star widened from home-automation to a local-agent **suite** (home
+automation, email triage, website/product support bot); added a "Hardware &
+stacks (per-host vs portable)" convention (portable thesis vs fenced per-host
+facts, podman-gpu.md as the template) and reframed hardware/ as one page per host.
+Lint pass de-localized the portable layers: quantization.md leads with the general
+VRAM-budget rule (8 GB demoted to a worked example), wsl2-memory.md leads with the
+50%-of-host-RAM rule (the 32 GB box as the example), decision-reasoning.md flags
+its scores as orientation pointing at results.csv, lemonade.md drops "this
+machine". New scripts/host-profile.sh generates a wiki/hardware/<host>.md skeleton
+from live verify-stack probes (verified on this box: Daedalus / RTX 5070 / CUDA 13.2).
