@@ -54,36 +54,61 @@ This box: [ProArt P16](../hardware/proart-p16.md), RTX 5070 Laptop (Blackwell
   stretch here — that's [vLLM](vllm.md)'s lane post-upgrade.
 - **Min Python 3.10.** Install in a venv outside the repo, never system python.
 
-## The real quirks to expect (verify on first run)
+## Verified on this box (2026-06-20) — pip is a dead end, the container works
 
-- **FlashInfer JIT vs missing `nvcc`.** FlashInfer is SGLang's default attention
-  backend (sm75+, so sm_120 qualifies). It ships prebuilt kernels but can JIT-
-  compile some on first use, which wants a CUDA toolkit we don't have. Fallback:
-  `--attention-backend triton --sampling-backend pytorch`
-  ([install notes "Common Notes"](https://docs.sglang.io/docs/get-started/install.md)).
-- **Podman, not Docker.** SGLang's quickstart uses `docker run --gpus all`. We run
-  rootless Podman; GPU passthrough needs the CDI path
-  (`--device nvidia.com/gpu=all`) plus `--ipc=host`/`--shm-size`. The **pip/uv**
-  route sidesteps container-GPU plumbing but reintroduces the JIT/`nvcc` risk
-  above. Decide which on the first attempt; document whichever works.
-- **WSL RAM cap (~15 GB).** A non-issue at 1B; matters only if it offloads. See
-  [wsl2-memory](../concepts/wsl2-memory.md).
-- **Parser-table lag.** The published tool-parser table omits `minicpm5`, but
-  OpenBMB's own card/README confirm `--tool-call-parser minicpm5` (or `auto`).
-  Treat model-vendor docs as authoritative over SGLang's catalog page.
+Stood SGLang up for [MiniCPM5-1B](../models/minicpm5-1b.md). Findings:
 
-## Install (pip/uv, CUDA 13 default)
+- **Stock `pip install sglang` (0.5.13) CANNOT run here** — it **JIT-compiles
+  kernels at runtime** and this box has the CUDA *runtime* (driver 13.2) but **no
+  `gcc` and no `nvcc` toolkit**. Two distinct failures: FlashInfer's KV-index
+  **Triton** kernel needs a **C compiler** ("Failed to find C compiler"); the
+  fused-RoPE **`tvm_ffi`** kernel needs the **CUDA toolkit** ("Could not find CUDA
+  installation / `CUDA_HOME`"). `--attention-backend triton --sampling-backend
+  pytorch --disable-cuda-graph` clears the first but not the second. **Installing
+  the toolchain (`build-essential` + a matching CUDA toolkit) is the alternative,
+  but the docs steer toolchain-less boxes to the container instead.**
+- **The official container is the working path.** `lmsysorg/sglang:latest`
+  (CUDA-13) bundles gcc + toolkit, so the JIT kernels compile and **cuda-graph
+  capture succeeds inside the container**. The default `cu130` torch runs on
+  Blackwell **sm_120** — no cu12 dance.
+- **Rootless Podman + CDI works** (the repo runs Podman, not Docker). One-time GPU
+  setup: install `nvidia-container-toolkit`, then `sudo nvidia-ctk cdi generate
+  --output=/etc/cdi/nvidia.yaml` (auto-detects WSL); verify with
+  `podman run --rm --device nvidia.com/gpu=all --security-opt=label=disable <img>
+  nvidia-smi -L`. The RTX 5070 shows up inside the container.
+- **`--tool-call-parser minicpm5` is BROKEN for MiniCPM5-1B in 0.5.13.** It's
+  vendor-recommended and auto-detected, but it **swallows the model's `<function
+  name=...>` XML and emits no `tool_calls`** (verified: content empty,
+  `tool_calls: null`). The model's tool *intent* is correct; the parser doesn't
+  surface it. So native tool-use is currently unscoreable via SGLang here — try a
+  newer build or an XML-tolerant harness fallback. (Reasoning control is fine:
+  `chat_template_kwargs={"enable_thinking":false}` reliably suppresses the CoT.)
+- **8 GB fit:** 1B BF16 ~2.16 GB; `--mem-fraction-static 0.7 --context-length
+  16384` leaves headroom. **WSL RAM** is a non-issue at 1B ([wsl2-memory](../concepts/wsl2-memory.md)).
+
+## Install — the container route (recommended here)
 
 ```bash
-python3 -m venv ~/.venvs/sglang && source ~/.venvs/sglang/bin/activate
-pip install --upgrade pip uv
-uv pip install "sglang[srt]>=0.5.12"     # CUDA 13 by default; matches our driver
+# One-time: NVIDIA Container Toolkit + CDI for rootless Podman GPU (needs sudo)
+sudo apt-get install -y nvidia-container-toolkit          # from NVIDIA's apt repo
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+podman pull docker.io/lmsysorg/sglang:latest
+
+# Serve MiniCPM5-1B (GPU via CDI, reuse the HF model cache, OpenAI API on :30000)
+podman run -d --name sglang-minicpm5 \
+  --device nvidia.com/gpu=all --security-opt=label=disable --ipc=host \
+  -p 30000:30000 -v ~/.cache/huggingface:/root/.cache/huggingface \
+  docker.io/lmsysorg/sglang:latest \
+  python3 -m sglang.launch_server --model-path openbmb/MiniCPM5-1B \
+    --host 0.0.0.0 --port 30000 --mem-fraction-static 0.7 --context-length 16384 \
+    --tool-call-parser minicpm5 --reasoning-parser deepseek-r1
 ```
 
-CUDA-12 variant and Docker images (`lmsysorg/sglang:latest` = CUDA 13,
-`:latest-cu129` = CUDA 12) are documented
-[here](https://docs.sglang.io/docs/get-started/install.md) if the default build
-misbehaves on Blackwell.
+**pip/uv install is documented but does NOT work on this toolchain-less box** (see
+findings above); use it only on a machine with `gcc` + a CUDA toolkit:
+`uv pip install --prerelease=allow "sglang>=0.5.12"` (the `srt` extra is gone in
+0.5.13; `flash-attn-4` is a prerelease dep, hence `--prerelease=allow`).
+
 
 ## Launch patterns
 

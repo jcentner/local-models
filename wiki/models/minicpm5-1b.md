@@ -244,12 +244,36 @@ degeneration is worse. A clean read needs the proper chat template
 (Transformers/vLLM/SGLang with `enable_thinking` control), deferred with the SGLang
 tool-use re-test.
 
+## SGLang controlled-serving verdict (2026-06-20)
+
+Served via the **[SGLang container](../stacks/sglang.md)** (rootless Podman + CDI
+on Blackwell) so thinking is finally controllable. This is the **clean** re-test
+of the confounded 2026-06-19 Ollama runs.
+
+- **`enable_thinking` works:** `chat_template_kwargs={"enable_thinking":false}`
+  reliably suppresses the CoT (the control Ollama lacked).
+- **Decision-reasoning still 0/6 in both modes**, but now *coherent*: No-Think
+  mean **~2.7/10**, Think mean **~3.0/10** (CoT completes, 259-2788 tok, no
+  truncation) — vs the Ollama **~0.17/10** gibberish. So the Ollama score was a
+  **serving artifact**; the real verdict is **coherent-but-shallow** judgment
+  (inverts risk, self-contradictory) — a genuine 1B ceiling, same shape as
+  [VibeThinker-3B](vibethinker-3b.md). **Not a viable reasoning brain** here.
+- **Tool-use (email-triage native) 0/5 — blocked by SGLang, not the model.** The
+  model emits the **right tool intent** (`search_kb` + correct query) in native
+  **XML**, but SGLang 0.5.13's `--tool-call-parser minicpm5` **swallows it and
+  emits no `tool_calls`** (verified by direct curl). Unscoreable through this
+  stack; the *capability* question stays open pending a newer SGLang build or an
+  XML-tolerant harness fallback.
+
+Writeup: [lab/experiments/2026-06-20-minicpm5-sglang-controlled](../../lab/experiments/2026-06-20-minicpm5-sglang-controlled/README.md).
+
 ## Open questions
 - Does the agentic/tool-use strength survive on its **native tool path** (SGLang
-  `minicpm5` XML parser → OpenAI `tool_calls`, run via the harness
-  `--tool-protocol native --provider openai-compatible`), where the prompt-mode
-  protocol mismatch goes away? That's the fair re-test after the email-triage 0/5
-  — the harness side is ready; it needs SGLang stood up (8 GB/Blackwell stretch).
+  `minicpm5` XML parser → OpenAI `tool_calls`)? **Partly answered (2026-06-20):**
+  SGLang stood up via the container, but **0.5.13's `minicpm5` parser swallows the
+  model's `<function>` XML and emits no `tool_calls`** — so the native path is
+  *blocked by the parser*, not the model (intent is correct). Still open: a newer
+  SGLang build, or an XML-tolerant fallback in the harness native parser.
 - How does it do on the fresh [decision-reasoning](../benchmarks/decision-reasoning.md)
   set vs [VibeThinker-3B](vibethinker-3b.md)? **Answered (2026-06-19, over Ollama):**
   0/6 vs VibeThinker 1/6 - but confounded by the uncontrollable-`<think>` serving

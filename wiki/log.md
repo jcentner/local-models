@@ -336,3 +336,23 @@ stale fact** — the 6/6·5/6 home-automation scores were v0.1 (6 scenarios); ma
 them v0.1 and noted v0.2 (12 scenarios) is not yet re-run. Also propagated the
 verified `cu128`-on-sm_120 finding to stacks/vllm.md (+a SGLang cross-ref) and
 softened the SGLang page's vLLM contrast. Docs-only; index needed no new lines.
+
+## [2026-06-20] bench | MiniCPM5-1B via SGLang container (clean re-test)
+Stood SGLang up to remove the Ollama confounds. **pip SGLang 0.5.13 can't run on
+this toolchain-less box** (JIT kernels need gcc + CUDA toolkit we lack: FlashInfer
+Triton → C compiler, fused-RoPE tvm_ffi → CUDA_HOME). **Fix = the official
+container** (`lmsysorg/sglang:latest`, CUDA-13, bundles the toolchain) under
+**rootless Podman + CDI** (installed nvidia-container-toolkit + `nvidia-ctk cdi
+generate`; RTX 5070 visible in-container; default cu130 runs on sm_120). Cleaned up
+the dead pip venv (-9.8 GB). Lowered `.wslconfig` memory 24→16 GB (deferred reboot).
+Harness: `OpenAICompatibleClient` now sends `chat_template_kwargs.enable_thinking`
+for `--think/--no-think` (was Ollama-only); fixed `/` in model-name raw filenames;
+selftest green. **Findings:** `enable_thinking` toggle WORKS. Decision-reasoning
+still **0/6** but *coherent* — No-Think mean ~2.7, Think mean ~3.0 (CoT completes,
+no truncation) vs Ollama's ~0.17 gibberish → the Ollama score was a serving
+artifact; real verdict = coherent-but-shallow (genuine 1B ceiling, NOT a home-agent
+reasoning brain). Tool-use (email-triage native) **0/5 — blocked by SGLang**:
+0.5.13's `minicpm5` parser swallows the model's `<function>` XML and emits no
+`tool_calls` (model intent is correct). results.csv: 3 rows kept. Stack page +
+model page + experiment updated. NEXT: newer SGLang build or XML-tolerant harness
+fallback to salvage a fair tool-use score.

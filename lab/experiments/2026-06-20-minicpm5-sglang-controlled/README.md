@@ -88,19 +88,70 @@ Harness note: the openai-compatible client + `native` protocol already parse
 change needed beyond pointing `--base-url` at SGLang. `--no-think` is
 Ollama-only — over SGLang, control thinking via the request body instead.
 
-## Result
+## Result (run 2026-06-20)
 
-_Pending first run._ Record per stage: serving path that worked (pip vs Podman;
-attention backend), tok/s + VRAM, decision-reasoning score, email-triage +
-home-automation native scores, and whether `enable_thinking=false` reliably
-suppresses CoT. Write rows to `results.csv` with
-`provider=openai-compatible`, `runner=openai-compatible-harness`,
-`endpoint=sglang-local`.
+**Serving path — pip FAILED, container WORKED.** Stock `pip install sglang`
+(0.5.13) on this box **JIT-compiles kernels at runtime** and dies twice for lack
+of a toolchain: FlashInfer's KV-index Triton kernel needs **`gcc`** ("Failed to
+find C compiler"), and the fused-RoPE `tvm_ffi` kernel needs the **CUDA toolkit**
+("Could not find CUDA installation / CUDA_HOME"). This box has the CUDA *runtime*
+(driver 13.2) but **no `nvcc` and no `gcc`**. Switching to `--attention-backend
+torch_native --disable-cuda-graph` got past the first crash but hit the second.
+**Fix = the official container** (`lmsysorg/sglang:latest`, CUDA-13, bundles the
+toolchain), run under **rootless Podman + CDI GPU passthrough** (needed
+`nvidia-container-toolkit` + `nvidia-ctk cdi generate`; the GPU showed up as
+`nvidia.com/gpu=all`). The default `cu130` torch runs on Blackwell **sm_120** with
+no cu12 dance. Model loads 2.16 GB on the 8 GB GPU; cuda-graph capture succeeds
+**inside** the container. `--mem-fraction-static 0.7 --context-length 16384`.
+
+**`enable_thinking` toggle WORKS (the headline).** Over the OpenAI endpoint,
+`chat_template_kwargs={"enable_thinking":false}` -> clean `"Paris"` (no `<think>`);
+default -> CoT present. This is the control Ollama lacked. Wired into the harness:
+`OpenAICompatibleClient` now sends `chat_template_kwargs.enable_thinking` when
+`--think/--no-think` is set (was Ollama-only). ~107-147 gen tok/s.
+
+**Decision-reasoning (llm_judge, opus-4.8, bar 6.0) - clean 0/6 in BOTH modes:**
+| Serving | mode | pass@1 | mean score | character |
+|---|---|---|---|---|
+| Ollama (old) | No-Think | 0/6 | ~0.17/10 | degenerate gibberish / runaway `<think>` |
+| **SGLang** | **No-Think** (t=0.7) | **0/6** | **~2.7/10** | coherent, decisive, **shallow/wrong** (inverts risk) |
+| **SGLang** | **Think** (t=0.9, 8k) | **0/6** | **~3.0/10** | CoT **completes** (259-2788 tok, no truncation), still self-contradictory |
+
+The serving fix lifted output from *gibberish* (0.17) to *coherent-but-shallow*
+(~3) - proving the Ollama score was a **serving artifact** - but MiniCPM5-1B's
+judgment genuinely doesn't clear the bar. Same failure shape as VibeThinker
+(decisive, misreads the crux).
+
+**Tool-use (email-triage, native) - 0/5, BLOCKED by an SGLang parser bug, not the
+model.** The model emits the **correct tool intent** (`search_kb` with the right
+query) but in its native **XML** (`<function name="search_kb"><param ...>`).
+SGLang 0.5.13's `--tool-call-parser minicpm5` (vendor-recommended, auto-detected)
+**swallows that XML and emits no `tool_calls`** (verified by direct curl: content
+empty, `tool_calls: null`, finish_reason stop). Prompt-mode is no cleaner - the
+active parser strips the XML there too, and the model emits XML not our JSON
+protocol. So MiniCPM5-1B tool-use is **unscoreable through SGLang 0.5.13 + this
+harness**, despite correct intent.
+
+`results.csv`: 3 rows kept (decision-reasoning No-Think + Think; email-triage
+native). Dropped a misconfigured no-parser run and a parser-confounded prompt-mode
+run.
 
 ## Learnings
 
-_Pending._ Key question to answer cleanly: **is MiniCPM5-1B a viable home-agent
-brain once served properly, or does the 1B ceiling hold even with the confounds
-removed?** Feed the verdict back into
-[minicpm5-1b.md](../../../wiki/models/minicpm5-1b.md) and the
-[SGLang stack page](../../../wiki/stacks/sglang.md).
+- **The pivot paid off as a *diagnostic*, not a pass.** We can now separate "model
+  is weak" from "serving was broken." MiniCPM5-1B over Ollama looked catastrophic
+  (gibberish); served correctly it's **coherent but a weak reasoner** (0/6, mean
+  ~3) - a real 1B judgment ceiling, not an artifact. **Home-agent verdict:
+  not a viable reasoning brain** on these decision scenarios.
+- **Tool-use stays an open question, now pinned on tooling.** The model *tries* the
+  right call; SGLang 0.5.13's `minicpm5` parser doesn't surface it. Next: try a
+  newer SGLang build, file/check an upstream issue, or add an **XML-tolerant
+  fallback** to the harness's native parser (read `<function name=...>` from
+  content when `tool_calls` is empty) - that would salvage a fair tool-use score
+  without waiting on SGLang.
+- **Infra is the durable win:** Blackwell + rootless Podman + CDI + the SGLang
+  container is now a working **second runner** for thinking/tool models. Recorded
+  on the [SGLang stack page](../../../wiki/stacks/sglang.md). pip SGLang is a dead
+  end on this toolchain-less box; the container is the path.
+- Fed back into [minicpm5-1b.md](../../../wiki/models/minicpm5-1b.md).
+

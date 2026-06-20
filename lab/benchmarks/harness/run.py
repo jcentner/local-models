@@ -235,7 +235,9 @@ def main(argv: list[str] | None = None) -> int:
         "http://localhost:11434/v1" if args.provider == "openai-compatible"
         else "http://localhost:11434")
     if args.think is not None and args.provider != "ollama":
-        print("note: --think/--no-think only applies to the ollama provider; ignored.")
+        print("note: over openai-compatible, --think/--no-think is sent as "
+              "chat_template_kwargs.enable_thinking (works on SGLang; ignored by "
+              "servers that don't support it).")
     client = make_client(args.provider, args.model, resolved_base, sampling, args.api_key_env)
     judge = None
     if method == "llm_judge":
@@ -263,7 +265,8 @@ def main(argv: list[str] | None = None) -> int:
     runs_dir = LAB_BENCH / "runs"
     runs_dir.mkdir(exist_ok=True)
     ts = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    raw_path = runs_dir / f"{manifest['name']}-{args.model.replace(':', '_')}-{ts}.jsonl"
+    safe_model = args.model.replace(":", "_").replace("/", "_")
+    raw_path = runs_dir / f"{manifest['name']}-{safe_model}-{ts}.jsonl"
 
     item_pass = 0          # items with >=1 correct sample (observed pass@k)
     sample_correct = 0     # total correct samples (for avg)

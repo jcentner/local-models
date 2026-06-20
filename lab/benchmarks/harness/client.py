@@ -189,6 +189,11 @@ class OpenAICompatibleClient:
             payload["tools"] = tools
         if s.seed is not None:
             payload["seed"] = s.seed
+        if s.think is not None:
+            # SGLang/transformers chat-template flag to toggle a hybrid model's
+            # CoT (the openai-compatible analogue of Ollama's `think`). Servers
+            # that don't support it ignore the unknown field.
+            payload["chat_template_kwargs"] = {"enable_thinking": s.think}
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
             f"{self.base_url}/chat/completions",
