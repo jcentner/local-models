@@ -57,13 +57,14 @@ a { color: inherit; }
 .body { display: grid; grid-template-columns: 320px 1fr; min-height: 0; }
 .rail {
   border-right: 1px solid var(--border); overflow-y: auto; padding: 12px;
-  display: flex; flex-direction: column; gap: 2px;
+  display: flex; flex-direction: column; gap: 2px; min-height: 0;
 }
+.rail > * { flex-shrink: 0; }  /* scroll the rail instead of squashing rows */
 .rail .h {
   font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
   text-transform: uppercase; color: var(--dim); padding: 4px 6px 10px;
 }
-.detail { overflow-y: auto; padding: 20px 24px; }
+.detail { overflow-y: auto; padding: 20px 24px; min-height: 0; }
 .empty { color: var(--dimmer); font-family: var(--mono); font-size: 12px; padding: 40px 8px; }
 
 /* ---------- run list ---------- */
@@ -187,7 +188,9 @@ details[open] > summary::before { content: "▾ "; }
 }
 .wiki-rail .wfile:hover { color: var(--fg); background: var(--surface); }
 .wiki-rail .wfile.sel { color: var(--fg); background: var(--sel); box-shadow: inset 0 0 0 1px #333; }
-.wiki-rail .wdir { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 12px 6px 4px; }
+.wiki-rail .wdir { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 12px 6px 4px; }
+.wiki-rail .wdir:hover { color: var(--fg); }
 
 .md { max-width: 780px; line-height: 1.65; }
 .md h1, .md h2, .md h3 { letter-spacing: -.015em; margin: 1.4em 0 .5em; line-height: 1.25; }

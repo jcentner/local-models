@@ -394,7 +394,7 @@ function resolveWikiHref(href, currentPath) {
   return resolved.endsWith('.md') ? resolved : null;
 }
 
-function WikiPane({ files, sel, onSelect, htmlContent }) {
+function WikiPane({ files, sel, onSelect, htmlContent, expanded, onToggle }) {
   // group by top dir
   const groups = {};
   for (const f of files) {
@@ -417,13 +417,16 @@ function WikiPane({ files, sel, onSelect, htmlContent }) {
     <div class="body">
       <div class="rail wiki-rail">
         <div class="h">wiki · ${files.length}</div>
-        ${Object.entries(groups).map(([dir, fs]) => html`
-          <div class="wdir">${dir}</div>
-          ${fs.map((f) => html`
-            <button class=${'wfile' + (f === sel ? ' sel' : '')} onClick=${() => onSelect(f)} title=${f}>
-              ${f.includes('/') ? f.split('/').slice(1).join('/') : f}
-            </button>`)}
-        `)}
+        ${Object.entries(groups).map(([dir, fs]) => {
+          const open = expanded[dir] !== false;
+          return html`<div class="wgroup">
+            <button class="wdir" onClick=${() => onToggle(dir)}>${open ? '▾' : '▸'} ${dir}</button>
+            ${open ? fs.map((f) => html`
+              <button class=${'wfile' + (f === sel ? ' sel' : '')} onClick=${() => onSelect(f)} title=${f}>
+                ${f.includes('/') ? f.split('/').slice(1).join('/') : f}
+              </button>`) : null}
+          </div>`;
+        })}
       </div>
       <div class="detail">
         ${sel
@@ -443,6 +446,7 @@ function App() {
   const [wikiFiles, setWikiFiles] = useState(null);
   const [wikiSel, setWikiSel] = useState(null);
   const [wikiHtml, setWikiHtml] = useState('');
+  const [wikiExpanded, setWikiExpanded] = useState({});
 
   useEffect(() => {
     getJSON('/api/runs').then((d) => setRuns(d.runs || [])).catch(() => setRuns([]));
@@ -470,6 +474,7 @@ function App() {
   }, []);
 
   const openWikiPage = useCallback((p) => { setTab('wiki'); selectWiki(p); }, [selectWiki]);
+  const toggleWikiDir = useCallback((d) => setWikiExpanded((m) => ({ ...m, [d]: m[d] === false })), []);
 
   return html`
     <div class="shell">
@@ -488,7 +493,7 @@ function App() {
               ? html`<${BaseOverview} runs=${runs} base=${sel.base} wikiHas=${wikiHas} onOpenWiki=${openWikiPage} onSelectRun=${selectRun} />`
               : html`<${RunDetail} run=${sel && sel.type === 'run' ? runs[sel.i] : null} data=${data} wikiHas=${wikiHas} onOpenWiki=${openWikiPage} />`}
           </div>`
-        : html`<${WikiPane} files=${wikiFiles || []} sel=${wikiSel} onSelect=${selectWiki} htmlContent=${wikiHtml} />`}
+        : html`<${WikiPane} files=${wikiFiles || []} sel=${wikiSel} onSelect=${selectWiki} htmlContent=${wikiHtml} expanded=${wikiExpanded} onToggle=${toggleWikiDir} />`}
     </div>`;
 }
 

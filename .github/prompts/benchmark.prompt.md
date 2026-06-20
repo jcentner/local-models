@@ -48,12 +48,18 @@ Use the harness ([lab/benchmarks/harness](../../lab/benchmarks/harness/README.md
 cd lab/benchmarks
 # local (Ollama):
 python3 -m harness.run --benchmark ../../benchmarks/<name> --model <tag> \
-  --k <k> --temperature <t> --top-p <p> --top-k <tk> --num-ctx <ctx> --seed <s>
+  --base-model <id> --k <k> --temperature <t> --top-p <p> --top-k <tk> --num-ctx <ctx> --seed <s>
 # API (OpenAI-compatible, e.g. Z.AI GLM):
 python3 -m harness.run --benchmark ../../benchmarks/<name> --model <api-model> \
-  --provider openai-compatible --base-url <https://.../v1> --api-key-env <ENV_VAR> \
+  --base-model <id> --provider openai-compatible --base-url <https://.../v1> --api-key-env <ENV_VAR> \
   --price-in <usd_per_1M> --price-out <usd_per_1M> --k <k> --temperature <t>
 ```
+
+- Pass `--base-model <id>` so results group across config/serving variants. Use the
+  model's `wiki/models/<id>.md` slug; **required when `--model` is a config-alias
+  label** (e.g. `--model g4v2-A-Q3KM-f16-ngl99 --base-model gemma-4-12b-agentic-fable5`,
+  or both MiniCPM5 serving labels → `--base-model minicpm5-1b`). Defaults to `--model`
+  when omitted (fine for plain Ollama tags like `qwen3.5:4b`).
 
 - Use the model's **recommended sampling** from its page (e.g. VibeThinker = temp
   1.0, top_p 0.95, top_k 0); for deterministic suites use temp 0.
