@@ -337,6 +337,17 @@ them v0.1 and noted v0.2 (12 scenarios) is not yet re-run. Also propagated the
 verified `cu128`-on-sm_120 finding to stacks/vllm.md (+a SGLang cross-ref) and
 softened the SGLang page's vLLM contrast. Docs-only; index needed no new lines.
 
+## [2026-06-20] ingest | gemma-4-12B-coder-fable5 (Composer2.5 × Fable5) model page
+Community Python-coding finetune of the new (~10-day-old) Google Gemma 4 12B
+(`gemma4_unified`, dense 11.95B, Apache-2.0, 256K ctx, native thinking), distilled
+from execution-verified CoT (Composer 2.5 real + Fable 5 synthetic second-attempt).
+Researched via HF card + base model card + last30days (mixed reception: viral but
+with real benchmaxxing/degradation skepticism, garbled non-English, narrow Python
+specialist). Card ships **no v1 benchmarks** (its one table is the separate v2
+agentic model) -> staged a benchmark-it-vs-base experiment. Page + index updated;
+experiment stub at lab/experiments/2026-06-20-gemma-4-12b-coder-fable5-first-run.
+Fit: Q3_K_M (6.09 GB) full-GPU on 8 GB; Q4_K_M needs CPU offload. Not yet run.
+
 ## [2026-06-20] bench | MiniCPM5-1B via SGLang container (clean re-test)
 Stood SGLang up to remove the Ollama confounds. **pip SGLang 0.5.13 can't run on
 this toolchain-less box** (JIT kernels need gcc + CUDA toolkit we lack: FlashInfer

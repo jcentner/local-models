@@ -27,6 +27,7 @@ local-agent home-automation system.
 - [models/diffusiongemma.md](models/diffusiongemma.md) — diffusion/block-AR MoE (26B-A4B); first model to try.
 - [models/vibethinker-3b.md](models/vibethinker-3b.md) — WeiboAI 3B dense reasoning specialist (Qwen2.5-based, MIT); frontier-ish math/code scores, runs full-GPU here.
 - [models/minicpm5-1b.md](models/minicpm5-1b.md) — OpenBMB 1B dense on-device model (Llama-arch, Apache-2.0); hybrid reasoning + tool-use tilt, runs trivially here; home-agent brain candidate.
+- [models/gemma-4-12b-coder-fable5.md](models/gemma-4-12b-coder-fable5.md) — yuxinlu1 community **Python-coding** finetune of Gemma 4 12B (dense, `gemma4_unified`, Apache-2.0, 256K ctx, thinking); execution-verified CoT distillation; Q3_K_M fits 8 GB full-GPU; **no self-reported benchmarks → benchmark before trusting**.
 
 ### Aide models (STT / TTS / embeddings / retrieval)
 The non-generative support models for the home agent — see [concepts/aide-models.md](concepts/aide-models.md) for the track; ingest with [`/new-aide`](../.github/prompts/new-aide.prompt.md).
