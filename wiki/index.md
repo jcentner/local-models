@@ -39,10 +39,10 @@ The non-generative support models for the home agent — see [concepts/aide-mode
 - [benchmarks/README.md](benchmarks/README.md) — how the benchmark system works: definitions vs results, local/API providers + cost, scoring per domain, external-first strategy, the four workflow verbs.
 - [benchmarks/bfcl.md](benchmarks/bfcl.md) — Berkeley Function-Calling Leaderboard (tool-use; wraps bfcl-eval); **reference only** (registered-models-only, lags new models). Agentic eval lives in a model-agnostic custom scorer instead.
 - [benchmarks/humaneval-plus.md](benchmarks/humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk, pair with LiveCodeBench.
-- [benchmarks/decision-reasoning.md](benchmarks/decision-reasoning.md) — authored decision-making/reasoning scenarios, opus-4.8-judged; runs: VibeThinker 1/6, MiniCPM5-1B 0/6 (confounded by uncontrollable Ollama `<think>`).
+- [benchmarks/decision-reasoning.md](benchmarks/decision-reasoning.md) — authored decision-making/reasoning scenarios (**v0.2, 21 items** across 7 categories × 3 difficulty tiers + traps), opus-4.8-judged; v0.1 6-item runs: VibeThinker 1/6, MiniCPM5-1B 0/6 (re-run on v0.2 for `pass^k`).
 - [../benchmarks/code-basics/](../benchmarks/code-basics/README.md) — authored coding smoke test (`code_tests`, Podman sandbox); qwen3.5:4b 3/4.
-- [../benchmarks/email-triage/](../benchmarks/email-triage/README.md) — authored **agentic** tool-use set (answer-from-KB vs escalate; `support` toolset); model-agnostic `agentic` rollout + Copilot user-sim; the flexible alternative to BFCL.
-- [../benchmarks/home-automation/](../benchmarks/home-automation/README.md) — authored **agentic** lighthouse set (v0.2, 12 scenarios): smart-home act/confirm/refuse + scenes, ambiguity->ask, capability-refuse, compound act+read over a device world (`home_automation` toolset); deterministic device-state + confirm-before-sensitive scoring.
+- [benchmarks/email-triage.md](benchmarks/email-triage.md) — authored **agentic** support set (answer-from-KB vs escalate; `support` toolset); model-agnostic rollout + Copilot user-sim; qwen3.5:4b 4/5 native.
+- [benchmarks/home-automation.md](benchmarks/home-automation.md) — authored **agentic** lighthouse set (v0.2, 12 scenarios): smart-home act/confirm/refuse + scenes, ambiguity→ask, capability-refuse, compound act+read over a device world (`home_automation` toolset); gemma-4-12b 11/12, MiniCPM5-1B 7/12.
 
 ## Concepts
 - [concepts/llm-wiki-method.md](concepts/llm-wiki-method.md) — the Karpathy LLM-wiki pattern this repo runs on.

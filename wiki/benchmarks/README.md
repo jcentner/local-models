@@ -146,5 +146,6 @@ that fits these interests before hand-authoring. See the
 
 - [bfcl.md](bfcl.md) — Berkeley Function-Calling Leaderboard (tool-use/agentic; wraps bfcl-eval); **reference only** — registered-models-only rigidity lags new models; use for published comparisons, not the daily agentic driver.
 - [humaneval-plus.md](humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk.
-- [decision-reasoning.md](decision-reasoning.md) — authored decision-making/reasoning scenarios; `llm_judge` (opus-4.8); fresh/held-out.
-- [email-triage](../../benchmarks/email-triage/README.md) — authored **agentic** tool-use set (answer-from-KB vs escalate); `agentic` rollout + Copilot user-sim; fresh/held-out.
+- [decision-reasoning.md](decision-reasoning.md) — authored decision-making/reasoning scenarios (v0.2, 21 items; tiers + categories + traps); `llm_judge` (opus-4.8); fresh/held-out.
+- [email-triage.md](email-triage.md) — authored **agentic** support set (answer-from-KB vs escalate); `agentic` rollout + Copilot user-sim; fresh/held-out.
+- [home-automation.md](home-automation.md) — authored **agentic** lighthouse set (v0.2, 12 scenarios; act/confirm/refuse over a device world); `agentic` rollout, deterministic state/policy scoring; fresh/held-out.

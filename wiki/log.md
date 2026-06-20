@@ -511,3 +511,12 @@ the judge to reward flagging missing info / resisting the bait on T3 traps. benc
 0.2. Slice with --slice-by tier|category (harness support already shipped). v0.1
 6-item scores are NOT comparable to v0.2; re-run candidates. Validated: 21 unique ids,
 balanced meta, loads at k=3.
+
+## [2026-06-20] ingest | wiki/benchmarks pages for email-triage + home-automation
+Created the two missing benchmark *definition* pages (only decision-reasoning had one)
+so every custom set has a machine-independent wiki page per the AGENTS.md convention:
+wiki/benchmarks/email-triage.md (support agentic, reply vs escalate; qwen3.5:4b 4/5
+native) + home-automation.md (lighthouse agentic, act/confirm/refuse; gemma-4-12b
+11/12, MiniCPM5 7/12). Both note the k=1 reference scores predate the multi-pass
+default and link eval-reliability. index.md + benchmarks/README catalogs repointed
+from the dataset READMEs to these pages. Fixes the broken links from eval-reliability.md.
