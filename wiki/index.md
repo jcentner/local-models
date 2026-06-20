@@ -6,7 +6,8 @@ updated: 2026-06-19
 # Index
 
 The catalog of this wiki. Read this first to find a page, then drill in. Updated
-on every ingest. Timeline lives in [log.md](log.md). North-star
+on every ingest. Timeline lives in [log.md](log.md). **Forward queue / "what's
+next" lives in [backlog.md](backlog.md).** North-star
 [vision](../README.md#vision): evaluate models (local **and** API) toward a
 local-agent home-automation system.
 

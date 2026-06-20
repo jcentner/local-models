@@ -1,6 +1,6 @@
 # MiniCPM5-1B via SGLang — controlled thinking + native tool-calling
 
-- Date staged: 2026-06-20 (not yet run)
+- Date: 2026-06-20 (run complete — see Result below)
 - Machine: ASUS ProArt P16 (RTX 5070 Laptop, 8 GB, Blackwell sm_120, WSL2) —
   see [proart-p16](../../../wiki/hardware/proart-p16.md)
 - Stack under test: [SGLang](../../../wiki/stacks/sglang.md) (new second runner)

@@ -1,6 +1,6 @@
 # MiniCPM5-1B first run (smoke + tool-use tilt)
 
-- Date: 2026-05-19 model release; experiment staged 2026-06-19 (not yet run)
+- Date: 2026-05-19 model release; run 2026-06-19 (Ollama path — results below; motivated the [SGLang controlled re-test](../2026-06-20-minicpm5-sglang-controlled/README.md))
 - Machine: ASUS ProArt P16 (RTX 5070 Laptop, 8 GB, WSL2) — see [proart-p16](../../../wiki/hardware/proart-p16.md)
 - Question: Does MiniCPM5-1B actually deliver as a small **on-device tool-use /
   reasoning** model, or is the headline competition-math just DAPO-Math

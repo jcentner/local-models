@@ -423,3 +423,10 @@ a SGLang-vs-llama.cpp "pick per model" table. De-duplicated the CDI steps in
 sglang.md + cross-linked llama-cpp.md and hardware/proart-p16.md; added the index
 line. Machine-specific bits (free VRAM, -ngl, mem-fraction) kept on the hardware
 / experiment pages per the portability rule.
+
+## [2026-06-20] note | consolidated backlog board + fixed stale experiment headers
+Added wiki/backlog.md (the single forward "what's next" queue, link-heavy:
+now/next/research/models/maintenance), linked from index.md. Fixed two stale
+experiment headers that said "not yet run" but had completed Results: the
+MiniCPM5 SGLang-controlled run (2026-06-20) and the MiniCPM5 Ollama first-run
+(2026-06-19, the run that motivated the SGLang re-test).
