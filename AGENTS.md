@@ -93,6 +93,17 @@ Types: `ingest`, `query`, `bench`, `experiment`, `lint`, `note`.
   record: model, quant, runner+version, context length, GPU layers offloaded,
   tok/s (prompt + gen), VRAM/RAM used, date.
 
+### Models & aide models
+Two model tracks, two ingest verbs:
+- **Generative LLMs** (`/new-model`): the chat brains. Page in `wiki/models/<slug>.md`;
+  sampling / chat-template / quant table; evaluated via the benchmark harness below.
+- **Aide / support models** (`/new-aide`): the non-generative models the home agent
+  needs *around* the brain — STT (ears), TTS (voice), embeddings (memory),
+  retrieval/reranking (the tool router). **Different page schema** (an I/O contract
+  replaces sampling) and **objective-metric eval** (WER / NDCG@k / Recall@k / MOS via
+  an external eval), **not** the benchmark harness; mostly **not on Ollama**. Schema:
+  [wiki/concepts/aide-models.md](wiki/concepts/aide-models.md).
+
 ### Benchmarks (definitions vs results)
 A benchmark = **prompts + a scoring harness**, not just a list of questions. The
 two halves split across the wiki/lab boundary:
@@ -127,7 +138,8 @@ Definitions are machine-independent (wiki); results are **per-environment** (lab
 per-machine for local, per-provider + per-date for API (prices/models drift).
 Workflow verbs: `/new-benchmark` (ingest an existing one),
 `/benchmark <model>` (run + recommend), `/author-benchmark` (create a custom one
-with a critic loop). Log type: `bench`.
+with a critic loop). Log type: `bench`. (Model-ingest verbs `/new-model` and
+`/new-aide` are in the Models & aide models subsection above.)
 
 Machine facts: [wiki/hardware/proart-p16.md](wiki/hardware/proart-p16.md).
 **WSL2 caveat:** WSL sees ~15 GB RAM by default; raise via
@@ -143,10 +155,16 @@ nvidia-smi                             # GPU state (works in WSL2)
 
 Stack-specific install/run notes live in `wiki/stacks/`. Key constraints:
 - **Ollama** is the daily driver (GGUF, OpenAI-compatible API on :11434).
+- **SGLang / vLLM** = the second runner for **thinking / tool / aide models**
+  Ollama can't serve faithfully (`enable_thinking`, reasoning/tool parsers incl.
+  `minicpm5`); the harness reaches them via `--provider openai-compatible`.
+  **Serving-aware-per-model:** Ollama is the default; thinking/tool models route
+  to SGLang. See [wiki/stacks/sglang.md](wiki/stacks/sglang.md).
 - **Blackwell (sm_120) needs CUDA >= 12.8** for from-source builds / torch
-  wheels. The driver supports 13.2; no CUDA toolkit (`nvcc`) is installed, so
-  building llama.cpp from source needs the toolkit or a container.
-- Python work (Unsloth, vLLM) goes in a **venv**, never system python.
+  wheels (verified: a `cu128` torch wheel runs on sm_120 here). The driver
+  supports 13.2; no CUDA toolkit (`nvcc`) is installed, so building llama.cpp
+  from source needs the toolkit or a container.
+- Python work (Unsloth, vLLM, SGLang, PyLate) goes in a **venv**, never system python.
 
 ## Security & safety
 

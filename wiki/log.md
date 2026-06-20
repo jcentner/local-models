@@ -321,3 +321,18 @@ Corrects the prior "no torch" machine fact — there is still **no system torch*
 but the cu128 wheel works in a venv (the standard path for aide models / PyLate /
 future vLLM-SGLang). Updated hardware/proart-p16.md (torch-venv row + confirmed-
 working note) and the LFM2.5-ColBERT experiment (env now DONE, not pending).
+
+## [2026-06-20] note | Docs-consistency pass (register aide track + SGLang)
+Swept the schema/overview docs to match the latest additions (SGLang stack + the
+aide-model track had landed in pages/index but not in the canonical docs).
+AGENTS.md: new "Models & aide models" convention subsection (two tracks, two
+ingest verbs), an SGLang/serving-aware-per-model bullet in stacks constraints
+(+`cu128`-verified note, +PyLate/SGLang in the venv list), and a `/new-aide`
+pointer on the workflow-verbs line. README: repo-map (+sglang, models = generative
++ aide), workflows table (+`/new-aide`), and a vision paragraph naming the aide
+models. wiki/benchmarks/README.md: an "aide models eval differently" callout, the
+SGLang local `openai-compatible` target in the local-vs-API section, and **fixed a
+stale fact** — the 6/6·5/6 home-automation scores were v0.1 (6 scenarios); marked
+them v0.1 and noted v0.2 (12 scenarios) is not yet re-run. Also propagated the
+verified `cu128`-on-sm_120 finding to stacks/vllm.md (+a SGLang cross-ref) and
+softened the SGLang page's vLLM contrast. Docs-only; index needed no new lines.

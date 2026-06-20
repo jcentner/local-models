@@ -28,8 +28,8 @@ wiki/        LLM-maintained knowledge base
   index.md   catalog of every page (read this first)
   log.md     append-only timeline (greppable: "## [date] type | title")
   hardware/  this machine, the GPU, the NPU
-  stacks/    ollama, llama.cpp, vllm, lemonade, unsloth
-  models/    one page per model tried
+  stacks/    ollama, llama.cpp, vllm, sglang, lemonade, unsloth
+  models/    one page per model tried (generative + aide: STT/TTS/embeddings/retrieval)
   benchmarks/ what each benchmark measures + how it's scored (definitions)
   concepts/  quantization, the llm-wiki method, wsl2 memory, ...
 benchmarks/  authored benchmark datasets (prompts + separate answer keys)
@@ -51,6 +51,7 @@ Slash-prompts in [`.github/prompts/`](.github/prompts/) drive the recurring work
 | Prompt | Does |
 |---|---|
 | `/new-model <model>` | research a model (last30days + primary sources), write its wiki page, stage testing |
+| `/new-aide <model>` | research a support model (STT / TTS / embeddings / retrieval), document it, stage a get-a-feel test |
 | `/new-benchmark <name>` | ingest + document an existing public benchmark |
 | `/benchmark <model>` | recommend relevant benchmarks, estimate cost, run via the harness, record results |
 | `/author-benchmark <scenario>` | author a fresh held-out benchmark with a gpt-5.5/opus-4.8 critic loop |
@@ -92,7 +93,12 @@ agentic workflows / triage) and **custom** benchmarks for my use-cases (home
 automation, email triage), runnable against local or API inference, with results
 (capability + cost) captured uniformly. Local (Ollama) is the daily driver and the
 bias; API inference (e.g. Z.AI GLM) is a first-class comparison point — a $20/mo
-API may beat buying hardware to run a weaker model. Build toward the lighthouse.
+API may beat buying hardware to run a weaker model.
+
+The agent also needs **aide models** around its brain — STT (ears), TTS (voice),
+embeddings (memory), retrieval (the tool router) — tracked separately via
+[`/new-aide`](.github/prompts/new-aide.prompt.md)
+([concepts/aide-models.md](wiki/concepts/aide-models.md)). Build toward the lighthouse.
 
 ## Status
 

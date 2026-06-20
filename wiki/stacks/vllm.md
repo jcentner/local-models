@@ -16,7 +16,9 @@ benchmarking experiments.
 - **Linux-only** — fine, we're in WSL2 Ubuntu (vLLM even notes WSL works; it caps
   guest RAM at 50% by default, which is our [WSL memory issue](../concepts/wsl2-memory.md)).
 - **Blackwell needs CUDA >= 12.8.** vLLM ships wheels built for CUDA 12.8/12.9/13.0;
-  install the matching one. Min GPU compute capability 7.5 (sm_120 is fine).
+  install the matching one. Min GPU compute capability 7.5 (sm_120 is fine). A
+  `cu128` torch wheel is **confirmed working** on this box's sm_120
+  ([proart-p16](../hardware/proart-p16.md)), so the 12.8 path is de-risked.
 - **VRAM-hungry.** vLLM pre-allocates a large KV-cache pool and is happiest with
   more than 8 GB. Usable for small models (e.g. a 4B AWQ) but you lose the
   throughput edge that justifies it at tiny scale.
@@ -40,4 +42,6 @@ Source: [vLLM GPU install docs](https://docs.vllm.ai/en/latest/getting_started/i
 ## Verdict for now
 
 Not the daily driver here. Revisit for (a) a batched-throughput benchmark vs
-Ollama/llama.cpp, or (b) post-upgrade. Daily work stays on [Ollama](ollama.md).
+Ollama/llama.cpp, or (b) post-upgrade. Daily work stays on [Ollama](ollama.md);
+for thinking/tool models that need **control** (enable_thinking, tool parsers)
+rather than throughput, [SGLang](sglang.md) is the sibling runner.

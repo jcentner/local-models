@@ -1,7 +1,7 @@
 ---
 title: Benchmarks — overview
 tags: [benchmark, concept, index]
-updated: 2026-06-19
+updated: 2026-06-20
 status: living
 ---
 
@@ -9,6 +9,11 @@ status: living
 
 How this repo thinks about, documents, runs, and authors benchmarks. Read this
 before using any of the benchmark prompts.
+
+> **Aide models eval differently.** STT / TTS / embeddings / retrieval don't use
+> these scorers — they have objective metrics (WER / NDCG@k / Recall@k / MOS) and
+> their own track: [concepts/aide-models.md](../concepts/aide-models.md) +
+> [`/new-aide`](../../.github/prompts/new-aide.prompt.md).
 
 **Status (2026-06-19):** **four working scorers** — `llm_judge` (frontier judge =
 opus-4.8 via Copilot CLI), `equivalence`, `code_tests` (locked-down **Podman**
@@ -19,8 +24,8 @@ function-calling protocol). Authored benchmarks run end to end:
 [decision-reasoning](decision-reasoning.md) (VibeThinker 1/6, MiniCPM5 0/6\*),
 `code-basics` (qwen3.5:4b 3/4), [email-triage](../../benchmarks/email-triage/README.md)
 (qwen3.5:4b 4/5 native · 3/5 prompt; MiniCPM5 0/5\*),
-[home-automation](../../benchmarks/home-automation/README.md) (qwen3.5:4b 6/6
-prompt · 5/6 native). \*MiniCPM5 confounded by uncontrollable `<think>` over Ollama.
+[home-automation](../../benchmarks/home-automation/README.md) (v0.2, 12 scenarios;
+v0.1 6-scenario scores qwen3.5:4b 6/6 prompt · 5/6 native — v0.2 not yet re-run). \*MiniCPM5 confounded by uncontrollable `<think>` over Ollama.
 Models under test run **local (Ollama) or API (OpenAI-compatible,
 e.g. Z.AI GLM)** via `--provider`; results record **cost** alongside capability.
 **External-first:** wrap existing benchmarks aligned with my interests
@@ -71,7 +76,9 @@ totals and `cost_usd` (from `--price-in/--price-out`, USD per 1M tokens; local =
 the home agent: a $20/mo API may beat buying hardware to run a weaker local model.
 Ollama also serves an OpenAI-compatible endpoint on `:11434/v1`, so the
 `openai-compatible` path can target a local model too (handy for wrapping external
-harnesses like BFCL).
+harnesses like BFCL). **[SGLang](../stacks/sglang.md)** is the other local
+`openai-compatible` target — for **thinking / tool models** Ollama can't serve
+faithfully (`enable_thinking`, native tool parsers incl. `minicpm5`).
 
 ## Methodology (non-negotiable)
 

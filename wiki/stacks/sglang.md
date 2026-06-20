@@ -43,8 +43,9 @@ This box: [ProArt P16](../hardware/proart-p16.md), RTX 5070 Laptop (Blackwell
 
 - **Blackwell is supported.** SGLang ships CUDA-13 wheels/images by default and
   lists Blackwell (5090) under supported hardware; our driver exposes a CUDA 13.2
-  runtime, so the default build matches — no `-cu12` gymnastics needed (unlike
-  [vLLM](vllm.md), where we noted the 12.8 wheel dance).
+  runtime, so the default build matches — no `-cu12` gymnastics needed (vLLM has
+  you pick the matching cu12x/cu13 wheel — doable, and a `cu128` torch wheel is
+  confirmed working on sm_120 here).
 - **8 GB is workable for small models.** A 1B like [MiniCPM5-1B](../models/minicpm5-1b.md)
   is ~2.2 GB in BF16 and fits with room for KV cache. The catch is SGLang
   **pre-allocates a static KV pool** (`--mem-fraction-static`, default ~0.9);
