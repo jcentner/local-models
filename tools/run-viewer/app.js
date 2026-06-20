@@ -474,12 +474,15 @@ function relK(r) {
 // samples per item for a run row (the pass^k exponent), default 1.
 function runK(r) { return parseInt(r.k, 10) || 1; }
 // per-item-group reliability over a subset of grouped items (for meta slicing).
-function sliceMetrics(gs) {
+// k = the run's declared sample count: an item counts toward pass^k only if all k
+// declared samples are correct, so an incomplete item can't masquerade as reliable.
+function sliceMetrics(gs, expectedK) {
   const n = gs.length;
   if (!n) return { n: 0, obs: NaN, ph: NaN, flaky: 0 };
+  const k = expectedK || 1;
   const obs = gs.filter((g) => g.nCorrect >= 1).length / n;
-  const ph = gs.filter((g) => g.k > 0 && g.nCorrect >= g.k).length / n;
-  const flaky = gs.filter((g) => g.nCorrect > 0 && g.nCorrect < g.k).length;
+  const ph = gs.filter((g) => g.nCorrect >= k).length / n;
+  const flaky = gs.filter((g) => g.nCorrect > 0 && g.nCorrect < k).length;
   return { n, obs, ph, flaky };
 }
 // per-sample pass/fail dots for a grouped item (shared by run detail + compare).
@@ -568,17 +571,25 @@ function RunDetail({ runs, runIndex, run, data, wikiHas, onOpenWiki, onCompare }
   // meta slicing (prototype): per-item meta rides on each sample line once the
   // harness emits it. Discover small categorical keys (2..<n distinct values, so
   // unique-per-item keys like persona and object-valued keys are excluded).
-  const metaOf = (g) => (g.rep && g.rep.meta) || (g.samples[0] && g.samples[0].meta) || {};
-  const keyVals = {};
+  const metaOf = (g) => {
+    const m = (g.rep && g.rep.meta) || (g.samples[0] && g.samples[0].meta);
+    return (m && typeof m === 'object' && !Array.isArray(m)) ? m : {};
+  };
+  const keyVals = {}, keyCount = {};
   for (const g of groups) for (const [kk, vv] of Object.entries(metaOf(g))) {
     if (vv == null || (typeof vv !== 'string' && typeof vv !== 'number')) continue;
     (keyVals[kk] = keyVals[kk] || new Set()).add(String(vv));
+    keyCount[kk] = (keyCount[kk] || 0) + 1;
   }
-  const sliceKeys = Object.keys(keyVals).filter((kk) => { const c = keyVals[kk].size; return c >= 2 && c < groups.length && c <= 12; });
+  // sliceable: present on EVERY item (full coverage), 2..<n distinct values, <=12 buckets.
+  const sliceKeys = Object.keys(keyVals).filter((kk) => {
+    const c = keyVals[kk].size;
+    return keyCount[kk] === groups.length && c >= 2 && c < groups.length && c <= 12;
+  });
   const activeKey = sliceKeys.includes(sliceKey) ? sliceKey : '';
   const sliceBuckets = {};
   if (activeKey) for (const g of groups) { const v = String(metaOf(g)[activeKey] ?? '—'); (sliceBuckets[v] = sliceBuckets[v] || []).push(g); }
-  const sliceRows = Object.entries(sliceBuckets).map(([v, gs]) => ({ v, ...sliceMetrics(gs) })).sort((a, b) => (b.ph - a.ph));
+  const sliceRows = Object.entries(sliceBuckets).map(([v, gs]) => ({ v, ...sliceMetrics(gs, expectedK) })).sort((a, b) => (b.ph - a.ph));
   const pool = (activeKey && sliceVal != null) ? groups.filter((g) => String(metaOf(g)[activeKey] ?? '—') === sliceVal) : groups;
   const failCount = pool.filter((g) => g.hasFail).length;
   const shown = failsOnly ? pool.filter((g) => g.hasFail) : pool;
@@ -605,7 +616,7 @@ function RunDetail({ runs, runIndex, run, data, wikiHas, onOpenWiki, onCompare }
         <span>sampling <b>${run.sampling || '—'}</b></span>
       </div>
       <div class="controls">
-        <button class=${'toggle' + (failsOnly ? ' on' : '')} disabled=${failCount === 0}
+        <button class=${'toggle' + (failsOnly ? ' on' : '')} disabled=${!failsOnly && failCount === 0}
           onClick=${() => setFailsOnly((v) => !v)} title="show only items with at least one incorrect sample (includes flaky items at k>1)">failures ${failCount}</button>
         ${targets.length ? html`<select class="cmpsel" onChange=${(e) => { const v = e.target.value; if (v) onCompare(runIndex, parseInt(v, 10)); e.target.value = ''; }}>
           <option value="">compare vs…</option>
@@ -620,7 +631,10 @@ function RunDetail({ runs, runIndex, run, data, wikiHas, onOpenWiki, onCompare }
       ${activeKey ? html`<table class="matrix slice">
         <thead><tr><th>${activeKey}</th><th>n</th><th>pass^k</th><th>pass@k</th><th>flaky</th></tr></thead>
         <tbody>
-          ${sliceRows.map((s) => html`<tr class=${'slicerow' + (sliceVal === s.v ? ' sel' : '')} onClick=${() => setSliceVal(sliceVal === s.v ? null : s.v)} title="click to filter to this group">
+          ${sliceRows.map((s) => html`<tr class=${'slicerow' + (sliceVal === s.v ? ' sel' : '')} role="button" tabindex="0" aria-pressed=${sliceVal === s.v}
+            onClick=${() => setSliceVal(sliceVal === s.v ? null : s.v)}
+            onKeyDown=${(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSliceVal(sliceVal === s.v ? null : s.v); } }}
+            title="filter to this group (Enter/Space)">
             <td class="vname">${s.v}</td><td>${s.n}</td>
             <td><span class=${'pill ' + (Number.isNaN(s.ph) ? 'neutral' : passClass(s.ph))}>${Number.isNaN(s.ph) ? '—' : fmt(s.ph)}</span></td>
             <td><span class=${'pill ' + (Number.isNaN(s.obs) ? 'neutral' : passClass(s.obs))}>${Number.isNaN(s.obs) ? '—' : fmt(s.obs)}</span></td>
