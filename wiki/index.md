@@ -25,6 +25,7 @@ local-agent home-automation system.
 ## Models
 - [models/diffusiongemma.md](models/diffusiongemma.md) — diffusion/block-AR MoE (26B-A4B); first model to try.
 - [models/vibethinker-3b.md](models/vibethinker-3b.md) — WeiboAI 3B dense reasoning specialist (Qwen2.5-based, MIT); frontier-ish math/code scores, runs full-GPU here.
+- [models/minicpm5-1b.md](models/minicpm5-1b.md) — OpenBMB 1B dense on-device model (Llama-arch, Apache-2.0); hybrid reasoning + tool-use tilt, runs trivially here; home-agent brain candidate.
 
 ## Benchmarks
 - [benchmarks/README.md](benchmarks/README.md) — how the benchmark system works: definitions vs results, local/API providers + cost, scoring per domain, external-first strategy, the four workflow verbs.

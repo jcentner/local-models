@@ -122,3 +122,16 @@ demoted in wiki/benchmarks/README + index + bfcl.md. Removed the local
 `~/.venvs/bfcl` (5.5 GB) + runs/bfcl. last30days standout new model: **MiniCPM-5**
 (agentic tool-use, 4-8 GB tier) - queued for `/new-model`. GLM-5.2 = the new
 open-weights leader but API-scale, not 8 GB-local.
+
+## [2026-06-19] ingest | MiniCPM5-1B model page
+OpenBMB's MiniCPM5-1B ("MiniCPM-5"), released 2026-05-19: a 1B dense
+`LlamaForCausalLM` on-device model, Apache-2.0, 128K context, hybrid Think/No
+Think in one checkpoint. Positioned as 1B-class open-source SOTA (avg 42.57 vs
+35.61 in-class), strongest at agentic tool use, code, and competition math — the
+tool-use tilt makes it a real home-agent-brain candidate, unlike the math-only
+specialists. Stock arch = loads in Ollama/llama.cpp/vLLM/SGLang directly; GGUF
+Q4_K_M 688 MB / Q8_0 1.15 GB / F16 2.17 GB, runs trivially on the 8 GB GPU
+(community: 100+ tok/s). Flagged the competition-math benchmaxxing risk (Reasoning
+RL on DAPO-Math-17k) — verify on fresh problems + the tool-use axis. Wrote
+wiki/models/minicpm5-1b.md; staged lab/experiments/2026-06-19-minicpm5-1b-first-run.
+Weights not pulled yet (awaiting go-ahead).
