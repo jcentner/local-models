@@ -473,6 +473,15 @@ function relK(r) {
 }
 // samples per item for a run row (the pass^k exponent), default 1.
 function runK(r) { return parseInt(r.k, 10) || 1; }
+// per-item-group reliability over a subset of grouped items (for meta slicing).
+function sliceMetrics(gs) {
+  const n = gs.length;
+  if (!n) return { n: 0, obs: NaN, ph: NaN, flaky: 0 };
+  const obs = gs.filter((g) => g.nCorrect >= 1).length / n;
+  const ph = gs.filter((g) => g.k > 0 && g.nCorrect >= g.k).length / n;
+  const flaky = gs.filter((g) => g.nCorrect > 0 && g.nCorrect < g.k).length;
+  return { n, obs, ph, flaky };
+}
 // per-sample pass/fail dots for a grouped item (shared by run detail + compare).
 function sampleDots(g) {
   const cls = (s) => (s.result && s.result.correct === true ? 'ok' : s.result && s.result.correct === false ? 'no' : 'na');
@@ -539,7 +548,9 @@ function CompareView({ runs, a, b, da, db, onExit }) {
 // ---------- run detail ----------
 function RunDetail({ runs, runIndex, run, data, wikiHas, onOpenWiki, onCompare }) {
   const [failsOnly, setFailsOnly] = useState(false);
-  useEffect(() => { setFailsOnly(false); }, [runIndex]);
+  const [sliceKey, setSliceKey] = useState('');
+  const [sliceVal, setSliceVal] = useState(null);
+  useEffect(() => { setFailsOnly(false); setSliceKey(''); setSliceVal(null); }, [runIndex]);
   if (!run) return html`<div class="empty">Select a run, a model header to compare variants, or browse the leaderboard.</div>`;
   if (!data) return html`<div class="empty">Loading ${run.raw_file} …</div>`;
   if (data.error) return html`<div class="empty">${data.error}: ${data.file || ''}</div>`;
@@ -554,8 +565,23 @@ function RunDetail({ runs, runIndex, run, data, wikiHas, onOpenWiki, onCompare }
   const groups = groupSamples(data.items);
   const expectedK = runK(run);
   const k = Math.max(expectedK, groups.reduce((m, g) => Math.max(m, g.k), 1));
-  const failCount = groups.filter((g) => g.hasFail).length;
-  const shown = failsOnly ? groups.filter((g) => g.hasFail) : groups;
+  // meta slicing (prototype): per-item meta rides on each sample line once the
+  // harness emits it. Discover small categorical keys (2..<n distinct values, so
+  // unique-per-item keys like persona and object-valued keys are excluded).
+  const metaOf = (g) => (g.rep && g.rep.meta) || (g.samples[0] && g.samples[0].meta) || {};
+  const keyVals = {};
+  for (const g of groups) for (const [kk, vv] of Object.entries(metaOf(g))) {
+    if (vv == null || (typeof vv !== 'string' && typeof vv !== 'number')) continue;
+    (keyVals[kk] = keyVals[kk] || new Set()).add(String(vv));
+  }
+  const sliceKeys = Object.keys(keyVals).filter((kk) => { const c = keyVals[kk].size; return c >= 2 && c < groups.length && c <= 12; });
+  const activeKey = sliceKeys.includes(sliceKey) ? sliceKey : '';
+  const sliceBuckets = {};
+  if (activeKey) for (const g of groups) { const v = String(metaOf(g)[activeKey] ?? '—'); (sliceBuckets[v] = sliceBuckets[v] || []).push(g); }
+  const sliceRows = Object.entries(sliceBuckets).map(([v, gs]) => ({ v, ...sliceMetrics(gs) })).sort((a, b) => (b.ph - a.ph));
+  const pool = (activeKey && sliceVal != null) ? groups.filter((g) => String(metaOf(g)[activeKey] ?? '—') === sliceVal) : groups;
+  const failCount = pool.filter((g) => g.hasFail).length;
+  const shown = failsOnly ? pool.filter((g) => g.hasFail) : pool;
   const obs = parseFloat(run.observed_pass_at_k);
   const ph = relK(run);
   const flaky = parseInt(run.flaky_items, 10);
@@ -585,8 +611,24 @@ function RunDetail({ runs, runIndex, run, data, wikiHas, onOpenWiki, onCompare }
           <option value="">compare vs…</option>
           ${targets.map(({ r, i }) => html`<option value=${i}>${r.model} · ${fmt(r.observed_pass_at_k)}</option>`)}
         </select>` : null}
-        ${failsOnly ? html`<span class="hint">${shown.length} of ${groups.length} items</span>` : null}
+        ${sliceKeys.length ? html`<select class="cmpsel" onChange=${(e) => { setSliceKey(e.target.value); setSliceVal(null); }}>
+          <option value="" selected=${!activeKey}>slice by…</option>
+          ${sliceKeys.map((kk) => html`<option value=${kk} selected=${kk === activeKey}>by ${kk}</option>`)}
+        </select>` : null}
+        ${failsOnly ? html`<span class="hint">${shown.length} of ${pool.length} items</span>` : null}
       </div>
+      ${activeKey ? html`<table class="matrix slice">
+        <thead><tr><th>${activeKey}</th><th>n</th><th>pass^k</th><th>pass@k</th><th>flaky</th></tr></thead>
+        <tbody>
+          ${sliceRows.map((s) => html`<tr class=${'slicerow' + (sliceVal === s.v ? ' sel' : '')} onClick=${() => setSliceVal(sliceVal === s.v ? null : s.v)} title="click to filter to this group">
+            <td class="vname">${s.v}</td><td>${s.n}</td>
+            <td><span class=${'pill ' + (Number.isNaN(s.ph) ? 'neutral' : passClass(s.ph))}>${Number.isNaN(s.ph) ? '—' : fmt(s.ph)}</span></td>
+            <td><span class=${'pill ' + (Number.isNaN(s.obs) ? 'neutral' : passClass(s.obs))}>${Number.isNaN(s.obs) ? '—' : fmt(s.obs)}</span></td>
+            <td>${s.flaky || '—'}</td>
+          </tr>`)}
+        </tbody>
+      </table>
+      ${sliceVal != null ? html`<div class="hint">filtered to ${activeKey} = ${sliceVal} · click the row again to clear</div>` : null}` : null}
       <div class="cards">
         ${shown.map((g) => html`<${SampleGroup} g=${g} Renderer=${Renderer} expectedK=${expectedK} key=${g.id} />`)}
       </div>

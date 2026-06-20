@@ -60,6 +60,13 @@ sample) and a `compare vs…` dropdown (any other run of the same benchmark).
 item's `n/k`; rows where their pass rate differs are flagged `differs`, and a
 `differences N` toggle hides the rest.
 
+When a run's per-item records carry a `meta` object (e.g. `tier`/`category`), a
+`slice by…` dropdown appears: it shows a per-group reliability breakdown
+(`n · pass^k · pass@k · flaky`) and clicking a group filters the items to it.
+Sliceable keys are auto-discovered (small categorical fields; unique-per-item
+keys like `persona` are excluded). This is inert until the harness emits `meta`
+on the sample lines.
+
 The **wiki** tab lists `wiki/**/*.md` grouped by collapsible folders and renders a
 page read-only (YAML frontmatter stripped, `[[wikilinks]]` flattened), with a
 **full-text search** box (ranked pages + line-numbered snippets; click to open).
