@@ -25,7 +25,8 @@ first load needs internet; runs and wiki data are served locally.
 
 The left rail groups every row in `results.csv` by **base model → variant → run**
 (`base_model` is the harness-recorded canonical id; the `model` column is the
-config/quant variant label). Runs whose raw `.jsonl` is absent on this machine
+config/quant variant label) and has a **filter box** (token match, so "gemma 4"
+finds `gemma-4-12b-…`). Runs whose raw `.jsonl` is absent on this machine
 show `no raw` and are disabled. Clicking a **base-model header** opens a comparison
 matrix (variants × benchmarks, best pass@k per cell, click a cell to open that
 run) — handy for quant/serving sweeps. Clicking a **run** renders one card per
@@ -42,8 +43,10 @@ A run's detail header shows the variant label, its **base model**, and a
 `model page ↗` link to `wiki/models/<base_model>.md` when that page exists
 (`base_model` doubles as the wiki slug, so no separate mapping is needed).
 
-The **wiki** tab lists `wiki/**/*.md` grouped by folder and renders a page
-read-only (YAML frontmatter stripped, `[[wikilinks]]` flattened). Links between
+The **wiki** tab lists `wiki/**/*.md` grouped by collapsible folders and renders a
+page read-only (YAML frontmatter stripped, `[[wikilinks]]` flattened), with a
+**full-text search** box (ranked pages + line-numbered snippets; click to open).
+Links between
 wiki pages navigate **in-app**; external and repo-relative (`../`) links open in a
 new tab. It is deliberately a minimal reader, **not** Obsidian — no graph,
 backlinks, dataview, or embeds. Use Obsidian for real wiki navigation.
@@ -53,6 +56,7 @@ backlinks, dataview, or embeds. Use Obsidian for real wiki navigation.
 - `GET /api/runs` → `results.csv` rows (+ `raw_exists`).
 - `GET /api/run?file=<name.jsonl>` → parsed items (bare filename within `runs/`).
 - `GET /api/wiki` → list of markdown paths; `?path=<rel.md>` → raw markdown.
+- `GET /api/wiki/search?q=<text>` → per-file substring hits (path, count, line snippets).
 
 ## Notes / limits
 

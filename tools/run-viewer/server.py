@@ -92,6 +92,29 @@ def read_wiki(rel: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def search_wiki(query: str, max_files: int = 60, max_hits: int = 5) -> list[dict]:
+    """Case-insensitive substring search across wiki/*.md; returns per-file hits."""
+    q = query.lower()
+    out: list[dict] = []
+    for path in sorted(WIKI_DIR.rglob("*.md")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        hits, total = [], 0
+        for n, line in enumerate(text.splitlines(), 1):
+            if q in line.lower():
+                total += 1
+                if len(hits) < max_hits:
+                    hits.append({"line": n, "text": line.strip()[:200]})
+        if hits:
+            out.append({"path": str(path.relative_to(WIKI_DIR)), "count": total, "hits": hits})
+        if len(out) >= max_files:
+            break
+    out.sort(key=lambda r: -r["count"])
+    return out
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "RunViewer/1.0"
 
@@ -160,6 +183,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json({"error": "wiki file not found", "path": rel}, status=404)
             except ValueError as exc:
                 self._send_json({"error": str(exc)}, status=400)
+            return
+
+        if path == "/api/wiki/search":
+            q = (qs.get("q") or [""])[0].strip()[:200]
+            self._send_json({"query": q, "results": search_wiki(q) if q else []})
             return
 
         self._send_text("Not found", status=404)

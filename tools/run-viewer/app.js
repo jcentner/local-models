@@ -104,22 +104,36 @@ function groupRuns(runs) {
   const bases = [];
   const bmap = new Map();
   runs.forEach((r, i) => {
+    const idx = r.__i ?? i;
     const base = r.base_model || r.model;
     let b = bmap.get(base);
     if (!b) { b = { base, variants: [], vmap: new Map(), runs: [] }; bmap.set(base, b); bases.push(b); }
-    b.runs.push(i);
+    b.runs.push(idx);
     let v = b.vmap.get(r.model);
     if (!v) { v = { label: r.model, runs: [] }; b.vmap.set(r.model, v); b.variants.push(v); }
-    v.runs.push(i);
+    v.runs.push(idx);
   });
   return bases;
 }
 
-function GroupedRail({ runs, sel, expanded, onToggle, onSelectRun, onSelectBase }) {
-  const bases = groupRuns(runs);
+// Runs filter: every whitespace token must appear in base/model/benchmark/scoring
+// (separators normalized so "gemma 4" matches "gemma-4-12b").
+function matchRun(r, q) {
+  if (!q || !q.trim()) return true;
+  const hay = `${r.base_model || ''} ${r.model} ${r.benchmark} ${r.scoring} ${r.provider}`
+    .toLowerCase().replace(/[-_:.]+/g, ' ');
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every((t) => hay.includes(t));
+}
+
+function GroupedRail({ runs, sel, expanded, onToggle, onSelectRun, onSelectBase, query, onQuery }) {
+  const shown = runs.filter((r) => matchRun(r, query));
+  const bases = groupRuns(shown);
   return html`
     <div class="rail">
-      <div class="h">${runs.length} runs · ${bases.length} models</div>
+      <input class="search" type="search" placeholder="filter model / benchmark…" value=${query}
+        onInput=${(e) => onQuery(e.target.value)} />
+      <div class="h">${shown.length} runs · ${bases.length} models</div>
+      ${bases.length === 0 ? html`<div class="railempty">no matches</div>` : null}
       ${bases.map((b) => {
         const open = expanded[b.base] !== false;
         const baseSel = sel && sel.type === 'base' && sel.base === b.base;
@@ -394,7 +408,7 @@ function resolveWikiHref(href, currentPath) {
   return resolved.endsWith('.md') ? resolved : null;
 }
 
-function WikiPane({ files, sel, onSelect, htmlContent, expanded, onToggle }) {
+function WikiPane({ files, sel, onSelect, htmlContent, expanded, onToggle, query, onQuery, results }) {
   // group by top dir
   const groups = {};
   for (const f of files) {
@@ -416,17 +430,27 @@ function WikiPane({ files, sel, onSelect, htmlContent, expanded, onToggle }) {
   return html`
     <div class="body">
       <div class="rail wiki-rail">
-        <div class="h">wiki · ${files.length}</div>
-        ${Object.entries(groups).map(([dir, fs]) => {
-          const open = expanded[dir] !== false;
-          return html`<div class="wgroup">
-            <button class="wdir" onClick=${() => onToggle(dir)}>${open ? '▾' : '▸'} ${dir}</button>
-            ${open ? fs.map((f) => html`
-              <button class=${'wfile' + (f === sel ? ' sel' : '')} onClick=${() => onSelect(f)} title=${f}>
-                ${f.includes('/') ? f.split('/').slice(1).join('/') : f}
-              </button>`) : null}
-          </div>`;
-        })}
+        <input class="search" type="search" placeholder="search wiki text…" value=${query}
+          onInput=${(e) => onQuery(e.target.value)} />
+        ${results !== null
+          ? html`<div class="h">${results.length} pages</div>
+              ${results.length === 0 ? html`<div class="railempty">no matches</div>` : null}
+              ${results.map((res) => html`
+                <button class=${'wresult' + (res.path === sel ? ' sel' : '')} onClick=${() => onSelect(res.path)} title=${res.path}>
+                  <span class="wrpath">${res.path} <span class="cnt">${res.count}</span></span>
+                  ${res.hits.slice(0, 2).map((h) => html`<span class="wrsnip">L${h.line} ${h.text}</span>`)}
+                </button>`)}`
+          : html`<div class="h">wiki · ${files.length}</div>
+              ${Object.entries(groups).map(([dir, fs]) => {
+                const open = expanded[dir] !== false;
+                return html`<div class="wgroup">
+                  <button class="wdir" onClick=${() => onToggle(dir)}>${open ? '▾' : '▸'} ${dir}</button>
+                  ${open ? fs.map((f) => html`
+                    <button class=${'wfile' + (f === sel ? ' sel' : '')} onClick=${() => onSelect(f)} title=${f}>
+                      ${f.includes('/') ? f.split('/').slice(1).join('/') : f}
+                    </button>`) : null}
+                </div>`;
+              })}`}
       </div>
       <div class="detail">
         ${sel
@@ -447,9 +471,12 @@ function App() {
   const [wikiSel, setWikiSel] = useState(null);
   const [wikiHtml, setWikiHtml] = useState('');
   const [wikiExpanded, setWikiExpanded] = useState({});
+  const [runQuery, setRunQuery] = useState('');
+  const [wikiQuery, setWikiQuery] = useState('');
+  const [wikiResults, setWikiResults] = useState(null);
 
   useEffect(() => {
-    getJSON('/api/runs').then((d) => setRuns(d.runs || [])).catch(() => setRuns([]));
+    getJSON('/api/runs').then((d) => setRuns((d.runs || []).map((r, i) => ({ ...r, __i: i })))).catch(() => setRuns([]));
     getJSON('/api/wiki').then((d) => setWikiFiles(d.files || [])).catch(() => setWikiFiles([]));
   }, []);
 
@@ -475,6 +502,11 @@ function App() {
 
   const openWikiPage = useCallback((p) => { setTab('wiki'); selectWiki(p); }, [selectWiki]);
   const toggleWikiDir = useCallback((d) => setWikiExpanded((m) => ({ ...m, [d]: m[d] === false })), []);
+  const searchWiki = useCallback((q) => {
+    setWikiQuery(q);
+    if (!q.trim()) { setWikiResults(null); return; }
+    getJSON('/api/wiki/search?q=' + encodeURIComponent(q)).then((d) => setWikiResults(d.results || [])).catch(() => setWikiResults([]));
+  }, []);
 
   return html`
     <div class="shell">
@@ -488,12 +520,13 @@ function App() {
       ${tab === 'runs'
         ? html`<div class="body">
             <${GroupedRail} runs=${runs} sel=${sel} expanded=${expanded}
-              onToggle=${toggleBase} onSelectRun=${selectRun} onSelectBase=${selectBase} />
+              onToggle=${toggleBase} onSelectRun=${selectRun} onSelectBase=${selectBase}
+              query=${runQuery} onQuery=${setRunQuery} />
             ${sel && sel.type === 'base'
               ? html`<${BaseOverview} runs=${runs} base=${sel.base} wikiHas=${wikiHas} onOpenWiki=${openWikiPage} onSelectRun=${selectRun} />`
               : html`<${RunDetail} run=${sel && sel.type === 'run' ? runs[sel.i] : null} data=${data} wikiHas=${wikiHas} onOpenWiki=${openWikiPage} />`}
           </div>`
-        : html`<${WikiPane} files=${wikiFiles || []} sel=${wikiSel} onSelect=${selectWiki} htmlContent=${wikiHtml} expanded=${wikiExpanded} onToggle=${toggleWikiDir} />`}
+        : html`<${WikiPane} files=${wikiFiles || []} sel=${wikiSel} onSelect=${selectWiki} htmlContent=${wikiHtml} expanded=${wikiExpanded} onToggle=${toggleWikiDir} query=${wikiQuery} onQuery=${searchWiki} results=${wikiResults} />`}
     </div>`;
 }
 

@@ -110,6 +110,20 @@ a { color: inherit; }
 .matrix .dash { color: var(--dimmer); }
 .hint { font-family: var(--mono); font-size: 11px; color: var(--dim); margin-top: 10px; }
 
+/* search inputs (runs filter + wiki full-text) + results */
+.search { width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 6px 9px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--fg); font-family: var(--mono); font-size: 12px; }
+.search::placeholder { color: var(--dimmer); }
+.search:focus { outline: none; border-color: #444; }
+.railempty { color: var(--dimmer); font-family: var(--mono); font-size: 12px; padding: 14px 6px; }
+.wresult { display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left;
+  background: none; border: none; cursor: pointer; padding: 7px 6px; border-radius: var(--radius); }
+.wresult:hover { background: var(--surface); }
+.wresult.sel { background: var(--sel); box-shadow: inset 0 0 0 1px #333; }
+.wrpath { font-family: var(--mono); font-size: 12px; color: #d0d0d0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wrsnip { font-size: 11px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ---------- responsive + overflow robustness (gpt-5.5 layout review) ---------- */
 /* let grid/flex children shrink instead of forcing min-content width (page overflow) */
 .body, .rail, .detail, .cards, .card, .card .cb { min-width: 0; }
