@@ -19,13 +19,15 @@
 
 ## Method
 
-### 0. Environment (one-time; do NOT run until confirmed)
+### 0. Environment (DONE 2026-06-20 — venv `~/.venvs/pylate` ready)
+Already set up and verified (torch 2.11.0+cu128 + pylate 1.6.0, GPU op OK on
+sm_120). To recreate from scratch:
 ```bash
 python3 -m venv ~/.venvs/pylate && source ~/.venvs/pylate/bin/activate
 # Blackwell sm_120: ensure a CUDA>=12.8 torch wheel
 pip install --index-url https://download.pytorch.org/whl/cu128 torch
 pip install -U pylate
-python -c "import torch; print(torch.cuda.is_available(), torch.version.cuda)"
+python /home/jakce/utils/local-models/scripts/check-torch.py   # expect sm_120 + gpu matmul OK
 ```
 
 ### 1. Standard sanity (does it reproduce its published retrieval quality here?)

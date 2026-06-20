@@ -310,3 +310,14 @@ an A/B vs the dense sibling. Wrote wiki/models/lfm2.5-colbert-350m.md (aide page
 schema, sections 1-9); index Aide subsection updated; experiment staged at
 lab/experiments/2026-06-20-lfm2.5-colbert-tool-selection. No weights pulled, no scorer
 built (external-first; awaiting go-ahead).
+
+## [2026-06-20] note | PyTorch venv set up + verified (Blackwell)
+Stood up the first torch environment on this box: `~/.venvs/pylate` with **torch
+2.11.0+cu128** + **pylate 1.6.0** (numpy 2.4.6). Confirmed a real GPU op runs on
+**sm_120** (Blackwell) via the new reusable checker
+[scripts/check-torch.py](../scripts/check-torch.py) (interpreter-aware: prints
+torch/CUDA/device + runs a matmul; exit 1 = missing, 2 = arch/wheel mismatch).
+Corrects the prior "no torch" machine fact — there is still **no system torch**,
+but the cu128 wheel works in a venv (the standard path for aide models / PyLate /
+future vLLM-SGLang). Updated hardware/proart-p16.md (torch-venv row + confirmed-
+working note) and the LFM2.5-ColBERT experiment (env now DONE, not pending).

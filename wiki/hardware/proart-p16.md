@@ -21,7 +21,8 @@ constraint for local LLMs here is **8 GB of VRAM**, then the **WSL RAM cap**.
 | NPU | XDNA 2 (~50 TOPS) | not usable from WSL2 — [details](xdna2-npu.md) |
 | CUDA toolkit | not installed (`nvcc` absent) | Ollama needs none; source builds do |
 | Ollama | 0.20.2 | models: `qwen3.5:9b-q4_K_M` (6.6 GB), `qwen3.5:4b` (3.4 GB) |
-| Python | 3.12.3, no torch | use a venv for Unsloth/vLLM |
+| Python | 3.12.3; **no system torch** | torch lives in venvs — see below |
+| torch venv | `~/.venvs/pylate`: **torch 2.11.0+cu128**, pylate 1.6.0 (verified 2026-06-20) | GPU op confirmed on sm_120; check with [scripts/check-torch.py](../../scripts/check-torch.py) |
 | Disk | ~920 GB free | WSL ext4 vhdx |
 
 ## What fits (rule of thumb)
@@ -41,6 +42,9 @@ VRAM math and quant trade-offs: [concepts/quantization.md](../concepts/quantizat
   raise via [env/wslconfig.template](../../env/wslconfig.template).
 - **Blackwell needs CUDA >= 12.8** for from-source builds and torch wheels
   (sm_120). Driver supports 13.2, so this is only about toolkit/wheel selection.
+  **Confirmed working:** the `cu128` torch wheel (2.11.0) runs a real GPU op on
+  sm_120 in `~/.venvs/pylate` (verify any interpreter with
+  [scripts/check-torch.py](../../scripts/check-torch.py)).
 - **NPU is effectively Windows-only** for LLM work today.
 - Memory bandwidth (~384 GB/s on this GPU) caps token/s more than compute does.
 
