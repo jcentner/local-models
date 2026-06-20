@@ -79,13 +79,20 @@ Detector now passes clean.
 Committed the viewer, then kicked off a read-only **gpt-5.5** review of the commit
 in the background (the `copilot-cli-background-tasks` loop) while I wrote these
 docs — cross-model critique of Opus's work, focused on path-traversal/XSS in the
-server, schema correctness, and robustness. Triage of its findings comes next.
+server, schema correctness, and robustness. It came back high-signal (no Critical,
+5 Major, 4 Minor) and I took most of it: CSP + a DOM sanitizer on the wiki render,
+symlink-safe run-file access, a generalized agentic renderer that finally handles
+the `support`/email-triage runs (`terminal_ok`/`expected_terminal`/`malformed_steps`),
+an old→new device diff, tri-state correctness, and real fetch-error states. I pushed
+back on full item pagination (runs are ≤12 items) and on vendoring the CDN libs
+(disproportionate for a localhost tool — the strict CSP's `connect-src 'self'` already
+blocks exfiltration), documenting both as deliberate.
 
 ## Open / next
 
 - Code completions that are prose + a ```python fence get the prose keywords
   highlighted too — minor; could highlight only inside fences.
-- Wiki markdown renders without an HTML sanitizer (fine for my own agent-authored
-  wiki; don't point it at untrusted markdown).
+- Wiki markdown is sanitized (CSP + DOM denylist) but still reads only my own
+  `wiki/`; I wouldn't point it at untrusted markdown.
 - Possible later: a top-level results table / sort+filter, and folding this into
   the `/benchmark` flow as the "go look at what happened" step.

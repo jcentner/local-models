@@ -45,7 +45,12 @@ read-only (YAML frontmatter stripped, `[[wikilinks]]` flattened).
 
 ## Notes / limits
 
-- Wiki markdown is rendered without an HTML sanitizer — acceptable here because it
-  only reads this repo's own agent-authored `wiki/`. Don't point it at untrusted
-  markdown.
-- Run files live in the gitignored `runs/`; the viewer never writes anything.
+- The front-end loads Preact/htm/marked from a CDN (esm.sh) + fonts from Google.
+  A strict CSP (`script-src 'self' esm.sh`, `connect-src 'self'`) limits a
+  compromised dependency to local-only access; fully removing CDN trust (vendoring
+  + SRI) is deferred. First load needs internet; run/wiki data is served locally.
+- Wiki markdown is sanitized (CSP + a DOM denylist pass that strips scripts, `on*`
+  handlers, and `javascript:` URLs). It still only reads this repo's own `wiki/` —
+  don't point it at untrusted markdown.
+- Run-file access is basename- and symlink-guarded to `runs/`; the viewer is
+  read-only (`GET` only) and never writes anything.
