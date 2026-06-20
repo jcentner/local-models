@@ -23,9 +23,13 @@ first load needs internet; runs and wiki data are served locally.
 
 ## What it shows
 
-The left rail lists every row in `results.csv` (runs whose raw `.jsonl` is absent
-on this machine are shown as `no raw` and disabled). Selecting a run renders one
-card per item, adapted to the scorer:
+The left rail groups every row in `results.csv` by **base model → variant → run**
+(`base_model` is the harness-recorded canonical id; the `model` column is the
+config/quant variant label). Runs whose raw `.jsonl` is absent on this machine
+show `no raw` and are disabled. Clicking a **base-model header** opens a comparison
+matrix (variants × benchmarks, best pass@k per cell, click a cell to open that
+run) — handy for quant/serving sweeps. Clicking a **run** renders one card per
+item, adapted to the scorer:
 
 | scoring | card content |
 |---------|--------------|
@@ -33,6 +37,10 @@ card per item, adapted to the scorer:
 | `llm_judge` | score, per-criterion bars, rationale, completion (collapsible `<think>`) |
 | `agentic` | transcript bubbles, tool-call rows, final-state diff, check flags |
 | other | completion + raw `result` JSON (generic fallback) |
+
+A run's detail header shows the variant label, its **base model**, and a
+`model page ↗` link to `wiki/models/<base_model>.md` when that page exists
+(`base_model` doubles as the wiki slug, so no separate mapping is needed).
 
 The **wiki** tab lists `wiki/**/*.md` grouped by folder and renders a page
 read-only (YAML frontmatter stripped, `[[wikilinks]]` flattened). Links between

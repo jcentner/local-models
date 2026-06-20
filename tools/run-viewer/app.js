@@ -63,17 +63,21 @@ function parseCompletion(text) {
 }
 
 // Split a completion into prose vs fenced ```code``` segments so only real code
-// gets Python highlighting (prose keywords like "while"/"and" stay plain).
+// gets Python highlighting. Line-based: tolerates fence info strings
+// (```python title="x"), multiple fences, and unterminated fences (closed at EOF).
 function splitFences(text) {
   const parts = [];
-  const re = /```[a-zA-Z0-9]*\n?([\s\S]*?)```/g;
-  let last = 0, m;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) parts.push({ type: 'prose', text: text.slice(last, m.index).trim() });
-    parts.push({ type: 'code', text: m[1].replace(/\n$/, '') });
-    last = re.lastIndex;
+  let prose = [], code = [], inCode = false;
+  const flushProse = () => { const t = prose.join('\n').trim(); if (t) parts.push({ type: 'prose', text: t }); prose = []; };
+  for (const line of String(text).split('\n')) {
+    if (/^\s*```/.test(line)) {
+      if (!inCode) { flushProse(); inCode = true; code = []; }
+      else { parts.push({ type: 'code', text: code.join('\n') }); inCode = false; }
+    } else if (inCode) code.push(line);
+    else prose.push(line);
   }
-  if (last < text.length) parts.push({ type: 'prose', text: text.slice(last).trim() });
+  if (inCode) parts.push({ type: 'code', text: code.join('\n') });
+  else flushProse();
   return parts;
 }
 
@@ -383,7 +387,7 @@ function resolveWikiHref(href, currentPath) {
   const baseDir = (currentPath || '').includes('/') ? (currentPath || '').slice(0, currentPath.lastIndexOf('/')) : '';
   const segs = baseDir ? baseDir.split('/') : [];
   for (const part of clean.split('/')) {
-    if (part === '..') segs.pop();
+    if (part === '..') { if (!segs.length) return null; segs.pop(); } // climbs above wiki root -> external
     else if (part && part !== '.') segs.push(part);
   }
   const resolved = segs.join('/');

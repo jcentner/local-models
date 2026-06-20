@@ -50,9 +50,8 @@ def load_runs() -> list[dict]:
         rows = list(csv.DictReader(fh))
     for r in rows:
         raw = (r.get("raw_file") or "").strip()
-        r["raw_exists"] = (
-            bool(raw) and "/" not in raw and "\\" not in raw and (RUNS_DIR / raw).is_file()
-        )
+        safe = _safe_child(RUNS_DIR, raw) if raw and "/" not in raw and "\\" not in raw else None
+        r["raw_exists"] = safe is not None and safe.is_file()
     return rows
 
 
