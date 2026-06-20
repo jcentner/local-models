@@ -172,6 +172,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--model", required=True,
                     help="model under test: an Ollama tag (provider ollama) or an "
                          "API model ref (provider openai-compatible)")
+    ap.add_argument("--base-model", default=None,
+                    help="canonical base-model id for grouping results across config "
+                         "variants/serving (e.g. all g4v2-* quant labels -> "
+                         "'gemma-4-12b-agentic-fable5'; both minicpm5 labels -> "
+                         "'minicpm5-1b'). Match the wiki/models/<id>.md slug where one "
+                         "exists. Defaults to --model when omitted.")
     ap.add_argument("--provider", choices=["ollama", "openai-compatible"], default="ollama",
                     help="ollama = native local daily driver; openai-compatible = a "
                          "hosted API (e.g. Z.AI GLM) or Ollama's :11434/v1 shim.")
@@ -340,6 +346,7 @@ def main(argv: list[str] | None = None) -> int:
         "date": dt.date.today().isoformat(),
         "machine": socket.gethostname(),
         "model": args.model,
+        "base_model": args.base_model or args.model,
         "provider": args.provider,
         "runner": f"{args.provider}-harness",
         "runner_version": _ollama_version(resolved_base) if args.provider == "ollama" else "",
