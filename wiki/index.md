@@ -49,6 +49,7 @@ The non-generative support models for the home agent — see [concepts/aide-mode
 - [concepts/quantization.md](concepts/quantization.md) — GGUF K-quants, AWQ/GPTQ, FP8/NVFP4, and the 8 GB VRAM math.
 - [concepts/wsl2-memory.md](concepts/wsl2-memory.md) — why WSL only sees ~15 GB and how to fix it.
 - [concepts/aide-models.md](concepts/aide-models.md) — the aide-model track: STT/TTS/embeddings/retrieval, their eval contract (WER/NDCG@k/Recall@k/MOS, external-first), and why they need a separate `/new-aide` flow.
+- [concepts/eval-reliability.md](concepts/eval-reliability.md) — multi-pass eval methodology: `observed_pass@k` (best-of-k ceiling) vs `pass^k` (all-k reliability), flaky items, SEM/error bars; why k=3 + recommended-temp is the honest default.
 
 ## Lab (not part of the wiki, but linked for navigation)
 - [../lab/journal/](../lab/journal/) — dated narrative entries.

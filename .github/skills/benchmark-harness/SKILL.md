@@ -86,17 +86,22 @@ Thinking models (qwen3.5, vibethinker) spend the token budget on CoT and can emi
 - For long-CoT reasoning, set `--num-ctx` high (e.g. 32768) to avoid mid-thought
   truncation.
 
-## Stochastic models → observed pass@k
+## Stochastic models → reliability (observed pass@k AND pass^k)
 
-Reasoning models run hot (e.g. VibeThinker temp 1.0). One sample is noise: use
-`--k 8` and read `observed_pass_at_k` (= fraction of items with ≥1 correct in k;
-NOT the formal unbiased pass@k — don't compare to leaderboard pass@k).
+Reasoning models run hot (e.g. VibeThinker temp 1.0) and small/quantized models
+flake. One sample is noise. `--k` defaults to **3**; read **both** metrics:
+`observed_pass_at_k` (best-of-k, ≥1 correct — a ceiling that rises with k; NOT the
+unbiased leaderboard pass@k, don't compare) and **`pass_hat_k`** (tau-bench pass^k,
+ALL k correct — reliability, weight this for the home agent), plus `flaky_items` and
+`sem`. Run reliability passes at the recommended temp, not temp=0. `--slice-by
+<meta>` breaks it down per group. Rationale: wiki/concepts/eval-reliability.md.
 
 ## After a run
 
 The row is written automatically (schema: date, machine, model, provider, runner,
 runner_version, endpoint, benchmark, scoring, num_ctx, num_predict, sampling, seed,
-k, n_items, observed_pass_at_k, avg_correct, mean_gen_tok_s, token totals,
+k, n_items, observed_pass_at_k, pass_hat_k, avg_correct, flaky_items, sem,
+mean_gen_tok_s, token totals,
 wall_s_total, cost_usd, judge, code_sandbox, raw_file, platform). Results are
 **per-environment** (per-machine for local; per-provider + per-date for API).
 Add what the harness can't know (quant, VRAM) by hand, then log it: an experiment

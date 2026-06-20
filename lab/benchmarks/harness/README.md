@@ -44,8 +44,10 @@ python3 -m harness.selftest
 python3 -m harness.run --benchmark ../../benchmarks/<name> --model qwen3.5:4b --dry-run
 
 # real run against a pulled Ollama model (local, the default provider):
+# (k defaults to 3 -> reports observed_pass@k AND pass^k reliability; --k 1 = smoke.
+#  run reliability at the model's recommended temp, NOT temp=0 - see eval-reliability)
 python3 -m harness.run --benchmark ../../benchmarks/<name> \
-  --model qwen3.5:4b --k 1 --temperature 0.0 --num-ctx 8192 --seed 0
+  --model qwen3.5:4b --k 3 --num-ctx 8192 --seed 0
 
 # real run against an API model (OpenAI-compatible; records cost_usd):
 python3 -m harness.run --benchmark ../../benchmarks/<name> \
@@ -56,7 +58,7 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> \
 python3 -m harness.run --benchmark ../../benchmarks/<name> \
   --model qwen3.5:4b --provider openai-compatible --base-url http://localhost:11434/v1
 
-# observed pass@k for a stochastic reasoning model:
+# reliability run for a stochastic reasoning model (higher k sharpens pass^k):
 python3 -m harness.run --benchmark ../../benchmarks/<name> \
   --model vibethinker-3b --k 8 --temperature 1.0 --top-p 0.95 --num-ctx 32768
 
@@ -120,9 +122,15 @@ created with `/author-benchmark`. Output: a row appended to
   `--no-think` only works on the **ollama** provider; over `openai-compatible`
   (incl. Ollama's `/v1` shim) you can't disable CoT, so give a thinking model a
   generous `--num-predict` or run it via the `ollama` provider.
-- **observed pass@k** — the runner reports `observed_pass_at_k` = fraction of
-  items with >=1 correct sample in k. This is **not** the formal unbiased pass@k
-  estimator used on public leaderboards; don't compare the two directly.
+- **reliability metrics (multi-pass)** - over `--k` samples per item the runner
+  reports `observed_pass_at_k` (best-of-k, >=1 correct - a capability ceiling that
+  *rises* with k), **`pass_hat_k`** (tau-bench's pass^k, ALL k correct - reliability,
+  the home-agent signal), `avg_correct`, **`flaky_items`** (0<correct<k), and
+  **`sem`** (standard error of the per-item mean). `--k` defaults to **3**;
+  `--slice-by <meta field>` prints per-group reliability. `observed_pass_at_k` is
+  **not** the formal unbiased pass@k estimator used on public leaderboards - don't
+  compare the two. Rationale + house rules:
+  [eval-reliability](../../../wiki/concepts/eval-reliability.md).
 - **llm_judge** — a **frontier** judge scores the response against `rubric.md` and
   returns JSON. The default backend is `judge_copilot.CopilotCLIJudge`
   (`claude-opus-4.8` via the Copilot CLI; use `gpt-5.5` for a second opinion).

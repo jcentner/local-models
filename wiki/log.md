@@ -487,3 +487,15 @@ VRAM-budget rule (8 GB demoted to a worked example), wsl2-memory.md leads with t
 its scores as orientation pointing at results.csv, lemonade.md drops "this
 machine". New scripts/host-profile.sh generates a wiki/hardware/<host>.md skeleton
 from live verify-stack probes (verified on this box: Daedalus / RTX 5070 / CUDA 13.2).
+
+## [2026-06-20] note | Multi-pass eval reliability: pass^k + flaky + SEM
+Every run to date was k=1 and the only headline metric (observed_pass_at_k) is
+best-of-k, which rises with k and hides the flakiness small/quantized models show.
+Added the opposite-direction signal to harness/run.py: pass_hat_k (tau-bench pass^k
+= all-k correct = reliability), flaky_items (0<correct<k), and sem (CLT per-item
+mean); --k default 1->3; --slice-by <meta> for per-group breakdowns. results.csv
+schema v3 (+pass_hat_k,flaky_items,sem; 24 k=1 rows back-filled). New concept page
+concepts/eval-reliability.md (pass@k vs pass^k, error bars; cites Anthropic
+2411.00640 + tau-bench 2406.12045). Propagated to AGENTS.md, benchmarks/README,
+lab READMEs, benchmark-harness + wrap-external skills, /benchmark prompt. selftest
+green. Working plan: tmp/benchmark-expansion-plan.md (gitignored).

@@ -62,7 +62,9 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model <api-model> \
   when omitted (fine for plain Ollama tags like `qwen3.5:4b`).
 
 - Use the model's **recommended sampling** from its page (e.g. VibeThinker = temp
-  1.0, top_p 0.95, top_k 0); for deterministic suites use temp 0.
+  1.0, top_p 0.95, top_k 0). **Reliability passes run at the recommended temp, not
+  temp=0** (temp=0 hides the flakiness pass^k measures); keep temp=0 only for a
+  separate deterministic *capability* read. `--k` defaults to **3** (k=1 = smoke).
 - Set `--num-ctx` large enough for long-CoT models (avoid mid-thought truncation).
 - For standard public suites that have an upstream framework (HumanEval+/MBPP+ via
   **evalplus**, broad coverage via **lm-eval-harness**), run that framework against
@@ -88,13 +90,18 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model <api-model> \
 - The harness appends a row to [lab/benchmarks/results.csv](../../lab/benchmarks/README.md)
   (raw output in git-ignored `runs/`). Verify the row; add any missing fields
   (quant, VRAM from `ollama ps`, tok/s).
+- **Report both** `observed_pass@k` (best-of-k ceiling) **and** `pass^k`
+  (`pass_hat_k`, all-k reliability), plus `flaky_items` and `sem`. For the
+  home-agent verdict weight **pass^k** and read the `flaky_items` raw episodes. See
+  [eval-reliability](../../wiki/concepts/eval-reliability.md).
 - Create/append `lab/experiments/<YYYY-MM-DD-slug>/README.md` with the run
   (hypothesis -> method -> result -> learnings) and the **per-environment** verdict.
 - Update the model page's results/verdict link and append a
   `## [YYYY-MM-DD] bench | <model> on <benchmarks>` line to [wiki/log.md](../../wiki/log.md).
 
 ## 6. Report back
-Lead with the scores in context (vs published claims, vs other models in the
-wiki), the cost it took, what it means for this model on this machine, and any
+Lead with the scores in context — **observed_pass@k AND pass^k reliability** (call
+out flaky items) — vs published claims and other models in the wiki, the cost it
+took, what it means for this model on this machine, and any
 follow-up (quant sweep, a fresher/contamination-resistant benchmark, or an
 `/author-benchmark` for a gap the public sets don't cover).

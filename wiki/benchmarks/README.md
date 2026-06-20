@@ -86,8 +86,12 @@ faithfully (`enable_thinking`, native tool parsers incl. `minicpm5`).
 
 ## Methodology (non-negotiable)
 
-- **Stochasticity:** reasoning models run at high temperature (VibeThinker uses
-  temp 1.0). A single pass is noise — report **pass@k / avg@k**, not one sample.
+- **Stochasticity & reliability:** reasoning models run hot (VibeThinker temp 1.0)
+  and small/quantized models flake. A single pass is noise — default **`--k 3`** and
+  report **both** `observed_pass@k` (best-of-k ceiling) **and** `pass^k` (all-k
+  reliability, the home-agent signal) + `flaky_items` + `sem`. Run reliability
+  passes at the recommended temp, not temp=0. See
+  [eval-reliability](../concepts/eval-reliability.md).
 - **Pin everything:** model+quant, **provider** (local/API), runner+version,
   sampling (temp/top_p/top_k), context length, seed, n-samples/k, judge config,
   machine/endpoint, **cost** (`cost_usd`), date. See the

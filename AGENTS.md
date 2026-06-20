@@ -154,6 +154,10 @@ triage). Models under test run **local (Ollama, the daily driver) or API
 (OpenAI-compatible, e.g. Z.AI GLM)** via the harness `--provider` flag; record
 **capability and cost** (`cost_usd` from `--price-in/--price-out`). Running the
 same benchmark local vs API and comparing capability + cost is a first-class goal.
+Runs default to **`--k 3`** samples per item and record **both** `observed_pass_at_k`
+(best-of-k capability ceiling) and **`pass_hat_k`** (tau-bench pass^k = reliability),
+plus `flaky_items` and `sem` — small/quantized models flake, so reliability is
+reported next to capability ([wiki/concepts/eval-reliability.md](wiki/concepts/eval-reliability.md)).
 Each result row records a **`base_model`** (canonical id, `--base-model`, defaults
 to `--model`; matches the `wiki/models/<id>.md` slug) alongside the variant
 `model` label, so runs group across quant/serving variants (e.g. all `g4v2-*`
