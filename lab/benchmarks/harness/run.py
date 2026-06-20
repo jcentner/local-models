@@ -27,11 +27,13 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from harness.client import make_client, SamplingConfig
     from harness.judge_copilot import CopilotCLIJudge
-    from harness.scorers import code_exec, equivalence, llm_judge
+    from harness.agentic import CopilotCLIUser, run_episode
+    from harness.scorers import agentic as agentic_scorer, code_exec, equivalence, llm_judge
 else:
     from .client import make_client, SamplingConfig
     from .judge_copilot import CopilotCLIJudge
-    from .scorers import code_exec, equivalence, llm_judge
+    from .agentic import CopilotCLIUser, run_episode
+    from .scorers import agentic as agentic_scorer, code_exec, equivalence, llm_judge
 
 HERE = Path(__file__).resolve().parent          # lab/benchmarks/harness
 LAB_BENCH = HERE.parent                          # lab/benchmarks
@@ -71,7 +73,7 @@ def load_benchmark(bench_dir: Path) -> dict:
     return manifest
 
 
-VALID_METHODS = {"equivalence", "code_tests", "llm_judge"}
+VALID_METHODS = {"equivalence", "code_tests", "llm_judge", "agentic"}
 
 
 def validate_benchmark(manifest: dict) -> None:
@@ -108,6 +110,18 @@ def validate_benchmark(manifest: dict) -> None:
     elif method == "llm_judge":
         if not manifest.get("_rubric", "").strip():
             raise SystemExit("llm_judge benchmark needs a non-empty rubric.md")
+    elif method == "agentic":
+        for p in prompts:
+            if not str((p.get("meta") or {}).get("persona", "")).strip():
+                raise SystemExit(f"agentic prompt {p.get('id')!r} needs meta.persona (the user-sim goal)")
+        key_ids, prompt_ids = set(manifest["_key"]), set(ids)
+        if key_ids != prompt_ids:
+            raise SystemExit(
+                "answer_key ids must match prompt ids: "
+                f"missing_keys={sorted(prompt_ids - key_ids)} orphan_keys={sorted(key_ids - prompt_ids)}")
+        for kid, krow in manifest["_key"].items():
+            if krow.get("expected_terminal") not in {"reply", "escalate"}:
+                raise SystemExit(f"agentic key {kid!r} needs expected_terminal in reply|escalate")
 
 
 def score_one(method: str, manifest: dict, item: dict, completion: str, judge=None,
@@ -162,6 +176,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--judge-effort", default=None,
                     choices=["low", "medium", "high", "xhigh", "max"],
                     help="reasoning effort for the judge (Copilot CLI --reasoning-effort)")
+    ap.add_argument("--user-model", default="claude-opus-4.8",
+                    help="Copilot CLI model id for the agentic user-simulator (a FRONTIER model).")
     ap.add_argument("--results", default=str(LAB_BENCH / "results.csv"))
     ap.add_argument("--dry-run", action="store_true", help="print config + first prompt, don't call the model")
     ap.add_argument("--code-sandbox", choices=["podman", "local-unsafe"], default=None,
@@ -228,6 +244,24 @@ def main(argv: list[str] | None = None) -> int:
         for item in prompts:
             any_correct = False
             for s in range(args.k):
+                if method == "agentic":
+                    user_sim = CopilotCLIUser(persona=item["meta"]["persona"], model=args.user_model)
+                    episode = run_episode(client, user_sim, item)
+                    res = agentic_scorer.score(episode, manifest["_key"].get(item["id"], {}))
+                    perf = episode["perf"]
+                    total_samples += 1
+                    prompt_tok_sum += perf["prompt_tokens"]
+                    gen_tok_sum += perf["gen_tokens"]
+                    wall_sum += perf["wall_s"]
+                    tok_s_sum += (perf["gen_tokens"] / perf["wall_s"]) if perf["wall_s"] else 0.0
+                    if res.get("correct"):
+                        sample_correct += 1
+                        any_correct = True
+                    raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
+                                          "episode": {"resolution": episode["resolution"],
+                                                      "tool_calls": episode["tool_calls"],
+                                                      "transcript": episode["transcript"]}}) + "\n")
+                    continue
                 comp = client.complete([{"role": "user", "content": item["prompt"]}],
                                        system=manifest.get("system"))
                 res = score_one(method, manifest, item, comp.text, judge,
@@ -284,7 +318,8 @@ def main(argv: list[str] | None = None) -> int:
         "gen_tokens_total": gen_tok_sum,
         "wall_s_total": round(wall_sum, 1),
         "cost_usd": cost_usd,
-        "judge": f"copilot:{args.judge_model}" if method == "llm_judge" else "",
+        "judge": (f"copilot:{args.judge_model}" if method == "llm_judge"
+                  else f"usersim:copilot:{args.user_model}" if method == "agentic" else ""),
         "code_sandbox": args.code_sandbox or "",
         "raw_file": raw_path.name,
         "platform": platform.platform(),

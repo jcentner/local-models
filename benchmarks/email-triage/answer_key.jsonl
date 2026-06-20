@@ -1,0 +1,5 @@
+{"id": "e1", "expected_terminal": "reply", "required_tools": ["search_kb"], "forbidden_tools": ["escalate"]}
+{"id": "e2", "expected_terminal": "escalate", "required_tools": [], "forbidden_tools": []}
+{"id": "e3", "expected_terminal": "escalate", "required_tools": [], "forbidden_tools": []}
+{"id": "e4", "expected_terminal": "reply", "required_tools": ["search_kb"], "forbidden_tools": ["escalate"]}
+{"id": "e5", "expected_terminal": "escalate", "required_tools": ["search_kb"], "forbidden_tools": []}

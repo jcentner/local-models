@@ -18,15 +18,19 @@ if __package__ in (None, ""):
     from harness import run as runmod
     from harness import judge_copilot
     from harness import client as clientmod
-    from harness.client import OpenAICompatibleClient, SamplingConfig
+    from harness import agentic as ag
+    from harness.client import OpenAICompatibleClient, SamplingConfig, Completion
     from harness.scorers import llm_judge
+    from harness.scorers import agentic as agentic_scorer
 else:
     from .scorers import code_exec, equivalence
     from . import run as runmod
     from . import judge_copilot
     from . import client as clientmod
-    from .client import OpenAICompatibleClient, SamplingConfig
+    from . import agentic as ag
+    from .client import OpenAICompatibleClient, SamplingConfig, Completion
     from .scorers import llm_judge
+    from .scorers import agentic as agentic_scorer
 
 
 def check(name: str, cond: bool):
@@ -205,6 +209,77 @@ def test_openai_compatible_client():
     check("remote host w/ empty key env raises", raised)
 
 
+class _MockAgent:
+    def __init__(self, actions):
+        self.actions, self.i = list(actions), 0
+    def complete(self, messages, system=None):
+        a = self.actions[min(self.i, len(self.actions) - 1)]
+        self.i += 1
+        return Completion(text=a, prompt_tokens=5, gen_tokens=7, wall_s=0.01)
+
+
+class _MockUser:
+    def __init__(self, msg="DONE"):
+        self.msg = msg
+    def reply(self, transcript):
+        return self.msg
+
+
+def test_agentic():
+    print("agentic rollout (mocked agent + user):")
+    check("parse clean json", ag.parse_action('{"tool":"reply","args":{"text":"hi"}}')["tool"] == "reply")
+    check("parse with think preamble",
+          ag.parse_action('<think>hmm</think>\n{"tool":"search_kb","args":{"query":"hours"}}')["tool"] == "search_kb")
+    check("parse prose-wrapped",
+          ag.parse_action('I will search. {"tool":"search_kb","args":{"query":"x"}} ok')["tool"] == "search_kb")
+    check("parse malformed -> None", ag.parse_action("no json here") is None)
+    check("parse defaults args", ag.parse_action('{"tool":"escalate"}')["args"] == {})
+
+    scen_reply = {"id": "t1", "prompt": "what are your hours?",
+                  "meta": {"persona": "goal", "policy": "answer from kb",
+                           "kb": [{"q": "hours", "keywords": "hours when", "a": "9-5 ET"}]}}
+    ep = ag.run_episode(
+        _MockAgent(['{"tool":"search_kb","args":{"query":"hours"}}',
+                    '{"tool":"reply","args":{"text":"We are open 9-5 ET"}}']),
+        _MockUser("DONE"), scen_reply)
+    check("episode reply resolution", ep["resolution"] == "reply" and ep["did_reply"] and not ep["did_escalate"])
+    check("search_kb used", "search_kb" in ep["tools_used"])
+    check("scorer passes good reply",
+          agentic_scorer.score(ep, {"expected_terminal": "reply", "required_tools": ["search_kb"],
+                                     "forbidden_tools": ["escalate"]})["correct"])
+
+    scen_esc = {"id": "t2", "prompt": "refund please",
+                "meta": {"persona": "goal", "policy": "refunds need a human", "kb": []}}
+    ep2 = ag.run_episode(_MockAgent(['{"tool":"escalate","args":{"reason":"refund needs a human"}}']),
+                         _MockUser("DONE"), scen_esc)
+    check("episode escalate resolution", ep2["resolution"] == "escalate" and ep2["did_escalate"])
+    check("scorer passes good escalate",
+          agentic_scorer.score(ep2, {"expected_terminal": "escalate", "required_tools": [],
+                                      "forbidden_tools": []})["correct"])
+
+    ep3 = ag.run_episode(_MockAgent(['{"tool":"reply","args":{"text":"sure, refunded!"}}']),
+                         _MockUser("DONE"), scen_esc)
+    check("scorer fails wrong terminal (replied, should escalate)",
+          not agentic_scorer.score(ep3, {"expected_terminal": "escalate", "required_tools": [],
+                                          "forbidden_tools": []})["correct"])
+    check("scorer fails forbidden tool",
+          not agentic_scorer.score(ep, {"expected_terminal": "reply", "required_tools": [],
+                                         "forbidden_tools": ["search_kb"]})["correct"])
+
+    good = {"name": "t", "version": "0", "scoring": "agentic",
+            "_prompts": [{"id": "e1", "prompt": "hi", "meta": {"persona": "goal"}}],
+            "_key": {"e1": {"expected_terminal": "reply"}}, "_rubric": ""}
+    check("agentic validate passes", not _rejects(good))
+    no_persona = {"name": "t", "version": "0", "scoring": "agentic",
+                  "_prompts": [{"id": "e1", "prompt": "hi", "meta": {}}],
+                  "_key": {"e1": {"expected_terminal": "reply"}}, "_rubric": ""}
+    check("agentic missing persona rejected", _rejects(no_persona))
+    bad_terminal = {"name": "t", "version": "0", "scoring": "agentic",
+                    "_prompts": [{"id": "e1", "prompt": "hi", "meta": {"persona": "g"}}],
+                    "_key": {"e1": {"expected_terminal": "maybe"}}, "_rubric": ""}
+    check("agentic bad expected_terminal rejected", _rejects(bad_terminal))
+
+
 if __name__ == "__main__":
     test_equivalence()
     test_code_exec()
@@ -214,5 +289,6 @@ if __name__ == "__main__":
     test_podman_sandbox()
     test_cost_computation()
     test_openai_compatible_client()
+    test_agentic()
     print(f"\n{'ALL PASS' if check.failed == 0 else str(check.failed) + ' FAILED'}")
     raise SystemExit(1 if check.failed else 0)
