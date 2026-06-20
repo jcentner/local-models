@@ -179,12 +179,17 @@ query+doc+MaxSim end-to-end ~34 ms. Enterprise GPU serving as low as ~1-3 ms.
 
 ## 8. Eval path
 
-Per [external-first](../benchmarks/README.md): wrap the standard retrieval eval,
-**and** hand-roll the one use-case scorer with no off-the-shelf equivalent.
+Two tiers, matching [`/new-aide`](../../.github/prompts/new-aide.prompt.md): a
+quick **get-a-feel smoke test first**, then the formal eval (external-first) only
+if it's worth a deeper look.
 
-- **Standard (sanity / comparison):** a NanoBEIR-multilingual-extended slice via
+- **Tier 1 — smoke / get-a-feel (first):** index-free rerank a handful of queries
+  against a tiny tool pool (~10-20 descriptions) and eyeball whether the right
+  tool tops the list, plus encode latency. Cheap, and the PyLate venv is already
+  set up — enough to decide if a fuller eval is warranted.
+- **Tier 2 — standard (sanity / comparison):** a NanoBEIR-multilingual-extended slice via
   PyLate — confirms the model reproduces its published NDCG@10 on this box.
-- **Custom (the decision metric) — tool-selection Recall@k:** a small labeled set
+- **Tier 2 — custom (the decision metric) — tool-selection Recall@k:** a small labeled set
   of `{query -> relevant tool id(s)}` over a pool of N home-automation tool
   descriptions; rerank; score **Recall@k** (relevant tool in top-k, e.g. k=5 from
   N=50-250) plus **MRR** and per-query latency. Deterministic, no judge. Seed for a

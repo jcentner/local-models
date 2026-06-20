@@ -30,13 +30,27 @@ pip install -U pylate
 python /home/jakce/utils/local-models/scripts/check-torch.py   # expect sm_120 + gpu matmul OK
 ```
 
-### 1. Standard sanity (does it reproduce its published retrieval quality here?)
+### 1. Smoke / get-a-feel (Tier 1 — do this first; the near-term goal)
+The cheapest signal, and the venv is ready. Index-free rerank a handful of queries
+against a tiny tool pool (~10-20 home-automation tool descriptions) and eyeball
+whether the right tool tops the list; note encode latency. Enough to "get a feel"
+and decide whether the fuller Tier-2 eval below is warranted.
+```python
+from pylate import rank, models
+model = models.ColBERT(model_name_or_path="LiquidAI/LFM2.5-ColBERT-350M", trust_remote_code=True)
+q = model.encode(["turn off the kitchen lights"], is_query=True)
+d = model.encode([["light.set_state(room, on|off)", "lock.set_state(door, locked|unlocked)",
+                   "thermostat.set(temp)", "media.play(device)", "... ~10-20 tools"]], is_query=False)
+print(rank.rerank(documents_ids=[[0, 1, 2, 3, 4]], queries_embeddings=q, documents_embeddings=d))
+```
+
+### 2. Standard sanity (Tier 2 — does it reproduce its published retrieval quality here?)
 Run a NanoBEIR (or NanoBEIR-multilingual-extended) slice via PyLate and compare
 NDCG@10 to the [model card](https://huggingface.co/LiquidAI/LFM2.5-ColBERT-350M)
 numbers (NanoBEIR-multilingual-extended avg ~0.605). Confirms the install + GPU
 path are correct before trusting use-case numbers.
 
-### 2. Custom — tool-selection Recall@k (the decision metric)
+### 3. Custom — tool-selection Recall@k (Tier 2 — the decision metric)
 A small **authored** labeled set `{query -> relevant tool id(s)}` over a pool of N
 home-automation tool descriptions (seed from the
 [home-automation toolset](../../../benchmarks/home-automation/README.md):
