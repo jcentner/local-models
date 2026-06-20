@@ -385,3 +385,16 @@ brain). selftest +4 checks (XML fallback) ALL PASS. results.csv: 4 MiniCPM5 rows
 (dec-reasoning No-Think/Think, email-triage 2/5, home-automation 7/12). Updated
 client/selftest + experiment + model page + stack page (omit the broken parser,
 use the fallback).
+
+## [2026-06-20] note | pivot gemma-4 ingest to v2-only + quant-config sweep
+Dropped the v1 (pure-coding) page + experiment (git-removed) and replaced with the
+v2 **coding + agentic** variant
+(gemma-4-12B-agentic-fable5-composer2.5-v2), the home-automation-relevant one
+(native Gemma 4 tool-use, needs llama.cpp `--jinja`). v2 = v1 coder + agentic
+trajectories + a general slice; Fable 5 CoT rebuilt with Opus 4.8. Author self-eval
+(local, relative, Q8 greedy, 20 tasks) ~3.5x base on tau2-telecom, slightly below
+base on retail/MMLU-Pro by design - **unverified**. No Q2_K this release. Staged a
+3-cell 8 GB sweep (Q3_K_M full-GPU vs Q4_K_M+q4_0 KV vs Q4_K_M+CPU offload) for
+throughput + code-basics + home-automation quality. Prereq: llama.cpp not built
+here (no host CUDA toolkit) -> build via rootless-podman CUDA. Page + index
+updated; experiment at lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep.
