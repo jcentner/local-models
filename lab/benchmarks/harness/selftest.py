@@ -173,6 +173,36 @@ def test_cost_computation():
     check("local run is free", runmod.compute_cost(100, 200, 0.0, 0.0) == 0.0)
 
 
+def test_reliability_metrics():
+    print("reliability metrics (pass^k / flaky / sem):")
+    rm = runmod.reliability_metrics
+    # all items pass every sample -> perfect reliability, no flaky
+    m = rm([3, 3, 3], 3)
+    check("all-pass: observed=1", m["observed_pass_at_k"] == 1.0)
+    check("all-pass: pass^k=1", m["pass_hat_k"] == 1.0)
+    check("all-pass: 0 flaky", m["flaky_items"] == 0)
+    # a flaky item (2/3) drags pass^k below observed and is counted flaky
+    m = rm([3, 2, 0], 3)
+    check("mixed: observed counts >=1 correct (2/3)", m["observed_pass_at_k"] == round(2 / 3, 4))
+    check("mixed: pass^k counts all-k only (1/3)", m["pass_hat_k"] == round(1 / 3, 4))
+    check("mixed: flaky = the 2/3 item", m["flaky_items"] == 1)
+    check("mixed: avg_correct", m["avg_correct"] == round((1 + 2 / 3 + 0) / 3, 4))
+    # best-of-k HIDES flakiness: observed >= pass^k always
+    mm = rm([2, 1, 3], 3)
+    check("observed >= pass^k", mm["observed_pass_at_k"] >= mm["pass_hat_k"])
+    # k=1 -> pass^k == observed (the back-fill identity)
+    m1 = rm([1, 0, 1], 1)
+    check("k=1: pass^k == observed", m1["pass_hat_k"] == m1["observed_pass_at_k"] == round(2 / 3, 4))
+    check("k=1: never flaky", m1["flaky_items"] == 0)
+    # sem: blank for <2 items, numeric for >=2, 0 when identical
+    check("sem blank for single item", rm([3], 3)["sem"] == "")
+    check("sem numeric for >=2 items", isinstance(rm([3, 0], 3)["sem"], float))
+    check("sem=0 when all items identical", rm([3, 3, 3], 3)["sem"] == 0.0)
+    # guards
+    check("empty -> zeros", rm([], 3)["pass_hat_k"] == 0.0)
+    check("k<=0 -> zeros", rm([1, 2], 0)["pass_hat_k"] == 0.0)
+
+
 class _Resp:
     def __init__(self, payload):
         self._b = json.dumps(payload).encode("utf-8")
@@ -493,6 +523,7 @@ if __name__ == "__main__":
     test_judge()
     test_podman_sandbox()
     test_cost_computation()
+    test_reliability_metrics()
     test_openai_compatible_client()
     test_agentic()
     test_agentic_native()

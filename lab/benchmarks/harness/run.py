@@ -7,8 +7,10 @@ Usage (from ``lab/benchmarks/``):
 
 Reads ``benchmarks/<name>/{bench.json,prompts.jsonl,answer_key.jsonl,rubric.md}``,
 samples ``k`` completions per prompt, scores via the method declared in
-``bench.json`` (equivalence | code_tests | llm_judge), prints pass@k / avg, appends
-a row to ``results.csv``, and saves raw completions under ``runs/`` (git-ignored).
+``bench.json`` (equivalence | code_tests | llm_judge | agentic), prints both
+``observed_pass@k`` (best-of-k capability ceiling) and ``pass^k`` (all-k
+reliability, tau-bench) plus flaky-item count + SEM, appends a row to
+``results.csv``, and saves raw completions under ``runs/`` (git-ignored).
 """
 from __future__ import annotations
 
@@ -57,6 +59,39 @@ def compute_cost(prompt_tokens: int, gen_tokens: int,
                  price_in: float, price_out: float) -> float:
     """USD cost from token totals + per-1M-token prices (local default 0 -> 0.0)."""
     return round(prompt_tokens / 1e6 * price_in + gen_tokens / 1e6 * price_out, 6)
+
+
+def reliability_metrics(per_item_correct: list[int], k: int) -> dict:
+    """Reliability summary from per-item correct counts (each 0..k).
+
+    Two complementary capability metrics, always reported together:
+    - ``observed_pass_at_k``: fraction of items with >=1 correct sample (best-of-k).
+      A *capability ceiling* - it RISES with k, so on its own it HIDES flakiness.
+    - ``pass_hat_k``: fraction of items correct on ALL k samples (tau-bench's
+      pass^k). Reliability / consistency - the home-agent-relevant signal; it FALLS
+      with k as instability shows. See wiki/concepts/eval-reliability.md.
+
+    Plus: ``avg_correct`` (mean per-sample correctness; macro == micro with equal k),
+    ``flaky_items`` (items with 0 < correct < k, i.e. inconsistent across samples),
+    and ``sem`` (standard error of the mean over per-item mean scores; CLT, per
+    Anthropic 2411.00640; "" when <2 items).
+    """
+    n = len(per_item_correct)
+    if n == 0 or k <= 0:
+        return {"observed_pass_at_k": 0.0, "pass_hat_k": 0.0, "avg_correct": 0.0,
+                "flaky_items": 0, "sem": ""}
+    item_means = [c / k for c in per_item_correct]
+    observed = sum(1 for c in per_item_correct if c >= 1) / n
+    pass_hat = sum(1 for c in per_item_correct if c >= k) / n
+    avg = sum(item_means) / n
+    flaky = sum(1 for c in per_item_correct if 0 < c < k)
+    if n >= 2:
+        var = sum((m - avg) ** 2 for m in item_means) / (n - 1)
+        sem = round((var ** 0.5) / (n ** 0.5), 4)
+    else:
+        sem = ""
+    return {"observed_pass_at_k": round(observed, 4), "pass_hat_k": round(pass_hat, 4),
+            "avg_correct": round(avg, 4), "flaky_items": flaky, "sem": sem}
 
 
 def load_benchmark(bench_dir: Path) -> dict:
@@ -181,7 +216,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--provider", choices=["ollama", "openai-compatible"], default="ollama",
                     help="ollama = native local daily driver; openai-compatible = a "
                          "hosted API (e.g. Z.AI GLM) or Ollama's :11434/v1 shim.")
-    ap.add_argument("--k", type=int, default=1, help="samples per prompt (pass@k)")
+    ap.add_argument("--k", type=int, default=3,
+                    help="samples per prompt (default 3). Reports observed_pass@k "
+                         "(best-of-k capability ceiling) AND pass^k (all-k reliability); "
+                         "small/quantized models flake, so >=2 is the honest default. "
+                         "Use --k 1 for a quick smoke.")
     ap.add_argument("--limit", type=int, default=0, help="limit number of prompts (0 = all)")
     ap.add_argument("--temperature", type=float, default=1.0)
     ap.add_argument("--top-p", type=float, default=0.95)
@@ -216,6 +255,10 @@ def main(argv: list[str] | None = None) -> int:
                          "per step (model-agnostic); 'native' = provider function-calling "
                          "(Ollama/OpenAI `tools` + message.tool_calls), a fair footing for "
                          "thinking/XML-tool models (needs a tool-capable model/template).")
+    ap.add_argument("--slice-by", default=None,
+                    help="meta field to break metrics down by (e.g. 'tier' or 'category'); "
+                         "prints per-group pass^k / observed_pass@k. The results.csv row is "
+                         "unchanged (overall only).")
     ap.add_argument("--results", default=str(LAB_BENCH / "results.csv"))
     ap.add_argument("--dry-run", action="store_true", help="print config + first prompt, don't call the model")
     ap.add_argument("--code-sandbox", choices=["podman", "local-unsafe"], default=None,
@@ -274,17 +317,18 @@ def main(argv: list[str] | None = None) -> int:
     safe_model = args.model.replace(":", "_").replace("/", "_")
     raw_path = runs_dir / f"{manifest['name']}-{safe_model}-{ts}.jsonl"
 
-    item_pass = 0          # items with >=1 correct sample (observed pass@k)
     sample_correct = 0     # total correct samples (for avg)
     total_samples = 0
     tok_s_sum = 0.0
     prompt_tok_sum = 0
     gen_tok_sum = 0
     wall_sum = 0.0
+    per_item_correct: list[int] = []          # correct count (0..k) per item -> reliability
+    slice_groups: dict[str, list[int]] = {}   # meta[slice_by] value -> per-item correct counts
     agentic_toolset = resolve_toolset(manifest.get("toolset")) if method == "agentic" else None
     with raw_path.open("w") as raw:
         for item in prompts:
-            any_correct = False
+            correct_this_item = 0
             for s in range(args.k):
                 if method == "agentic":
                     user_sim = CopilotCLIUser(persona=item["meta"]["persona"], model=args.user_model)
@@ -299,7 +343,7 @@ def main(argv: list[str] | None = None) -> int:
                     tok_s_sum += (perf["gen_tokens"] / perf["wall_s"]) if perf["wall_s"] else 0.0
                     if res.get("correct"):
                         sample_correct += 1
-                        any_correct = True
+                        correct_this_item += 1
                     raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
                                           "episode": {"resolution": episode["resolution"],
                                                       "protocol": episode.get("protocol"),
@@ -320,27 +364,36 @@ def main(argv: list[str] | None = None) -> int:
                 wall_sum += comp.wall_s
                 if res.get("correct"):
                     sample_correct += 1
-                    any_correct = True
+                    correct_this_item += 1
                 raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
                                       "prompt_tokens": comp.prompt_tokens,
                                       "gen_tokens": comp.gen_tokens,
                                       "wall_s": comp.wall_s,
                                       "gen_tok_per_s": comp.gen_tok_per_s,
                                       "completion": comp.text}) + "\n")
-            if any_correct:
-                item_pass += 1
-            mark = "OK " if any_correct else "XX "
-            print(f"  {mark}{item['id']}")
+            per_item_correct.append(correct_this_item)
+            if args.slice_by:
+                gv = str((item.get("meta") or {}).get(args.slice_by, "\u2014"))
+                slice_groups.setdefault(gv, []).append(correct_this_item)
+            mark = "OK " if correct_this_item == args.k else "XX " if correct_this_item == 0 else "~~ "
+            print(f"  {mark}{item['id']} ({correct_this_item}/{args.k})")
 
-    n = len(prompts) or 1
-    observed_pass_at_k = item_pass / n
-    avg_correct = sample_correct / (total_samples or 1)
+    metrics = reliability_metrics(per_item_correct, args.k)
     mean_tok_s = round(tok_s_sum / (total_samples or 1), 2)
     cost_usd = compute_cost(prompt_tok_sum, gen_tok_sum, args.price_in, args.price_out)
-    print(f"\nobserved_pass@{args.k}={observed_pass_at_k:.3f}  avg_correct={avg_correct:.3f}  "
+    print(f"\nobserved_pass@{args.k}={metrics['observed_pass_at_k']:.3f}  "
+          f"pass^{args.k}={metrics['pass_hat_k']:.3f}  avg_correct={metrics['avg_correct']:.3f}  "
+          f"flaky={metrics['flaky_items']}/{len(per_item_correct)}  sem={metrics['sem']}  "
           f"mean_gen_tok/s={mean_tok_s}  cost_usd={cost_usd}  raw={raw_path.name}")
-    print("  (observed_pass@k = fraction of items with >=1 correct in k samples; "
-          "not the formal unbiased pass@k estimator)")
+    print("  (observed_pass@k = >=1 correct in k [best-of-k capability ceiling]; "
+          "pass^k = ALL k correct [tau-bench reliability]; flaky = items inconsistent "
+          "across k; sem = standard error of the per-item mean)")
+    if args.slice_by and slice_groups:
+        print(f"  by meta.{args.slice_by}:")
+        for gv in sorted(slice_groups):
+            gm = reliability_metrics(slice_groups[gv], args.k)
+            print(f"    {gv}: n={len(slice_groups[gv])}  pass^{args.k}={gm['pass_hat_k']:.3f}  "
+                  f"obs@{args.k}={gm['observed_pass_at_k']:.3f}  avg={gm['avg_correct']:.3f}")
 
     row = {
         "date": dt.date.today().isoformat(),
@@ -359,8 +412,11 @@ def main(argv: list[str] | None = None) -> int:
         "seed": args.seed,
         "k": args.k,
         "n_items": len(prompts),
-        "observed_pass_at_k": round(observed_pass_at_k, 4),
-        "avg_correct": round(avg_correct, 4),
+        "observed_pass_at_k": metrics["observed_pass_at_k"],
+        "pass_hat_k": metrics["pass_hat_k"],
+        "avg_correct": metrics["avg_correct"],
+        "flaky_items": metrics["flaky_items"],
+        "sem": metrics["sem"],
         "mean_gen_tok_s": mean_tok_s,
         "prompt_tokens_total": prompt_tok_sum,
         "gen_tokens_total": gen_tok_sum,
