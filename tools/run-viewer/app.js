@@ -1,7 +1,7 @@
 // Benchmark Run Viewer — Preact + htm (no build step). Schema-adaptive item
 // rendering for the four scorer types produced by lab/benchmarks/harness.
 import { h, render } from 'https://esm.sh/preact@10.23.2';
-import { useState, useEffect, useCallback } from 'https://esm.sh/preact@10.23.2/hooks';
+import { useState, useEffect, useCallback, useRef } from 'https://esm.sh/preact@10.23.2/hooks';
 import htm from 'https://esm.sh/htm@3.1.1';
 import { marked } from 'https://esm.sh/marked@14.1.2';
 
@@ -322,13 +322,15 @@ function BaseOverview({ runs, base, wikiHas, onOpenWiki, onSelectRun }) {
   const variants = [], benches = [], vset = new Set(), bset = new Set();
   idxs.forEach((i) => {
     const v = runs[i].model; if (!vset.has(v)) { vset.add(v); variants.push(v); }
-    const bn = runs[i].benchmark.split(' ')[0]; if (!bset.has(bn)) { bset.add(bn); benches.push(bn); }
+    const bn = runs[i].benchmark; if (!bset.has(bn)) { bset.add(bn); benches.push(bn); }
   });
   const cell = (v, bn) => {
-    const ms = idxs.filter((i) => runs[i].model === v && runs[i].benchmark.split(' ')[0] === bn);
+    const ms = idxs.filter((i) => runs[i].model === v && runs[i].benchmark === bn
+      && Number.isFinite(parseFloat(runs[i].observed_pass_at_k)));
     if (!ms.length) return null;
     ms.sort((a, b) => parseFloat(runs[b].observed_pass_at_k) - parseFloat(runs[a].observed_pass_at_k));
-    return { i: ms[0], n: ms.length, pk: runs[ms[0]].observed_pass_at_k };
+    const i = ms[0];
+    return { i, n: ms.length, pk: parseFloat(runs[i].observed_pass_at_k), openable: !!runs[i].raw_exists };
   };
   const wp = `models/${base}.md`;
   return html`
@@ -347,12 +349,14 @@ function BaseOverview({ runs, base, wikiHas, onOpenWiki, onSelectRun }) {
           ${variants.map((v) => html`<tr>
             <td class="vname">${v}</td>
             ${benches.map((bn) => { const c = cell(v, bn); return html`<td>${c
-              ? html`<button class=${'pill ' + passClass(c.pk)} onClick=${() => onSelectRun(c.i)} title="open run">${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</button>`
+              ? (c.openable
+                  ? html`<button class=${'pill ' + passClass(c.pk)} onClick=${() => onSelectRun(c.i)} title="open run">${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</button>`
+                  : html`<span class=${'pill ' + passClass(c.pk)} title="raw run file not present">${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</span>`)
               : html`<span class="dash">—</span>`}</td>`; })}
           </tr>`)}
         </tbody>
       </table>
-      <div class="hint">best pass@k per variant×benchmark · ×n = multiple runs · click a cell to open the run</div>
+      <div class="hint">best pass@k per variant×benchmark · ×n = multiple runs · click a cell to open the run (greyed = raw file absent here)</div>
     </div>`;
 }
 
@@ -363,7 +367,7 @@ function Leaderboard({ runs, onSelectBase, onSelectRun }) {
   const benches = [], bset = new Set();
   const bmap = new Map(); const bases = [];
   runs.forEach((r, i) => {
-    const bn = r.benchmark.split(' ')[0];
+    const bn = r.benchmark;
     if (!bset.has(bn)) { bset.add(bn); benches.push(bn); }
     const base = r.base_model || r.model;
     let b = bmap.get(base);
@@ -372,10 +376,12 @@ function Leaderboard({ runs, onSelectBase, onSelectRun }) {
   });
   benches.sort();
   const cell = (b, bn) => {
-    const ms = b.runs.filter((i) => runs[i].benchmark.split(' ')[0] === bn);
+    const ms = b.runs.filter((i) => runs[i].benchmark === bn
+      && Number.isFinite(parseFloat(runs[i].observed_pass_at_k)));
     if (!ms.length) return null;
     ms.sort((a, c) => parseFloat(runs[c].observed_pass_at_k) - parseFloat(runs[a].observed_pass_at_k));
-    return { i: ms[0], n: ms.length, pk: parseFloat(runs[ms[0]].observed_pass_at_k) };
+    const i = ms[0];
+    return { i, n: ms.length, pk: parseFloat(runs[i].observed_pass_at_k), openable: !!runs[i].raw_exists };
   };
   const rows = bases.map((b) => {
     const cells = benches.map((bn) => [bn, cell(b, bn)]);
@@ -396,7 +402,9 @@ function Leaderboard({ runs, onSelectBase, onSelectRun }) {
             <td class="rank">${ri + 1}</td>
             <td class="vname"><button class="lbname" onClick=${() => onSelectBase(row.b.base)} title="compare variants">${row.b.base}</button></td>
             ${row.cells.map(([bn, c]) => html`<td>${c
-              ? html`<button class=${'pill ' + passClass(c.pk)} onClick=${() => onSelectRun(c.i)} title=${`open best ${bn} run`}>${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</button>`
+              ? (c.openable
+                  ? html`<button class=${'pill ' + passClass(c.pk)} onClick=${() => onSelectRun(c.i)} title=${`open best ${bn} run`}>${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</button>`
+                  : html`<span class=${'pill ' + passClass(c.pk)} title="raw run file not present">${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</span>`)
               : html`<span class="dash">—</span>`}</td>`)}
             <td><span class=${'pill ' + (Number.isNaN(row.avg) ? 'neutral' : passClass(row.avg))}>${Number.isNaN(row.avg) ? '—' : fmt(row.avg)}</span></td>
           </tr>`)}
@@ -591,6 +599,7 @@ function App() {
   const [wikiQuery, setWikiQuery] = useState('');
   const [wikiResults, setWikiResults] = useState(null);
   const [cmp, setCmp] = useState(null); // { a, b, da, db } for side-by-side compare
+  const cmpReq = useRef(0); // guards against out-of-order compare fetches
 
   useEffect(() => {
     getJSON('/api/runs').then((d) => setRuns((d.runs || []).map((r, i) => ({ ...r, __i: i })))).catch(() => setRuns([]));
@@ -614,10 +623,11 @@ function App() {
   const showLeaderboard = useCallback(() => { setSel(null); setData(null); }, []);
 
   const selectCompare = useCallback((a, b) => {
+    const req = ++cmpReq.current;
     setSel({ type: 'compare', a, b }); setCmp({ a, b, da: null, db: null });
     Promise.all([fetchRunItems(a), fetchRunItems(b)])
-      .then(([da, db]) => setCmp({ a, b, da, db }))
-      .catch(() => setCmp({ a, b, da: [], db: [] }));
+      .then(([da, db]) => { if (req === cmpReq.current) setCmp({ a, b, da, db }); })
+      .catch(() => { if (req === cmpReq.current) setCmp({ a, b, da: [], db: [] }); });
   }, [fetchRunItems]);
 
 
@@ -656,7 +666,10 @@ function App() {
               : sel.type === 'base'
               ? html`<${BaseOverview} runs=${runs} base=${sel.base} wikiHas=${wikiHas} onOpenWiki=${openWikiPage} onSelectRun=${selectRun} />`
               : sel.type === 'compare'
-              ? html`<${CompareView} runs=${runs} a=${cmp.a} b=${cmp.b} da=${cmp.da} db=${cmp.db} onExit=${() => selectRun(sel.a)} />`
+              ? html`<${CompareView} runs=${runs} a=${sel.a} b=${sel.b}
+                  da=${cmp && cmp.a === sel.a && cmp.b === sel.b ? cmp.da : null}
+                  db=${cmp && cmp.a === sel.a && cmp.b === sel.b ? cmp.db : null}
+                  onExit=${() => selectRun(sel.a)} />`
               : html`<${RunDetail} runs=${runs} runIndex=${sel.i} run=${runs[sel.i]} data=${data} wikiHas=${wikiHas} onOpenWiki=${openWikiPage} onCompare=${selectCompare} />`}
           </div>`
         : html`<${WikiPane} files=${wikiFiles || []} sel=${wikiSel} onSelect=${selectWiki} htmlContent=${wikiHtml} expanded=${wikiExpanded} onToggle=${toggleWikiDir} query=${wikiQuery} onQuery=${searchWiki} results=${wikiResults} />`}
