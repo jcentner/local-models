@@ -125,11 +125,12 @@ function matchRun(r, q) {
   return q.toLowerCase().split(/\s+/).filter(Boolean).every((t) => hay.includes(t));
 }
 
-function GroupedRail({ runs, sel, expanded, onToggle, onSelectRun, onSelectBase, query, onQuery }) {
+function GroupedRail({ runs, sel, expanded, onToggle, onSelectRun, onSelectBase, onLeaderboard, query, onQuery }) {
   const shown = runs.filter((r) => matchRun(r, query));
   const bases = groupRuns(shown);
   return html`
     <div class="rail">
+      <button class=${'lbbtn' + (sel === null ? ' sel' : '')} onClick=${onLeaderboard}>▣ leaderboard</button>
       <input class="search" type="search" placeholder="filter model / benchmark…" value=${query}
         onInput=${(e) => onQuery(e.target.value)} />
       <div class="h">${shown.length} runs · ${bases.length} models</div>
@@ -355,9 +356,110 @@ function BaseOverview({ runs, base, wikiHas, onOpenWiki, onSelectRun }) {
     </div>`;
 }
 
+// ---------- cross-model leaderboard (the Runs landing view) ----------
+// base_model (rows, = wiki slug) × benchmark (cols), cell = best pass@k.
+// Rows ranked by mean pass across the benchmarks they ran.
+function Leaderboard({ runs, onSelectBase, onSelectRun }) {
+  const benches = [], bset = new Set();
+  const bmap = new Map(); const bases = [];
+  runs.forEach((r, i) => {
+    const bn = r.benchmark.split(' ')[0];
+    if (!bset.has(bn)) { bset.add(bn); benches.push(bn); }
+    const base = r.base_model || r.model;
+    let b = bmap.get(base);
+    if (!b) { b = { base, runs: [] }; bmap.set(base, b); bases.push(b); }
+    b.runs.push(i);
+  });
+  benches.sort();
+  const cell = (b, bn) => {
+    const ms = b.runs.filter((i) => runs[i].benchmark.split(' ')[0] === bn);
+    if (!ms.length) return null;
+    ms.sort((a, c) => parseFloat(runs[c].observed_pass_at_k) - parseFloat(runs[a].observed_pass_at_k));
+    return { i: ms[0], n: ms.length, pk: parseFloat(runs[ms[0]].observed_pass_at_k) };
+  };
+  const rows = bases.map((b) => {
+    const cells = benches.map((bn) => [bn, cell(b, bn)]);
+    const got = cells.filter(([, c]) => c);
+    const avg = got.length ? got.reduce((s, [, c]) => s + c.pk, 0) / got.length : NaN;
+    return { b, cells, avg, n: got.length };
+  });
+  rows.sort((a, c) => (Number.isNaN(c.avg) ? -1 : c.avg) - (Number.isNaN(a.avg) ? -1 : a.avg));
+  return html`
+    <div class="detail">
+      <div class="crumb">leaderboard · ${bases.length} models · ${benches.length} benchmarks · ${runs.length} runs</div>
+      <div class="dhead"><h2>Cross-model leaderboard</h2></div>
+      <div class="meta"><span>best pass@k per model×benchmark, ranked by mean across benchmarks run</span></div>
+      <table class="matrix lb">
+        <thead><tr><th>#</th><th>model</th>${benches.map((bn) => html`<th>${bn}</th>`)}<th>avg</th></tr></thead>
+        <tbody>
+          ${rows.map((row, ri) => html`<tr>
+            <td class="rank">${ri + 1}</td>
+            <td class="vname"><button class="lbname" onClick=${() => onSelectBase(row.b.base)} title="compare variants">${row.b.base}</button></td>
+            ${row.cells.map(([bn, c]) => html`<td>${c
+              ? html`<button class=${'pill ' + passClass(c.pk)} onClick=${() => onSelectRun(c.i)} title=${`open best ${bn} run`}>${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</button>`
+              : html`<span class="dash">—</span>`}</td>`)}
+            <td><span class=${'pill ' + (Number.isNaN(row.avg) ? 'neutral' : passClass(row.avg))}>${Number.isNaN(row.avg) ? '—' : fmt(row.avg)}</span></td>
+          </tr>`)}
+        </tbody>
+      </table>
+      <div class="hint">click a model name to compare its variants · click a cell to open that benchmark's best run</div>
+    </div>`;
+}
+
+// a run item is a "failure" when its scorer marked correctness false (tri-state:
+// undefined/null stays out of the failures bucket).
+const isItemFail = (it) => !!(it.result && it.result.correct === false);
+
+// ---------- side-by-side run compare ----------
+function CompareView({ runs, a, b, da, db, onExit }) {
+  const [diffOnly, setDiffOnly] = useState(false);
+  const ra = runs[a], rb = runs[b];
+  if (!da || !db) return html`<div class="detail"><div class="empty">Loading comparison …</div></div>`;
+  const RA = pickRenderer(ra.scoring), RB = pickRenderer(rb.scoring);
+  const mapA = new Map(da.map((it) => [it.id, it]));
+  const mapB = new Map(db.map((it) => [it.id, it]));
+  const ids = [];
+  const seen = new Set();
+  for (const it of [...da, ...db]) { if (!seen.has(it.id)) { seen.add(it.id); ids.push(it.id); } }
+  const differs = (ia, ib) => {
+    const ca = ia && ia.result ? ia.result.correct : undefined;
+    const cb = ib && ib.result ? ib.result.correct : undefined;
+    return (ca === true || ca === false) && (cb === true || cb === false) && ca !== cb;
+  };
+  const shown = diffOnly ? ids.filter((id) => differs(mapA.get(id), mapB.get(id))) : ids;
+  const diffCount = ids.filter((id) => differs(mapA.get(id), mapB.get(id))).length;
+  return html`
+    <div class="detail">
+      <div class="crumb">compare · ${ra.benchmark} <button class="linkish" onClick=${onExit}>← back to run</button></div>
+      <div class="controls">
+        <button class=${'toggle' + (diffOnly ? ' on' : '')} onClick=${() => setDiffOnly((v) => !v)}
+          title="show only items where the two runs disagree">differences ${diffCount}</button>
+        <span class="hint">${shown.length} of ${ids.length} items</span>
+      </div>
+      <div class="cmphead">
+        <div class="cmpcol">${ra.model} <span class=${'pill ' + passClass(ra.observed_pass_at_k)}>${fmt(ra.observed_pass_at_k)}</span></div>
+        <div class="cmpcol">${rb.model} <span class=${'pill ' + passClass(rb.observed_pass_at_k)}>${fmt(rb.observed_pass_at_k)}</span></div>
+      </div>
+      ${shown.length === 0 ? html`<div class="empty">No ${diffOnly ? 'differing ' : ''}items.</div>` : null}
+      ${shown.map((id) => {
+        const ia = mapA.get(id), ib = mapB.get(id);
+        const diff = differs(ia, ib);
+        return html`<div class=${'cmprow' + (diff ? ' differ' : '')}>
+          <div class="cmpidrow"><span class="cmpid">${id}</span>${diff ? html`<span class="diffbadge">differs</span>` : null}</div>
+          <div class="cmpcols">
+            <div>${ia ? html`<${RA} it=${ia} />` : html`<div class="cmpmissing">— not in this run —</div>`}</div>
+            <div>${ib ? html`<${RB} it=${ib} />` : html`<div class="cmpmissing">— not in this run —</div>`}</div>
+          </div>
+        </div>`;
+      })}
+    </div>`;
+}
+
 // ---------- run detail ----------
-function RunDetail({ run, data, wikiHas, onOpenWiki }) {
-  if (!run) return html`<div class="empty">Select a run, or a model header to compare variants.</div>`;
+function RunDetail({ runs, runIndex, run, data, wikiHas, onOpenWiki, onCompare }) {
+  const [failsOnly, setFailsOnly] = useState(false);
+  useEffect(() => { setFailsOnly(false); }, [runIndex]);
+  if (!run) return html`<div class="empty">Select a run, a model header to compare variants, or browse the leaderboard.</div>`;
   if (!data) return html`<div class="empty">Loading ${run.raw_file} …</div>`;
   if (data.error) return html`<div class="empty">${data.error}: ${data.file || ''}</div>`;
   const Renderer = pickRenderer(run.scoring);
@@ -368,6 +470,11 @@ function RunDetail({ run, data, wikiHas, onOpenWiki }) {
     ['cost', '$' + fmt(run.cost_usd, 4)], ['ctx', run.num_ctx], ['date', run.date],
   ];
   const sub = (base !== run.model ? base : '') ;
+  const failCount = data.items.filter(isItemFail).length;
+  const items = failsOnly ? data.items.filter(isItemFail) : data.items;
+  const targets = runs
+    .map((r, i) => ({ r, i }))
+    .filter(({ r, i }) => i !== runIndex && r.raw_exists && r.benchmark === run.benchmark);
   return html`
     <div class="detail">
       <div class="crumb">${run.benchmark} / ${run.scoring} / ${data.n_items} items${data.parse_errors ? ` · ${data.parse_errors} parse errors` : ''}</div>
@@ -379,8 +486,17 @@ function RunDetail({ run, data, wikiHas, onOpenWiki }) {
       <div class="meta">${meta.map(([k, v]) => html`<span>${k} <b>${v || '—'}</b></span>`)}
         <span>sampling <b>${run.sampling || '—'}</b></span>
       </div>
+      <div class="controls">
+        <button class=${'toggle' + (failsOnly ? ' on' : '')} disabled=${failCount === 0}
+          onClick=${() => setFailsOnly((v) => !v)} title="show only items the scorer marked incorrect">failures ${failCount}</button>
+        ${targets.length ? html`<select class="cmpsel" onChange=${(e) => { const v = e.target.value; if (v) onCompare(runIndex, parseInt(v, 10)); e.target.value = ''; }}>
+          <option value="">compare vs…</option>
+          ${targets.map(({ r, i }) => html`<option value=${i}>${r.model} · ${fmt(r.observed_pass_at_k)}</option>`)}
+        </select>` : null}
+        ${failsOnly ? html`<span class="hint">${items.length} of ${data.n_items} items</span>` : null}
+      </div>
       <div class="cards">
-        ${data.items.map((it) => html`<${Renderer} it=${it} key=${it.id} />`)}
+        ${items.map((it) => html`<${Renderer} it=${it} key=${it.id} />`)}
       </div>
     </div>`;
 }
@@ -474,6 +590,7 @@ function App() {
   const [runQuery, setRunQuery] = useState('');
   const [wikiQuery, setWikiQuery] = useState('');
   const [wikiResults, setWikiResults] = useState(null);
+  const [cmp, setCmp] = useState(null); // { a, b, da, db } for side-by-side compare
 
   useEffect(() => {
     getJSON('/api/runs').then((d) => setRuns((d.runs || []).map((r, i) => ({ ...r, __i: i })))).catch(() => setRuns([]));
@@ -481,6 +598,9 @@ function App() {
   }, []);
 
   const wikiHas = useCallback((p) => (wikiFiles || []).includes(p), [wikiFiles]);
+
+  const fetchRunItems = useCallback((i) =>
+    getJSON('/api/run?file=' + encodeURIComponent(runs[i].raw_file)).then((d) => d.items || []), [runs]);
 
   const selectRun = useCallback((i) => {
     setSel({ type: 'run', i }); setData(null);
@@ -491,6 +611,15 @@ function App() {
 
   const selectBase = useCallback((base) => { setSel({ type: 'base', base }); setData(null); }, []);
   const toggleBase = useCallback((base) => setExpanded((m) => ({ ...m, [base]: m[base] === false })), []);
+  const showLeaderboard = useCallback(() => { setSel(null); setData(null); }, []);
+
+  const selectCompare = useCallback((a, b) => {
+    setSel({ type: 'compare', a, b }); setCmp({ a, b, da: null, db: null });
+    Promise.all([fetchRunItems(a), fetchRunItems(b)])
+      .then(([da, db]) => setCmp({ a, b, da, db }))
+      .catch(() => setCmp({ a, b, da: [], db: [] }));
+  }, [fetchRunItems]);
+
 
   const selectWiki = useCallback((f) => {
     setWikiSel(f); setWikiHtml('');
@@ -521,10 +650,14 @@ function App() {
         ? html`<div class="body">
             <${GroupedRail} runs=${runs} sel=${sel} expanded=${expanded}
               onToggle=${toggleBase} onSelectRun=${selectRun} onSelectBase=${selectBase}
-              query=${runQuery} onQuery=${setRunQuery} />
-            ${sel && sel.type === 'base'
+              onLeaderboard=${showLeaderboard} query=${runQuery} onQuery=${setRunQuery} />
+            ${sel === null
+              ? html`<${Leaderboard} runs=${runs} onSelectBase=${selectBase} onSelectRun=${selectRun} />`
+              : sel.type === 'base'
               ? html`<${BaseOverview} runs=${runs} base=${sel.base} wikiHas=${wikiHas} onOpenWiki=${openWikiPage} onSelectRun=${selectRun} />`
-              : html`<${RunDetail} run=${sel && sel.type === 'run' ? runs[sel.i] : null} data=${data} wikiHas=${wikiHas} onOpenWiki=${openWikiPage} />`}
+              : sel.type === 'compare'
+              ? html`<${CompareView} runs=${runs} a=${cmp.a} b=${cmp.b} da=${cmp.da} db=${cmp.db} onExit=${() => selectRun(sel.a)} />`
+              : html`<${RunDetail} runs=${runs} runIndex=${sel.i} run=${runs[sel.i]} data=${data} wikiHas=${wikiHas} onOpenWiki=${openWikiPage} onCompare=${selectCompare} />`}
           </div>`
         : html`<${WikiPane} files=${wikiFiles || []} sel=${wikiSel} onSelect=${selectWiki} htmlContent=${wikiHtml} expanded=${wikiExpanded} onToggle=${toggleWikiDir} query=${wikiQuery} onQuery=${searchWiki} results=${wikiResults} />`}
     </div>`;

@@ -121,3 +121,16 @@ earning its keep.
   into the `/benchmark` flow as the "go look at what happened" step.
 - Have `/benchmark` pass `--base-model` per model by default.
 - Wiki markdown is sanitized (CSP + DOM denylist) but reads only my own `wiki/`.
+
+## Update — three "killer" views
+
+Landed the three features I'd pitched: (1) opening **Runs** now lands on a
+**cross-model leaderboard** — every `base_model` ranked by mean pass@k across the
+benchmarks it ran, as a model × benchmark matrix; gemma-4-12b (0.96) > qwen3.5:4b
+(0.85) > minicpm5-1b (0.33) > vibethinker-3b (0.17). (2) a **failures-only toggle**
+on a run filters to just the items the scorer marked incorrect — the fast path to
+"why did it lose points". (3) **side-by-side compare**: pick any other run of the
+same benchmark and the two line up item-by-item by id, disagreements flagged
+`differs` with a differences-only toggle — exactly how you see *what changed*
+between a quant or a provider swap. All front-end only (no server/schema change);
+`impeccable detect` clean after dropping a thick side-border tell.

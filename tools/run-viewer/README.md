@@ -23,6 +23,11 @@ first load needs internet; runs and wiki data are served locally.
 
 ## What it shows
 
+Opening **Runs** lands on a **cross-model leaderboard**: every `base_model` ranked
+by mean pass@k across the benchmarks it ran, as a model × benchmark matrix (best
+pass@k per cell). Click a model name to compare its variants; click a cell to open
+that benchmark's best run. The rail's `▣ leaderboard` button returns here anytime.
+
 The left rail groups every row in `results.csv` by **base model → variant → run**
 (`base_model` is the harness-recorded canonical id; the `model` column is the
 config/quant variant label) and has a **filter box** (token match, so "gemma 4"
@@ -41,7 +46,11 @@ item, adapted to the scorer:
 
 A run's detail header shows the variant label, its **base model**, and a
 `model page ↗` link to `wiki/models/<base_model>.md` when that page exists
-(`base_model` doubles as the wiki slug, so no separate mapping is needed).
+(`base_model` doubles as the wiki slug, so no separate mapping is needed). Its
+**controls** row adds a `failures N` toggle (show only items the scorer marked
+incorrect) and a `compare vs…` dropdown (any other run of the same benchmark).
+**Compare** lines the two runs up **item-by-item** by id, side by side; rows where
+the two disagree are flagged `differs`, and a `differences N` toggle hides the rest.
 
 The **wiki** tab lists `wiki/**/*.md` grouped by collapsible folders and renders a
 page read-only (YAML frontmatter stripped, `[[wikilinks]]` flattened), with a

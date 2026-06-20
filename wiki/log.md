@@ -472,3 +472,4 @@ quant-sweep view), and runs link to the model's wiki page — fixing "the run pa
 never says what model it is". Two gpt-5.5 background reviews; the 2nd caught a real
 `.crit`-grid regression + 3 robustness fixes. Narrative:
 [lab/journal/2026-06-20-run-viewer.md](../lab/journal/2026-06-20-run-viewer.md).
+## [2026-06-20] note | run-viewer: cross-model leaderboard landing + failures toggle + side-by-side compare
