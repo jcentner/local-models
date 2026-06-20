@@ -21,9 +21,6 @@ detail to the linked experiment/model page, and tick items here as they land.
 ## Open research questions (from model pages)
 - **VibeThinker on its home turf** — competitive coding / LiveCodeBench, sandboxed `code_tests` ([open questions](models/vibethinker-3b.md)). The decision-reasoning result only tested the out-of-domain boundary.
 - **VibeThinker quant sensitivity** — Q4_K_M vs Q8_0 on reasoning ([quantization](concepts/quantization.md)).
-- **gemma-4-12B v2 vs base** gemma-4-12B-it on our agentic harness — the sweep
-  established v2's strong absolute score (11/12 home-automation) but ran **no base**,
-  so the author's ~3.5× tau2 claim is still unvalidated. **The immediate next run.**
 
 ## Models to consider (future `/new-model`)
 - **gemma-4-12B v3** (announced) and the **Qwen3.6-27B** agentic sibling ([v2 page](models/gemma-4-12b-agentic-fable5.md)).

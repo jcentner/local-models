@@ -76,4 +76,4 @@ need control, benchmarking, or unreleased features.
 ## First tasks
 - [x] Decide: install CUDA toolkit in WSL vs use a CUDA container. **→ container**
   (`ghcr.io/ggml-org/llama.cpp:server-cuda`, verified 2026-06-20).
-- [ ] Run the [gemma-4-12B v2 quant × KV × offload sweep](../../lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep/README.md).
+- [x] Run the [gemma-4-12B v2 quant × KV × offload sweep](../../lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep/README.md) — **done 2026-06-20** (Q3_K_M f16 full-GPU wins; 11/12 home-automation, 4/4 code-basics).

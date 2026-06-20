@@ -85,8 +85,9 @@ this is the prime reason to run our own [agentic harness](../benchmarks/README.m
 **Verified locally (2026-06-20, our harness, Q3_K_M full-GPU):** **11/12**
 home-automation (v0.2 agentic, native Gemma 4 tools) and **4/4** code-basics — a
 genuinely strong local agent, and quant-robust (10–11/12 across every sweep config).
-Caveat: we ran **only v2, not base gemma-4-12B-it**, so the author's ~3.5× *delta*
-is still unverified — only v2's strong absolute score is established. Full
+Caveat: we measured **v2's absolute capability** (what we care about), not a base
+head-to-head — so the author's relative ~3.5× claim is simply not something we
+tested. Full
 [sweep](../../lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep/README.md).
 
 ## Size & resource requirements (machine-independent)

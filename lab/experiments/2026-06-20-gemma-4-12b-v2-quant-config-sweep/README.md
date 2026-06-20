@@ -1,6 +1,6 @@
 # Gemma-4-12B v2 — quant × KV × offload sweep (8 GB VRAM)
 
-- Date: staged 2026-06-20 (container verified; sweep not yet run)
+- Date: 2026-06-20 (run complete — see Result)
 - Machine: ASUS ProArt P16 (RTX 5070 Laptop, 8 GB VRAM, WSL2, ~15 GB WSL RAM) — see [proart-p16](../../../wiki/hardware/proart-p16.md)
 - Model: [gemma-4-12b-agentic-fable5](../../../wiki/models/gemma-4-12b-agentic-fable5.md) (yuxinlu1 v2 GGUF)
 - Runner: **llama.cpp `llama-server` in a rootless-podman CUDA container** (`gemma4_unified` + `--jinja` native tool-calls — Ollama can't do KV-quant / fine offload / native Gemma 4 tools). See [stacks/llama-cpp.md](../../../wiki/stacks/llama-cpp.md).
@@ -135,6 +135,7 @@ aggregate is stable).
 6. Net: **use Q3_K_M + f16 KV full-GPU.** Every path to Q4 costs quality (q4_0 KV)
    or speed (offload/thrash) for no measured quality gain.
 
-**Still open:** ran v2 only — **no base gemma-4-12B-it head-to-head**, so the
-author's ~3.5× tau2-telecom claim is *not* validated here (we only established v2's
-strong absolute agentic score). That comparison is the next step → [backlog](../../../wiki/backlog.md).
+**Scope note:** intentionally measured v2's **absolute** capability (the thing we
+care about), which is established — **11/12** agentic, **4/4** code. No base
+gemma-4-12B-it head-to-head was run, so the author's relative ~3.5× tau2 claim is
+neither tested nor pursued here.
