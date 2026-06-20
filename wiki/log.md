@@ -499,3 +499,15 @@ concepts/eval-reliability.md (pass@k vs pass^k, error bars; cites Anthropic
 2411.00640 + tau-bench 2406.12045). Propagated to AGENTS.md, benchmarks/README,
 lab READMEs, benchmark-harness + wrap-external skills, /benchmark prompt. selftest
 green. Working plan: tmp/benchmark-expansion-plan.md (gitignored).
+
+## [2026-06-20] bench | decision-reasoning v0.1 -> v0.2 (6 -> 21, tiers+categories)
+Expanded the authored decision set: tagged d1-d6 with meta.tier/meta.category
+(prompt text unchanged -> prior results still compare) and added d7-d21 to reach
+21 items, 3 per category (prioritization, risk, resource-allocation, people, ethics,
+ambiguous, reversible-vs-irreversible) x tiers T1 (defensible best, x3) / T2 (genuine
+tradeoff, x14) / T3 (adversarial/under-specified, x4: d8 unsigned-deal, d10
+artificial-urgency, d15 peek-at-competitor, d17 diagnose-first). Rubric v0.2 teaches
+the judge to reward flagging missing info / resisting the bait on T3 traps. bench.json
+0.2. Slice with --slice-by tier|category (harness support already shipped). v0.1
+6-item scores are NOT comparable to v0.2; re-run candidates. Validated: 21 unique ids,
+balanced meta, loads at k=3.

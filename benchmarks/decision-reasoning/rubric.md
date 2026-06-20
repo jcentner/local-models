@@ -38,3 +38,12 @@ prompt. A long ramble with no clear decision should score low.
 The overall `score` is holistic: a response with no clear decision, or whose
 recommendation contradicts its own analysis, should score low even if individual
 parts look fine. A crisp, well-reasoned, decisive answer scores high.
+
+**Under-specified or "trap" scenarios (v0.2):** some scenarios are deliberately
+under-specified or carry a tempting-but-wrong obvious answer (e.g. artificial
+urgency, a shiny unsigned deal, an unethical shortcut). Reward responses that name
+the missing information, ask the right diagnostic question, or resist the bait and
+explain why; penalize confidently committing to the tempting wrong option or
+inventing facts to resolve the ambiguity. Decisiveness still matters - a good answer
+commits to a sensible course (which may be "diagnose X before acting"), it does not
+hide in "it depends."
