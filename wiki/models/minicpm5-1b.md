@@ -2,7 +2,7 @@
 title: MiniCPM5-1B
 tags: [model, dense, small, on-device, llama-arch, hybrid-reasoning, tool-use, code, to-try]
 updated: 2026-06-19
-status: to-try
+status: tried
 ---
 
 # MiniCPM5-1B (a.k.a. "MiniCPM-5")
@@ -137,31 +137,41 @@ only matters for from-source vLLM/SGLang builds.
 
 ## How to run it
 
-### A. Ollama (daily driver) — run the official GGUF directly
-Ollama can pull a Hugging Face GGUF without a Modelfile:
+### A. Ollama (daily driver) — needs the official Go TEMPLATE
 
-```bash
-# No Think (fast) default; pick a quant tag from the GGUF repo
-ollama run hf.co/openbmb/MiniCPM5-1B-GGUF:Q8_0 "Briefly: what is MiniCPM5?"
-```
-
-For repeatable sampling + a big context, wrap it in a Modelfile:
+> **Gotcha (verified 2026-06-19):** Ollama does **not** evaluate the GGUF's embedded
+> Jinja chat template — it falls back to the Modelfile's Go `TEMPLATE`. A bare
+> `ollama run hf.co/openbmb/MiniCPM5-1B-GGUF:Q8_0` (or an auto-detected template)
+> produces **degenerate output** (`"Short Un In Short Un In..."`). You **must**
+> supply the [official cookbook](https://github.com/OpenBMB/MiniCPM/blob/main/docs/deployment/ollama.md)
+> template, which ranges over `.Messages` (multi-turn) with no stray leading `<s>`:
 
 ```bash
 cat > Modelfile <<'EOF'
 FROM hf.co/openbmb/MiniCPM5-1B-GGUF:Q8_0
+TEMPLATE """{{- if .Messages -}}
+{{- range .Messages -}}
+<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end -}}
+<|im_start|>assistant
+{{ end -}}"""
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "</s>"
 PARAMETER temperature 0.7
 PARAMETER top_p 0.95
-PARAMETER num_ctx 32768
+PARAMETER num_ctx 8192
 EOF
 ollama create minicpm5-1b -f Modelfile
-ollama run --verbose minicpm5-1b "List 3 uses for a 1B local model."
+ollama run --verbose minicpm5-1b "List 3 uses for a 1B local model."   # ~150-185 tok/s
 ```
 
-For **Think** mode set `temperature 0.9` and give a large `num_predict` so the
-`<think>` block doesn't eat the answer. The official
-[Ollama cookbook](https://github.com/OpenBMB/MiniCPM/blob/main/docs/deployment/ollama.md)
-has the canonical Modelfile/template. See [stacks/ollama.md](../stacks/ollama.md).
+**Think vs No Think:** the template above is No-Think (temp 0.7). For Think mode
+raise `temperature 0.9`. Note that over Ollama you **cannot reliably suppress**
+the model's `<think>` CoT (the `think:false` / `--no-think` flag is ignored by this
+GGUF), so budget a generous `num_predict`. Native **tool calls are XML** and need
+SGLang's `minicpm5` parser; over Ollama you parse them yourself. See
+[stacks/ollama.md](../stacks/ollama.md).
 
 ### B. llama.cpp (engine-level control)
 ```bash
@@ -193,15 +203,28 @@ Expect high tok/s (community: 100+ on comparable 8 GB hardware).
 Unlike the math/code specialists already in the wiki, MiniCPM5-1B is explicitly
 trained for **tool use and agentic workflows** at a footprint small enough to run
 always-on. That makes it a real candidate **brain** for a local-agent home
-system — and a natural fit for the [BFCL](../benchmarks/bfcl.md) tool-use eval and
-the act-vs-ask-vs-nothing skill. The open question is whether 1B is *reliable*
-enough for the job (the Bijan Bowen "USABLE?" framing), which is what testing
+system — and a natural fit for the act-vs-ask-vs-nothing skill. The open question
+is whether 1B is *reliable* enough for the job (the Bijan Bowen "USABLE?" framing),
+which is what testing
 decides.
 
+## First-run finding (2026-06-19)
+
+Ran on the [email-triage](../../benchmarks/email-triage/README.md) agentic set
+(act/ask/escalate): **0/5** at recommended No-Think sampling *and* at temp 0
+(vs qwen3.5:4b which passed e1). It (a) can't suppress `<think>` over Ollama so the
+JSON action truncates, (b) never commits to a terminal `reply`/`escalate`, and
+(c) misused the tool-arg schema (`question` vs `query`). **Caveat:** this is partly
+a **protocol mismatch** - our prompt-mode "JSON only" rollout is adversarial to a
+hybrid-thinking model whose native tool format is XML (SGLang `minicpm5` parser).
+It does **not** refute the headline tau-2-Bench number; a fair tool-use test needs
+the native path (or a planned native-tool-calling harness mode). Full writeup:
+[lab/experiments/2026-06-19-minicpm5-1b-first-run](../../lab/experiments/2026-06-19-minicpm5-1b-first-run/README.md).
+
 ## Open questions
-- Does the agentic/tool-use strength survive **outside** its training distribution?
-  Run [BFCL](../benchmarks/bfcl.md) (irrelevance / multi-turn miss-param) — the
-  home-agent-relevant categories.
+- Does the agentic/tool-use strength survive on its **native tool path** (SGLang
+  `minicpm5` XML parser), where the prompt-mode protocol mismatch goes away? That's
+  the fair re-test after the email-triage 0/5.
 - How does it do on the fresh [decision-reasoning](../benchmarks/decision-reasoning.md)
   set vs [VibeThinker-3B](vibethinker-3b.md)? A 1B tool-tilted generalist vs a 3B
   math specialist on practical judgment is a clean contrast.

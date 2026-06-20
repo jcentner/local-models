@@ -17,53 +17,80 @@ Trivial. Q8_0 (~1.2 GB) or even F16 (~2.2 GB) fits **fully on the 8 GB GPU**
 [WSL RAM](../../../wiki/concepts/wsl2-memory.md) is a non-issue at 1B. No
 wslconfig change needed.
 
-## Method (planned — exact commands; do NOT run weights until confirmed)
+## Method (as run, 2026-06-19)
 
 ```bash
-# 1. Run the official GGUF directly via Ollama (No Think default)
-ollama run hf.co/openbmb/MiniCPM5-1B-GGUF:Q8_0 "Briefly: what is MiniCPM5?"
+# 1. Pull the official GGUF
+ollama pull hf.co/openbmb/MiniCPM5-1B-GGUF:Q8_0      # 1.2 GB
 
-# 2. Repeatable alias (No Think sampling: temp 0.7 / top_p 0.95)
+# 2. CRITICAL: create the alias with the OFFICIAL MiniCPM5 Go TEMPLATE.
+#    Ollama does NOT evaluate the GGUF's embedded Jinja chat template - it falls
+#    back to the Modelfile TEMPLATE. The auto-detected template (single-turn
+#    .System/.Prompt + a stray leading <s>) produces DEGENERATE output
+#    ("Short Un In Short Un In..."). The cookbook template ranges over .Messages:
 cat > Modelfile <<'MF'
 FROM hf.co/openbmb/MiniCPM5-1B-GGUF:Q8_0
+TEMPLATE """{{- if .Messages -}}
+{{- range .Messages -}}
+<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end -}}
+<|im_start|>assistant
+{{ end -}}"""
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "</s>"
 PARAMETER temperature 0.7
 PARAMETER top_p 0.95
-PARAMETER num_ctx 32768
+PARAMETER num_ctx 8192
 MF
-ollama create minicpm5-1b -f Modelfile
-ollama ps                       # confirm full-GPU load + VRAM
-ollama run --verbose minicpm5-1b "List 3 uses for a 1B local model."   # tok/s
+ollama create minicpm5-1b -f Modelfile     # then "Paris." coherent; ~150-185 tok/s
 
-# 3. Benchmark via the harness (out-of-the-box generalist judgment)
+# 3. Benchmark: the model-agnostic AGENTIC scorer (email-triage), not BFCL.
 cd lab/benchmarks
-python3 -m harness.run --benchmark ../../benchmarks/decision-reasoning \
-  --model minicpm5-1b --num-ctx 32768 --num-predict 4096 \
-  --temperature 0.7 --top-p 0.95 --seed 0 --judge-model claude-opus-4.8
-
-# 4. (later) Think mode: temp 0.9, larger --num-predict so <think> doesn't
-#    truncate the answer; and tool-use via BFCL / SGLang minicpm5 parser.
+python3 -m harness.run --benchmark ../../benchmarks/email-triage \
+  --model minicpm5-1b --temperature 0.7 --top-p 0.95 --num-ctx 16384 \
+  --num-predict 4096 --seed 0 --user-model claude-opus-4.8
+# also ran temp 0 (greedy) as a confirmation; and decision-reasoning is a TODO.
 ```
 
-## Fields to record (for results.csv comparability)
-
-model, quant, runner+version (`ollama-harness` + ollama version), provider
-(`ollama`), context length, GPU layers (-ngl 99), num_predict, tok/s (prompt +
-gen), VRAM used (`ollama ps`), **machine** (ProArt P16), score, judge model, date.
+## Fit verdict + speed (this machine, verified)
+Q8_0 loads at **2.9 GB, 100% GPU**, num_ctx up to 16-32K, **~150-185 tok/s**.
+Trivial fit, as predicted. The binding issue is *behavior*, not resources.
 
 ## Result
-
-_(blank — not run yet)_
+**email-triage v0.1 (agentic): 0/5** at recommended No-Think sampling
+(temp 0.7, num_predict 4096) **and 0/5 at temp 0** (greedy) - not a sampling
+artifact. Contrast: qwen3.5:4b passed e1 (search_kb -> reply) cleanly. Failure
+modes (from the raw episodes):
+- **Can't suppress thinking over Ollama.** `--no-think` (Ollama `think:false`) is
+  ignored by this GGUF - it emits long `<think>` CoT every step. The CoT truncates
+  mid-thought -> no parseable JSON action (`_malformed`).
+- **Never commits to a terminal action.** All 5 episodes end `no_reply`: it loops
+  on `search_kb` / malformed steps and never emits `reply` or `escalate` within
+  the step budget.
+- **Wrong tool-arg schema.** When it does emit JSON it called `search_kb(question=...)`
+  instead of `search_kb(query=...)`, so its searches miss.
 
 ## Learnings
-
-_(blank — not run yet)_
+- **The MiniCPM5 Ollama template is a required fix** (above) - the bare `hf.co`
+  pull is degenerate. This is the headline reproducibility gotcha.
+- **0/5 is partly a protocol mismatch, not pure incapability.** Our prompt-mode
+  "emit ONE JSON object, nothing else" protocol is adversarial to a *hybrid-thinking*
+  1B whose thinking can't be turned off over Ollama and whose **native** tool-call
+  format is **XML** (parsed by SGLang's `minicpm5` parser into OpenAI `tool_calls`).
+  So this does **not** refute the headline tau-2-Bench 79.5 - it shows the model needs
+  its native tool path. A *fair* tool-use number wants **SGLang native parsing**
+  (the [8 GB/Blackwell stretch](../../../wiki/stacks/vllm.md)).
+- **Harness implication (high-value):** add a **native tool-calling mode** to the
+  agentic scorer (Ollama `/api/chat` `tools` + parse `message.tool_calls`) as an
+  alternative to prompt-mode, for models with native tool support. That would test
+  MiniCPM5 (and others) on a fair footing - the right v0.2 of the agentic harness.
+- A 1B model on a strict multi-step custom protocol is unreliable here; whether
+  that's the model or the protocol is exactly what the native-mode test would isolate.
 
 ## Next
-
-- If the generalist score is decent, run [BFCL](../../../wiki/benchmarks/bfcl.md)
-  irrelevance / multi-turn-miss-param — the home-agent tool-use categories — as
-  the headline test for this model.
-- Contrast against [VibeThinker-3B](../../../wiki/models/vibethinker-3b.md) on the
-  same [decision-reasoning](../../../wiki/benchmarks/decision-reasoning.md) set:
-  1B tool-tilted generalist vs 3B math specialist.
-- Quant sweep Q4_K_M vs Q8_0 — does 688 MB hold up at 1B?
+- **Build the native-tool-calling agentic mode** (above), then re-run MiniCPM5 fairly.
+- Run [decision-reasoning](../../../wiki/benchmarks/decision-reasoning.md) on it
+  (llm_judge) to contrast 1B tool-tilted generalist vs VibeThinker-3B math specialist
+  on practical judgment - no tool protocol involved, so it isolates reasoning.
+- Quant sweep Q4_K_M vs Q8_0 once a fair tool-use path exists.

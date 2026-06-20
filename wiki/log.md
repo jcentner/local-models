@@ -149,3 +149,20 @@ Authored `benchmarks/email-triage` v0 (5 scenarios: answer-from-KB vs escalate v
 search-then-decline). **Verified end-to-end live:** qwen3.5:4b passed e1
 (search_kb -> reply), 0 malformed steps. Docs synced (harness/wiki READMEs, AGENTS,
 index). tau3-bench remains the external cross-check; BFCL stays a reference.
+
+## [2026-06-19] bench | MiniCPM5-1B on email-triage (agentic) — 0/5 + template fix
+First real model run through the agentic harness. **Template gotcha (fixed):** the
+bare `hf.co/openbmb/MiniCPM5-1B-GGUF` Ollama pull is **degenerate** ("Short Un In
+Short Un...") — Ollama doesn't evaluate the GGUF Jinja template; you must supply the
+official Go `TEMPLATE` (ranges over `.Messages`, no stray `<s>`). After the fix:
+coherent, ~150-185 tok/s, 2.9 GB full-GPU. **Result: email-triage 0/5** at
+recommended No-Think (temp 0.7) AND temp 0 (not sampling). Failure modes: can't
+suppress `<think>` over Ollama (`--no-think` ignored) so the JSON action truncates;
+never commits to a terminal reply/escalate (all `no_reply`); misused tool args
+(`question` vs `query`). **Honest caveat:** partly a **protocol mismatch** — our
+prompt-mode "JSON only" rollout is adversarial to a hybrid-thinking model whose
+native tool format is XML (SGLang `minicpm5` parser); does NOT refute the tau-2-Bench
+headline. **Harness takeaway:** build a **native-tool-calling mode** (Ollama
+`/api/chat` `tools` + `message.tool_calls`) for a fair re-test. Model page ->
+status tried + finding; experiment writeup updated. results.csv: one representative
+row (kept the 4096/0.7 run, dropped the under-budgeted + duplicate rows).
