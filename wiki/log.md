@@ -250,3 +250,63 @@ Podman-vs-Docker GPU passthrough. Staged lab/experiments/2026-06-20-minicpm5-
 sglang-controlled to re-test MiniCPM5-1B (decision-reasoning + native tool-use)
 with Ollama's confounds removed. Supports the serving-aware-per-model direction:
 Ollama stays daily driver; thinking/tool models route to SGLang.
+
+## [2026-06-20] note | Aide-model track + /new-aide prompt
+Opened a second model track for the **non-generative support models** the home
+agent needs: STT (ears), TTS (voice), embeddings (memory), reranker/late-interaction
+(router for tool + context selection). Wrote concepts/aide-models.md — the durable
+schema: the four classes + home-agent pipeline slot, the per-class **eval contract**
+(STT=WER/CER+RTF via jiwer; TTS=round-trip WER + MOS, no audio judge; embeddings=
+MTEB NDCG@k/Recall@k; reranker=NanoBEIR **plus** a custom **tool-selection Recall@k**,
+e.g. 250 tools -> right one in top-5), and the aide-model **page schema** (I/O
+contract replaces sampling/template). Built .github/prompts/new-aide.prompt.md — the
+ingest sibling of /new-model that classifies, researches (reuses the last30days
+recipe), writes the page, and **stages an external eval** (external-first; hand-roll
+only the tool-selection scorer). Key differences captured: aide models are **mostly
+not on Ollama** (only some embeddings; STT/TTS/ColBERT run via faster-whisper /
+piper-Kokoro / PyLate+FastPLAID), footprint is bound by RTF / throughput / index
+size, and the Copilot-CLI judge **can't hear** so TTS naturalness isn't LLM-judgeable.
+Grounded the reranker class on **LFM2.5-ColBERT-350M** (Liquid AI, 353M, MaxSim, 11
+languages, LFM Open License v1.0, arXiv 2511.23404) — the tool-selection candidate.
+No weights pulled, no eval harness built yet (external-first). index updated (Aide
+models subsection + concept line).
+
+## [2026-06-20] note | Home-automation benchmark v0.2 (+6 scenarios)
+Extended the lighthouse agentic set from 6 to **12 scenarios**, data-only on the
+existing tool-set-driven harness (no scorer change). New: **h7** scene/routine
+("good night" = all lights off + thermostat 65 + lock front door, routine defined
+in scenario policy); **h8** ambiguity -> must `ask` which light before acting
+(scored by reusing `require_confirm` on the disambiguated device); **h9** a second
+sensitive-confirm (open the garage); **h10** capability-refuse with no tool (order
+a pizza -> `say` a decline, change nothing - a non-security refuse contrasting
+h5); **h11** multi-device read-only (which doors are unlocked, front unlocked /
+back locked); **h12** compound act+read in one turn (set heat 74 AND report the
+lock status). Sharpened the *sensitive* definition in the v0.2 scenario policies
+(security-**reducing** actions need confirm; locking / closing / lights /
+thermostat do not); left v0.1 policy text unchanged so prior results stay
+comparable. Validated: `validate_benchmark` passes; all 6 ideal episodes score
+correct and two adversarial controls (h8 no-ask, h12 touched-lock) correctly fail
+through the real scorer; selftest still ALL PASS. v0.3 backlog (needs harness
+work, not data): structured `ask.device`, cross-device dependency ordering,
+judge-assisted refuse/confirm message content. Not yet run live against a model.
+
+## [2026-06-20] ingest | LFM2.5-ColBERT-350M aide-model page
+First `/new-aide` run — the reranker/late-interaction class. Liquid AI's
+LFM2.5-ColBERT-350M (353M, first bidirectional LFM, base LFM2.5-350M-Base): a ColBERT
+late-interaction retriever — per-token 128-dim vectors, MaxSim, 32-tok query /
+512-tok doc, **11 languages**. Dual-use: PLAID-indexed retrieval or index-free
+reranking via PyLate (`trust_remote_code=True`); also **official GGUF for llama.cpp**;
+**not an Ollama model**, runs in a venv (Blackwell needs CUDA>=12.8 torch wheel; 353M
+fits the 8 GB GPU trivially, CPU-OK). **License read:** LFM Open License v1.0 =
+Apache-2.0 + commercial use limited to <$10M-revenue entities — irrelevant for this
+personal project, fully usable. Benchmarks: NanoBEIR-multilingual-extended avg
+NDCG@10 **0.605** + MKQA-11 Recall@20 **0.694** (beats LFM2-ColBERT, Qwen3-Embedding-
+0.6B, and its own dense sibling LFM2.5-Embedding-350M); flagged these test *document*
+retrieval, NOT our **tool selection** use-case — though Liquid ships an official
+tool-selection demo on this model. Eval staged: NanoBEIR sanity + a hand-rolled
+**tool-selection Recall@k** (query -> right tool in top-k from a pool of N) — the
+home-agent decision metric and seed for a future benchmarks/tool-selection set, with
+an A/B vs the dense sibling. Wrote wiki/models/lfm2.5-colbert-350m.md (aide page
+schema, sections 1-9); index Aide subsection updated; experiment staged at
+lab/experiments/2026-06-20-lfm2.5-colbert-tool-selection. No weights pulled, no scorer
+built (external-first; awaiting go-ahead).

@@ -28,6 +28,10 @@ local-agent home-automation system.
 - [models/vibethinker-3b.md](models/vibethinker-3b.md) — WeiboAI 3B dense reasoning specialist (Qwen2.5-based, MIT); frontier-ish math/code scores, runs full-GPU here.
 - [models/minicpm5-1b.md](models/minicpm5-1b.md) — OpenBMB 1B dense on-device model (Llama-arch, Apache-2.0); hybrid reasoning + tool-use tilt, runs trivially here; home-agent brain candidate.
 
+### Aide models (STT / TTS / embeddings / retrieval)
+The non-generative support models for the home agent — see [concepts/aide-models.md](concepts/aide-models.md) for the track; ingest with [`/new-aide`](../.github/prompts/new-aide.prompt.md).
+- [models/lfm2.5-colbert-350m.md](models/lfm2.5-colbert-350m.md) — Liquid AI 353M **late-interaction retriever** (ColBERT/MaxSim, 11 languages, LFM Open License); the **router** aide for tool selection (N tools → top-k) + RAG reranking. PyLate or GGUF/llama.cpp, not Ollama.
+
 ## Benchmarks
 - [benchmarks/README.md](benchmarks/README.md) — how the benchmark system works: definitions vs results, local/API providers + cost, scoring per domain, external-first strategy, the four workflow verbs.
 - [benchmarks/bfcl.md](benchmarks/bfcl.md) — Berkeley Function-Calling Leaderboard (tool-use; wraps bfcl-eval); **reference only** (registered-models-only, lags new models). Agentic eval lives in a model-agnostic custom scorer instead.
@@ -35,12 +39,13 @@ local-agent home-automation system.
 - [benchmarks/decision-reasoning.md](benchmarks/decision-reasoning.md) — authored decision-making/reasoning scenarios, opus-4.8-judged; runs: VibeThinker 1/6, MiniCPM5-1B 0/6 (confounded by uncontrollable Ollama `<think>`).
 - [../benchmarks/code-basics/](../benchmarks/code-basics/README.md) — authored coding smoke test (`code_tests`, Podman sandbox); qwen3.5:4b 3/4.
 - [../benchmarks/email-triage/](../benchmarks/email-triage/README.md) — authored **agentic** tool-use set (answer-from-KB vs escalate; `support` toolset); model-agnostic `agentic` rollout + Copilot user-sim; the flexible alternative to BFCL.
-- [../benchmarks/home-automation/](../benchmarks/home-automation/README.md) — authored **agentic** lighthouse set: smart-home act/confirm/refuse over a device world (`home_automation` toolset); deterministic device-state + confirm-before-sensitive scoring.
+- [../benchmarks/home-automation/](../benchmarks/home-automation/README.md) — authored **agentic** lighthouse set (v0.2, 12 scenarios): smart-home act/confirm/refuse + scenes, ambiguity->ask, capability-refuse, compound act+read over a device world (`home_automation` toolset); deterministic device-state + confirm-before-sensitive scoring.
 
 ## Concepts
 - [concepts/llm-wiki-method.md](concepts/llm-wiki-method.md) — the Karpathy LLM-wiki pattern this repo runs on.
 - [concepts/quantization.md](concepts/quantization.md) — GGUF K-quants, AWQ/GPTQ, FP8/NVFP4, and the 8 GB VRAM math.
 - [concepts/wsl2-memory.md](concepts/wsl2-memory.md) — why WSL only sees ~15 GB and how to fix it.
+- [concepts/aide-models.md](concepts/aide-models.md) — the aide-model track: STT/TTS/embeddings/retrieval, their eval contract (WER/NDCG@k/Recall@k/MOS, external-first), and why they need a separate `/new-aide` flow.
 
 ## Lab (not part of the wiki, but linked for navigation)
 - [../lab/journal/](../lab/journal/) — dated narrative entries.
