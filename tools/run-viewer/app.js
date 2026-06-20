@@ -18,6 +18,28 @@ function passClass(v) {
   return 'fail';
 }
 const fmt = (v, d = 2) => (v === '' || v == null || Number.isNaN(parseFloat(v)) ? '—' : parseFloat(v).toFixed(d));
+// tri-state correctness: true → pass, false → fail, missing → unknown.
+const okClass = (v) => (v === true ? 'pass' : v === false ? 'fail' : 'neutral');
+const okLabel = (v, t = 'correct', f = 'incorrect') => (v === true ? t : v === false ? f : 'n/a');
+
+// Denylist sanitizer for wiki markdown HTML (defense-in-depth alongside the CSP).
+function sanitizeHtml(dirty) {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = dirty;
+  const drop = new Set(['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form']);
+  const nodes = [];
+  const walker = document.createTreeWalker(tpl.content, NodeFilter.SHOW_ELEMENT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
+  for (const el of nodes) {
+    if (drop.has(el.tagName.toLowerCase())) { el.remove(); continue; }
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (name.startsWith('on')) el.removeAttribute(attr.name);
+      else if ((name === 'href' || name === 'src') && /^\s*javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
+    }
+  }
+  return tpl.innerHTML;
+}
 
 function highlightPython(code) {
   const re = /(#[^\n]*)|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")|\b(\d+\.?\d*)\b|\b(def|return|if|elif|else|for|while|in|not|and|or|None|True|False|import|from|class|with|as|try|except|finally|raise|lambda|yield|pass|break|continue|is|print)\b/g;
@@ -42,6 +64,7 @@ function parseCompletion(text) {
 
 async function getJSON(url) {
   const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
   return r.json();
 }
 
@@ -82,13 +105,12 @@ function ItemMetrics({ it }) {
 
 function CodeItem({ it }) {
   const res = it.result || {};
-  const ok = res.correct;
   return html`
     <div class="card">
       <div class="ch">
         <span class="id">${it.id}</span>
         <span class="t">completion · sandbox ${res.sandbox || '—'}</span>
-        <span class=${'pill ' + (ok ? 'pass' : 'fail')}>returncode ${res.returncode ?? '—'}</span>
+        <span class=${'pill ' + okClass(res.correct)}>returncode ${res.returncode ?? '—'}</span>
       </div>
       <div class="cb">
         <pre class="code" dangerouslySetInnerHTML=${{ __html: highlightPython(it.completion || '') }}></pre>
@@ -104,13 +126,12 @@ function JudgeItem({ it }) {
   const res = it.result || {};
   const crit = res.per_criterion || {};
   const { think, answer } = parseCompletion(it.completion || '');
-  const ok = res.correct;
   return html`
     <div class="card">
       <div class="ch">
         <span class="id">${it.id}</span>
         <span class="t">judge scorecard</span>
-        <span class=${'pill ' + (ok ? 'pass' : 'fail')}>${res.score ?? '—'} / 10</span>
+        <span class=${'pill ' + okClass(res.correct)}>${res.score ?? '—'} / 10</span>
       </div>
       <div class="cb">
         ${Object.keys(crit).length
@@ -134,28 +155,29 @@ function AgenticItem({ it }) {
   const ep = it.episode || {};
   const transcript = ep.transcript || [];
   const calls = ep.tool_calls || [];
-  // device diff (home_automation) — compare final vs initial. The harness nests
-  // initial_devices inside final_state; fall back to an episode-level field.
+  // device diff (home_automation) — the harness nests initial_devices inside
+  // final_state; support runs have no devices (diff stays null).
   const finalDevs = (ep.final_state && ep.final_state.devices) || null;
   const initDevs = (ep.final_state && ep.final_state.initial_devices) || ep.initial_devices || null;
   let diff = null;
   if (finalDevs && initDevs) {
-    diff = Object.keys(finalDevs).map((k) => {
+    const keys = Array.from(new Set([...Object.keys(initDevs), ...Object.keys(finalDevs)]));
+    diff = keys.map((k) => {
       const fv = finalDevs[k] && finalDevs[k].state;
       const iv = initDevs[k] && initDevs[k].state;
-      return { k, v: fv, changed: String(fv) !== String(iv) };
+      return { k, iv, fv, changed: String(fv) !== String(iv) };
     });
   }
-  const flags = [];
-  for (const f of ['state_ok', 'unchanged_ok', 'confirm_ok', 'required_ok', 'forbidden_ok']) {
-    if (res[f] != null) flags.push([f.replace('_ok', ''), res[f]]);
-  }
+  // any `*_ok` check flag (home: state/unchanged/confirm/required/forbidden;
+  // support: terminal/required/forbidden).
+  const flags = Object.keys(res).filter((k) => k.endsWith('_ok')).map((k) => [k.slice(0, -3), res[k]]);
+  const hasOutcome = res.expected_terminal != null || res.malformed_steps;
   return html`
     <div class="card">
       <div class="ch">
         <span class="id">${it.id}</span>
         <span class="t">${ep.toolset || 'agentic'} · ${ep.protocol || ''} · resolution: ${ep.resolution || res.resolution || '—'}</span>
-        <span class=${'pill ' + (res.correct ? 'pass' : 'fail')}>${res.correct ? 'correct' : 'incorrect'}</span>
+        <span class=${'pill ' + okClass(res.correct)}>${okLabel(res.correct)}</span>
       </div>
       <div class="cb">
         ${transcript.map((t) => html`<div class=${'bubble ' + (t.speaker === 'user' ? 'u' : 'a')}>${t.text}</div>`)}
@@ -171,9 +193,17 @@ function AgenticItem({ it }) {
             </div>`;
           })}
         </div>` : null}
+        ${hasOutcome ? html`<div class="label">outcome</div>
+          <div class="statekv">
+            ${res.expected_terminal != null ? html`<span>expected <b>${res.expected_terminal}</b></span>` : null}
+            <span>resolution <b style=${res.terminal_ok === false ? 'color:var(--bad)' : ''}>${res.resolution || ep.resolution || '—'}</b></span>
+            ${res.malformed_steps ? html`<span class="changed">malformed <b>${res.malformed_steps}</b></span>` : null}
+          </div>` : null}
         ${diff ? html`<div class="label">final state · diff vs initial</div>
           <div class="statekv">
-            ${diff.map((d) => html`<span class=${d.changed ? 'changed' : ''}>${d.k} <b>${d.v}</b></span>`)}
+            ${diff.map((d) => html`<span class=${d.changed ? 'changed' : ''}>${d.k} ${d.changed
+              ? html`${d.iv} → <b>${d.fv}</b>`
+              : html`<b>${d.fv}</b>`}</span>`)}
           </div>` : null}
         ${flags.length ? html`<div class="label">checks</div>
           <div class="statekv">
@@ -184,13 +214,18 @@ function AgenticItem({ it }) {
 }
 
 function GenericItem({ it }) {
+  const r = it.result || {};
+  const fields = ['correct', 'score', 'expected', 'extracted', 'match', 'answer']
+    .filter((k) => r[k] !== undefined)
+    .map((k) => [k, typeof r[k] === 'object' ? JSON.stringify(r[k]) : String(r[k])]);
   return html`
     <div class="card">
       <div class="ch"><span class="id">${it.id}</span><span class="t">raw item</span>
-        ${it.result && it.result.correct != null
-          ? html`<span class=${'pill ' + (it.result.correct ? 'pass' : 'fail')}>${it.result.correct ? 'correct' : 'incorrect'}</span>` : null}
+        ${r.correct != null
+          ? html`<span class=${'pill ' + okClass(r.correct)}>${okLabel(r.correct)}</span>` : null}
       </div>
       <div class="cb">
+        ${fields.length ? html`<div class="statekv">${fields.map(([k, v]) => html`<span>${k} <b>${v}</b></span>`)}</div>` : null}
         ${it.completion ? html`<pre class="code">${it.completion}</pre>` : null}
         <details><summary>result json</summary><pre class="think">${JSON.stringify(it.result, null, 2)}</pre></details>
         <${ItemMetrics} it=${it} />
@@ -275,22 +310,27 @@ function App() {
   const [wikiSel, setWikiSel] = useState(null);
   const [wikiHtml, setWikiHtml] = useState('');
 
-  useEffect(() => { getJSON('/api/runs').then((d) => setRuns(d.runs || [])); }, []);
+  useEffect(() => { getJSON('/api/runs').then((d) => setRuns(d.runs || [])).catch(() => setRuns([])); }, []);
 
   const selectRun = useCallback((i) => {
     setSel(i); setData(null);
-    getJSON('/api/run?file=' + encodeURIComponent(runs[i].raw_file)).then(setData);
+    getJSON('/api/run?file=' + encodeURIComponent(runs[i].raw_file))
+      .then(setData)
+      .catch((e) => setData({ error: String((e && e.message) || e), file: runs[i].raw_file }));
   }, [runs]);
 
   const openWiki = useCallback(() => {
     setTab('wiki');
-    if (wikiFiles == null) getJSON('/api/wiki').then((d) => setWikiFiles(d.files || []));
+    if (wikiFiles == null) getJSON('/api/wiki').then((d) => setWikiFiles(d.files || [])).catch(() => setWikiFiles([]));
   }, [wikiFiles]);
 
   const selectWiki = useCallback((f) => {
     setWikiSel(f);
-    fetch('/api/wiki?path=' + encodeURIComponent(f)).then((r) => r.text())
-      .then((md) => setWikiHtml(marked.parse(preprocessMd(md))));
+    setWikiHtml('');
+    fetch('/api/wiki?path=' + encodeURIComponent(f))
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then((md) => setWikiHtml(sanitizeHtml(marked.parse(preprocessMd(md)))))
+      .catch(() => setWikiHtml('<p>Failed to load page.</p>'));
   }, []);
 
   return html`

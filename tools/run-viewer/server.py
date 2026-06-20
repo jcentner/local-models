@@ -50,7 +50,9 @@ def load_runs() -> list[dict]:
         rows = list(csv.DictReader(fh))
     for r in rows:
         raw = (r.get("raw_file") or "").strip()
-        r["raw_exists"] = bool(raw) and (RUNS_DIR / raw).is_file()
+        r["raw_exists"] = (
+            bool(raw) and "/" not in raw and "\\" not in raw and (RUNS_DIR / raw).is_file()
+        )
     return rows
 
 
@@ -58,8 +60,8 @@ def load_run_items(filename: str) -> dict:
     # Only a bare filename within RUNS_DIR is allowed.
     if "/" in filename or "\\" in filename or not filename.endswith(".jsonl"):
         raise ValueError("invalid run filename")
-    path = RUNS_DIR / filename
-    if not path.is_file():
+    path = _safe_child(RUNS_DIR, filename)  # realpath containment also blocks symlink-escape
+    if path is None or not path.is_file():
         raise FileNotFoundError(filename)
     items, errors = [], 0
     with path.open(encoding="utf-8") as fh:
