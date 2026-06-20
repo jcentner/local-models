@@ -110,6 +110,30 @@ a { color: inherit; }
 .matrix .dash { color: var(--dimmer); }
 .hint { font-family: var(--mono); font-size: 11px; color: var(--dim); margin-top: 10px; }
 
+/* ---------- responsive + overflow robustness (gpt-5.5 layout review) ---------- */
+/* let grid/flex children shrink instead of forcing min-content width (page overflow) */
+.body, .rail, .detail, .cards, .card, .card .cb { min-width: 0; }
+.detail { overflow: auto; }
+.card .ch > * { min-width: 0; }
+.card .ch .id, .card .ch .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bubble, .statekv span { overflow-wrap: anywhere; }
+/* matrix: scroll horizontally when it has many benchmark columns */
+.matrix { display: block; max-width: 100%; overflow-x: auto; white-space: nowrap; }
+/* topbar + rail labels don't blow out on narrow widths */
+.topbar { flex-wrap: wrap; }
+.brand { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabs { flex-shrink: 0; }
+.wiki-rail .wdir { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crit { grid-template-columns: minmax(0, 130px) minmax(48px, 1fr) auto; }
+.crit .cn { overflow-wrap: anywhere; }
+
+/* single-column collapse on narrow viewports (DESIGN.md §8) */
+@media (max-width: 720px) {
+  .body { grid-template-columns: 1fr; grid-template-rows: minmax(120px, 35vh) minmax(0, 1fr); }
+  .rail { border-right: 0; border-bottom: 1px solid var(--border); }
+  .brand .sub { display: none; }
+}
+
 .pill {
   font-family: var(--mono); font-size: 11px; padding: 1px 7px; border-radius: 999px;
   white-space: nowrap;
