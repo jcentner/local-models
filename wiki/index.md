@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-06-19
+updated: 2026-06-20
 ---
 
 # Index
@@ -54,3 +54,6 @@ The non-generative support models for the home agent — see [concepts/aide-mode
 - [../lab/journal/](../lab/journal/) — dated narrative entries.
 - [../lab/experiments/](../lab/experiments/) — reproducible runs.
 - [../lab/benchmarks/](../lab/benchmarks/) — numbers.
+
+## Tools
+- [../tools/run-viewer/](../tools/run-viewer/README.md) — local read-only web app to browse benchmark **run content** (`results.csv` index + lazy-loaded `runs/*.jsonl`) with schema-adaptive cards for `code_tests`/`llm_judge`/`agentic`, plus a read-only `wiki/` markdown tab. Stdlib Python server + Preact (no build); Vercel/Geist aesthetic ([DESIGN.md](../tools/run-viewer/DESIGN.md)). Run: `python3 tools/run-viewer/server.py`.

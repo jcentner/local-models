@@ -39,6 +39,8 @@ lab/         the playground
   benchmarks/   harness (runner + scorers) + results.csv (per-machine)
 env/         environment setup, pinned versions, .wslconfig template
 scripts/     helper CLIs (verify-stack, ...)
+tools/       local utilities
+  run-viewer/  minimal web app to browse benchmark runs + wiki (Python + Preact, read-only)
 .github/
   prompts/   workflow slash-prompts (see Workflows below)
   skills/    agent skills (e.g. copilot-cli: frontier-model judge backend)
@@ -70,6 +72,9 @@ bash scripts/verify-stack.sh
 
 # 2. Smoke-test the daily-driver runner (already installed)
 ollama run qwen3.5:4b "Say hi in one short sentence."
+
+# 3. Browse benchmark runs (and the wiki) in a local viewer
+python3 tools/run-viewer/server.py   # → http://127.0.0.1:8777
 ```
 
 ## This machine (verified 2026-06-14)

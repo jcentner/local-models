@@ -444,3 +444,18 @@ but throughput collapses to ~3 tok/s (no headroom). Q4 quality edge never showed
 Still open: no base gemma-4-12B-it head-to-head, so the ~3.5x tau2 claim is NOT
 validated - only v2 absolute score. Transcripts in lab/benchmarks/runs/ (git-
 ignored). Experiment + model page + index + backlog updated.
+
+## [2026-06-20] note | tools/run-viewer — local benchmark run viewer (Python + Preact)
+Built a minimal, read-only local web app to review benchmark **run content**
+(the part `results.csv` only summarizes). Stdlib `http.server` reads the committed
+`results.csv` as the index and lazy-loads the gitignored `runs/*.jsonl` on click;
+Preact/htm via CDN, no build step. Schema-adaptive item cards: `code_tests`
+(highlighted completion + returncode/stderr), `llm_judge` (per-criterion bars +
+rationale + collapsible `<think>`), `agentic` (transcript + tool-call rows +
+final-state diff + check flags), generic fallback. A second tab renders `wiki/*.md`
+read-only. Aesthetic = Vercel/Geist (tokens from VoltAgent/awesome-design-md;
+`tools/run-viewer/DESIGN.md`); markup passes `impeccable detect` clean. Discovery
+(impeccable + awesome-design-md + Anthropic frontend skills) and the build arc are
+in [lab/journal/2026-06-20-run-viewer.md](../lab/journal/2026-06-20-run-viewer.md).
+Run: `python3 tools/run-viewer/server.py`. Also installed the **impeccable** design
+skill globally (skill-only, no hooks) into `~/.agents/skills/`.
