@@ -19,6 +19,7 @@ local-agent home-automation system.
 - [stacks/ollama.md](stacks/ollama.md) — daily driver. GGUF, OpenAI-compatible API. Already installed.
 - [stacks/llama-cpp.md](stacks/llama-cpp.md) — engine-level control, llama-bench, the DiffusionGemma diffusion branch.
 - [stacks/vllm.md](stacks/vllm.md) — high-throughput serving; Linux-only; stretch goal on 8 GB.
+- [stacks/sglang.md](stacks/sglang.md) — second runner for **thinking/tool models**: `enable_thinking` + reasoning/tool parsers (incl. `minicpm5`) Ollama lacks; OpenAI-compatible, reached via the harness `--provider openai-compatible`.
 - [stacks/lemonade.md](stacks/lemonade.md) — AMD's local server; the NPU/iGPU on-ramp.
 - [stacks/unsloth.md](stacks/unsloth.md) — fine-tuning + Unsloth Studio; easiest path to DiffusionGemma.
 

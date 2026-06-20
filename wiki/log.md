@@ -238,3 +238,15 @@ scoring impact) - documented not changed; and `require_confirm` is a v0.1 proxy
 `tools_used` to the agentic raw write (offline re-scoring footgun). Selftest 58
 checks ALL PASS; both agentic benchmarks still validate; prompt-mode home 6/6 holds
 (h5 re-scored True with the new key). Review notes: tmp/review-agentic-harness.md.
+
+## [2026-06-20] ingest | SGLang stack page + MiniCPM5 controlled-serving experiment
+Researched SGLang (LMSYS, Apache-2.0) from official docs + OpenBMB's MiniCPM5
+card. Wrote stacks/sglang.md: the second runner for thinking/tool models —
+`--reasoning-parser`, `enable_thinking`, and `--tool-call-parser minicpm5`
+(vendor-confirmed; SGLang's own parser table lags and omits it). Reached via the
+harness `--provider openai-compatible`, no client change. Blackwell sm_120 fits
+the default CUDA-13 build; key quirks = FlashInfer JIT vs missing nvcc, and
+Podman-vs-Docker GPU passthrough. Staged lab/experiments/2026-06-20-minicpm5-
+sglang-controlled to re-test MiniCPM5-1B (decision-reasoning + native tool-use)
+with Ollama's confounds removed. Supports the serving-aware-per-model direction:
+Ollama stays daily driver; thinking/tool models route to SGLang.
