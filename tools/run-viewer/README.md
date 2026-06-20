@@ -35,7 +35,10 @@ card per item, adapted to the scorer:
 | other | completion + raw `result` JSON (generic fallback) |
 
 The **wiki** tab lists `wiki/**/*.md` grouped by folder and renders a page
-read-only (YAML frontmatter stripped, `[[wikilinks]]` flattened).
+read-only (YAML frontmatter stripped, `[[wikilinks]]` flattened). Links between
+wiki pages navigate **in-app**; external and repo-relative (`../`) links open in a
+new tab. It is deliberately a minimal reader, **not** Obsidian — no graph,
+backlinks, dataview, or embeds. Use Obsidian for real wiki navigation.
 
 ## Endpoints
 

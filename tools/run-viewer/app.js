@@ -299,6 +299,22 @@ function preprocessMd(md) {
   return md;
 }
 
+// Resolve a relative markdown href against the current page's dir. Returns a
+// wiki-relative .md path, or null for external/non-md links. Minimal reader:
+// wiki↔wiki links navigate in-app; everything else opens in a new tab.
+function resolveWikiHref(href, currentPath) {
+  const clean = (href || '').split('#')[0].split('?')[0];
+  if (!clean || /^[a-z]+:/i.test(clean) || clean.startsWith('/')) return null;
+  const baseDir = (currentPath || '').includes('/') ? (currentPath || '').slice(0, currentPath.lastIndexOf('/')) : '';
+  const segs = baseDir ? baseDir.split('/') : [];
+  for (const part of clean.split('/')) {
+    if (part === '..') segs.pop();
+    else if (part && part !== '.') segs.push(part);
+  }
+  const resolved = segs.join('/');
+  return resolved.endsWith('.md') ? resolved : null;
+}
+
 function WikiPane({ files, sel, onSelect, htmlContent }) {
   // group by top dir
   const groups = {};
@@ -306,6 +322,18 @@ function WikiPane({ files, sel, onSelect, htmlContent }) {
     const top = f.includes('/') ? f.split('/')[0] : '·';
     (groups[top] = groups[top] || []).push(f);
   }
+  // Minimal reader: intercept link clicks. wiki↔wiki .md → load in-app;
+  // anything else (http, repo `../` paths, unknown) → new tab, app state intact.
+  const onMdClick = (e) => {
+    const a = e.target.closest('a');
+    if (!a) return;
+    const href = a.getAttribute('href') || '';
+    if (!href || href.startsWith('#')) return;
+    e.preventDefault();
+    const resolved = resolveWikiHref(href, sel);
+    if (resolved && files.includes(resolved)) onSelect(resolved);
+    else window.open(href, '_blank', 'noopener');
+  };
   return html`
     <div class="body">
       <div class="rail wiki-rail">
@@ -320,7 +348,7 @@ function WikiPane({ files, sel, onSelect, htmlContent }) {
       </div>
       <div class="detail">
         ${sel
-          ? html`<div class="crumb">wiki / ${sel}</div><div class="md" dangerouslySetInnerHTML=${{ __html: htmlContent }}></div>`
+          ? html`<div class="crumb">wiki / ${sel}</div><div class="md" onClick=${onMdClick} dangerouslySetInnerHTML=${{ __html: htmlContent }}></div>`
           : html`<div class="empty">Select a wiki page (read-only).</div>`}
       </div>
     </div>`;
