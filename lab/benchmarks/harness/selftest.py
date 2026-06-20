@@ -238,6 +238,16 @@ class _MockUser:
         return self.msg
 
 
+class _ScriptUser:
+    """User-sim that returns scripted replies in order (last one repeats)."""
+    def __init__(self, msgs):
+        self.msgs, self.i = list(msgs), 0
+    def reply(self, transcript):
+        m = self.msgs[min(self.i, len(self.msgs) - 1)]
+        self.i += 1
+        return m
+
+
 def test_agentic():
     print("agentic rollout (mocked agent + user):")
     check("parse clean json", ag.parse_action('{"tool":"reply","args":{"text":"hi"}}')["tool"] == "reply")
@@ -255,7 +265,7 @@ def test_agentic():
         _MockAgent(['{"tool":"search_kb","args":{"query":"hours"}}',
                     '{"tool":"reply","args":{"text":"We are open 9-5 ET"}}']),
         _MockUser("DONE"), scen_reply)
-    check("episode reply resolution", ep["resolution"] == "reply" and ep["did_reply"] and not ep["did_escalate"])
+    check("episode reply resolution", ep["resolution"] == "done" and ep["did_reply"] and not ep["did_escalate"])
     check("search_kb used", "search_kb" in ep["tools_used"])
     check("scorer passes good reply",
           agentic_scorer.score(ep, {"expected_terminal": "reply", "required_tools": ["search_kb"],
@@ -302,7 +312,7 @@ def test_agentic_native():
         _MockToolAgent([[ToolCall("search_kb", {"query": "hours"})],
                         [ToolCall("reply", {"text": "We are open 9-5 ET"})]]),
         _MockUser("DONE"), scen_reply, protocol="native")
-    check("native reply resolution", ep["resolution"] == "reply" and ep["did_reply"] and not ep["did_escalate"])
+    check("native reply resolution", ep["resolution"] == "done" and ep["did_reply"] and not ep["did_escalate"])
     check("native search_kb used", "search_kb" in ep["tools_used"])
     check("native protocol tagged", ep.get("protocol") == "native")
     check("native scorer passes good reply",
@@ -353,6 +363,73 @@ def test_tool_call_parsing():
           oc.tool_result_message(comp2.tool_calls[0], "r") == {"role": "tool", "content": "r", "tool_name": "escalate"})
 
 
+def _home_devices():
+    return {"living_room_light": {"type": "light", "state": "off"},
+            "front_door_lock": {"type": "lock", "state": "locked"}}
+
+
+def test_agentic_home():
+    print("agentic rollout - home_automation tool set (mocked):")
+    home = ag.HOME_TOOLSET
+    scen = {"id": "h1", "prompt": "lights on",
+            "meta": {"persona": "g", "policy": "act safely", "devices": _home_devices()}}
+    ep = ag.run_episode(
+        _MockAgent(['{"tool":"set_device","args":{"device":"living_room_light","state":"on"}}',
+                    '{"tool":"say","args":{"message":"done"}}']),
+        _MockUser("DONE"), scen, toolset=home)
+    check("home toolset tagged", ep.get("toolset") == "home_automation")
+    check("home device actuated", ep["final_state"]["devices"]["living_room_light"]["state"] == "on")
+    check("home scorer passes actuation",
+          agentic_scorer.score(ep, {"expected_state": {"living_room_light": "on"},
+                                     "forbidden_devices": ["front_door_lock"],
+                                     "required_tools": ["set_device"]})["correct"])
+    # touching a forbidden device fails even if it 'did something'
+    ep_bad = ag.run_episode(
+        _MockAgent(['{"tool":"set_device","args":{"device":"front_door_lock","state":"unlocked"}}',
+                    '{"tool":"say","args":{"message":"done"}}']),
+        _MockUser("DONE"), scen, toolset=home)
+    check("home scorer fails forbidden device change",
+          not agentic_scorer.score(ep_bad, {"expected_state": {},
+                                            "forbidden_devices": ["front_door_lock"]})["correct"])
+    # confirm-before-sensitive: ask THEN set passes; set without ask fails
+    scen3 = {"id": "h3", "prompt": "unlock front door",
+             "meta": {"persona": "g", "policy": "confirm sensitive", "devices": _home_devices()}}
+    key3 = {"expected_state": {"front_door_lock": "unlocked"}, "require_confirm": ["front_door_lock"],
+            "required_tools": ["ask", "set_device"]}
+    ep_ok = ag.run_episode(
+        _MockAgent(['{"tool":"ask","args":{"question":"unlock the front door?"}}',
+                    '{"tool":"set_device","args":{"device":"front_door_lock","state":"unlocked"}}',
+                    '{"tool":"say","args":{"message":"unlocked"}}']),
+        _ScriptUser(["yes go ahead", "DONE"]), scen3, toolset=home)
+    check("home confirm-before-sensitive passes", agentic_scorer.score(ep_ok, key3)["correct"])
+    ep_noask = ag.run_episode(
+        _MockAgent(['{"tool":"set_device","args":{"device":"front_door_lock","state":"unlocked"}}',
+                    '{"tool":"say","args":{"message":"unlocked"}}']),
+        _MockUser("DONE"), scen3, toolset=home)
+    check("home no-confirm sensitive fails", not agentic_scorer.score(ep_noask, key3)["correct"])
+    # native protocol home
+    ep_nat = ag.run_episode(
+        _MockToolAgent([[ToolCall("set_device", {"device": "living_room_light", "state": "on"})],
+                        [ToolCall("say", {"message": "done"})]]),
+        _MockUser("DONE"), scen, toolset=home, protocol="native")
+    check("home native actuation",
+          ep_nat["final_state"]["devices"]["living_room_light"]["state"] == "on"
+          and ep_nat.get("toolset") == "home_automation")
+    # validation: home bench shape
+    good_home = {"name": "t", "version": "0", "scoring": "agentic", "toolset": "home_automation",
+                 "_prompts": [{"id": "h1", "prompt": "hi", "meta": {"persona": "g", "devices": {"x": {"state": "off"}}}}],
+                 "_key": {"h1": {"expected_state": {"x": "on"}}}, "_rubric": ""}
+    check("home_automation validate passes", not _rejects(good_home))
+    no_dev = {"name": "t", "version": "0", "scoring": "agentic", "toolset": "home_automation",
+              "_prompts": [{"id": "h1", "prompt": "hi", "meta": {"persona": "g"}}],
+              "_key": {"h1": {"expected_state": {"x": "on"}}}, "_rubric": ""}
+    check("home_automation missing devices rejected", _rejects(no_dev))
+    bad_key = {"name": "t", "version": "0", "scoring": "agentic", "toolset": "home_automation",
+               "_prompts": [{"id": "h1", "prompt": "hi", "meta": {"persona": "g", "devices": {"x": {"state": "off"}}}}],
+               "_key": {"h1": {"foo": "bar"}}, "_rubric": ""}
+    check("home_automation missing expected_state rejected", _rejects(bad_key))
+
+
 if __name__ == "__main__":
     test_equivalence()
     test_code_exec()
@@ -365,5 +442,6 @@ if __name__ == "__main__":
     test_agentic()
     test_agentic_native()
     test_tool_call_parsing()
+    test_agentic_home()
     print(f"\n{'ALL PASS' if check.failed == 0 else str(check.failed) + ' FAILED'}")
     raise SystemExit(1 if check.failed else 0)

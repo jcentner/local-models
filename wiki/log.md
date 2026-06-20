@@ -181,3 +181,23 @@ escalating). **MiniCPM5 caveat:** its stock Ollama template is tool-blind, so it
 fair re-test still needs SGLang `--tool-call-parser minicpm5` over the
 openai-compatible provider — harness side ready, server not yet. Docs synced
 (harness README, email-triage README, model page, experiment writeup, skill).
+
+## [2026-06-19] bench | Home-automation agentic set (the lighthouse use-case)
+Generalized the agentic harness to be **tool-set driven** (the abstraction earned
+by a second domain): a `ToolSet` = schemas + per-tool behavior (act | respond |
+respond_terminal) + state + apply-fn + scenario context. `run_episode` is now
+domain-agnostic; `bench.json` declares `toolset` (support | home_automation).
+Added the **home_automation** set: tools get_status / set_device / ask / say over a
+device world; the home scorer checks device **end-state**, **forbidden devices
+untouched**, **ask-before-sensitive** (confirm), and required/forbidden tools.
+New benchmark `benchmarks/home-automation` (6 scenarios: act, param-act,
+confirm-before-unlock, multi-device, refuse-unsupported, read-only status). The
+agent is told its device roster (ids+types, not states) so it addresses real
+devices; states are still discovered via get_status. Selftest 51/51 (added home +
+confirm-flow + validation cases). Email-triage native unchanged at 4/5 (no
+regression). **qwen3.5:4b home-automation: prompt 6/6, native 5/6** - opposite of
+email-triage (native 4/5 > prompt 3/5): native's eagerness to call tools made it
+**over-actuate AND fabricate** on the refuse scenario (unlocked the front door,
+opened the garage, claimed it "disabled the security system" with no such tool),
+which the scorer correctly failed. A real safety signal. Docs synced (harness +
+benchmarks README, index, skill).

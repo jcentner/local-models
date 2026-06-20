@@ -70,8 +70,11 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model glm-4.6 \
     MiniCPM5's native XML needs SGLang `--tool-call-parser minicpm5` over the
     `openai-compatible` provider (its stock Ollama template is tool-blind).
     Measured: qwen3.5:4b 3/5 (prompt) → 4/5 (native) on email-triage.
-  Set: [benchmarks/email-triage](../../../benchmarks/email-triage/README.md). The
-  flexible alternative to registered-model benchmarks like BFCL.
+  Two **tool sets** (`bench.json` `toolset`): **support** (act/ask/escalate over a KB,
+  [email-triage](../../../benchmarks/email-triage/README.md)) and **home_automation**
+  (act/confirm/refuse over a device world, [home-automation](../../../benchmarks/home-automation/README.md) -
+  the lighthouse set; scores device end-state + confirm-before-sensitive + don't-over-actuate).
+  The flexible alternative to registered-model benchmarks like BFCL.
 
 ## Thinking-model gotcha (bites every time)
 

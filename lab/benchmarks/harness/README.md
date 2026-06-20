@@ -25,9 +25,9 @@ harness/
 ## Dataset format (`benchmarks/<name>/`)
 
 ```
-bench.json       {"name","version","scoring":equivalence|code_tests|llm_judge|agentic,"system"?,"judge"?}
-prompts.jsonl    {"id","prompt","meta"?}   (agentic: meta={"persona","policy","kb"})
-answer_key.jsonl equivalence:{"id","answer"} code_tests:{"id","tests"} agentic:{"id","expected_terminal","required_tools","forbidden_tools"} llm_judge:(rubric.md)
+bench.json       {"name","version","scoring":equivalence|code_tests|llm_judge|agentic,"toolset"?,"system"?,"judge"?}
+prompts.jsonl    {"id","prompt","meta"?}   (agentic support: meta={"persona","policy","kb"}; home: meta={"persona","policy","devices"})
+answer_key.jsonl equivalence:{"id","answer"} code_tests:{"id","tests"} agentic-support:{"id","expected_terminal","required_tools","forbidden_tools"} agentic-home:{"id","expected_state","forbidden_devices","require_confirm"} llm_judge:(rubric.md)
 rubric.md        for llm_judge benchmarks
 ```
 
@@ -135,7 +135,12 @@ created with `/author-benchmark`. Output: a row appended to
     `tools`; MiniCPM5's native XML path needs SGLang `--tool-call-parser minicpm5`
     over the `openai-compatible` provider — its stock Ollama template is tool-blind).
     Measured: qwen3.5:4b on email-triage went 3/5 (prompt) -> 4/5 (native).
-  Dataset: [benchmarks/email-triage](../../../benchmarks/email-triage/README.md).
+  Two **tool sets** (`bench.json` `toolset`): **support** (act/ask/escalate over a
+  KB - [email-triage](../../../benchmarks/email-triage/README.md)) and
+  **home_automation** (act/confirm/refuse over a device world, with
+  confirm-before-sensitive + don't-over-actuate checks -
+  [home-automation](../../../benchmarks/home-automation/README.md), the lighthouse
+  set). Adding a domain = a tool schema + an apply-fn + a scorer branch.
 
 ## Wrapping upstream frameworks
 

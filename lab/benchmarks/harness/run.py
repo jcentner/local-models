@@ -27,12 +27,12 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from harness.client import make_client, SamplingConfig
     from harness.judge_copilot import CopilotCLIJudge
-    from harness.agentic import CopilotCLIUser, run_episode
+    from harness.agentic import CopilotCLIUser, run_episode, resolve_toolset
     from harness.scorers import agentic as agentic_scorer, code_exec, equivalence, llm_judge
 else:
     from .client import make_client, SamplingConfig
     from .judge_copilot import CopilotCLIJudge
-    from .agentic import CopilotCLIUser, run_episode
+    from .agentic import CopilotCLIUser, run_episode, resolve_toolset
     from .scorers import agentic as agentic_scorer, code_exec, equivalence, llm_judge
 
 HERE = Path(__file__).resolve().parent          # lab/benchmarks/harness
@@ -111,6 +111,9 @@ def validate_benchmark(manifest: dict) -> None:
         if not manifest.get("_rubric", "").strip():
             raise SystemExit("llm_judge benchmark needs a non-empty rubric.md")
     elif method == "agentic":
+        toolset = manifest.get("toolset", "support")
+        if toolset not in {"support", "home_automation"}:
+            raise SystemExit(f"agentic bench.json toolset {toolset!r} unknown (expected support|home_automation)")
         for p in prompts:
             if not str((p.get("meta") or {}).get("persona", "")).strip():
                 raise SystemExit(f"agentic prompt {p.get('id')!r} needs meta.persona (the user-sim goal)")
@@ -119,9 +122,18 @@ def validate_benchmark(manifest: dict) -> None:
             raise SystemExit(
                 "answer_key ids must match prompt ids: "
                 f"missing_keys={sorted(prompt_ids - key_ids)} orphan_keys={sorted(key_ids - prompt_ids)}")
-        for kid, krow in manifest["_key"].items():
-            if krow.get("expected_terminal") not in {"reply", "escalate"}:
-                raise SystemExit(f"agentic key {kid!r} needs expected_terminal in reply|escalate")
+        if toolset == "support":
+            for kid, krow in manifest["_key"].items():
+                if krow.get("expected_terminal") not in {"reply", "escalate"}:
+                    raise SystemExit(f"agentic key {kid!r} needs expected_terminal in reply|escalate")
+        else:  # home_automation
+            for p in prompts:
+                devices = (p.get("meta") or {}).get("devices")
+                if not isinstance(devices, dict) or not devices:
+                    raise SystemExit(f"home_automation prompt {p.get('id')!r} needs a non-empty meta.devices")
+            for kid, krow in manifest["_key"].items():
+                if not isinstance(krow.get("expected_state"), dict):
+                    raise SystemExit(f"home_automation key {kid!r} needs expected_state (a dict, may be empty)")
 
 
 def score_one(method: str, manifest: dict, item: dict, completion: str, judge=None,
@@ -245,13 +257,15 @@ def main(argv: list[str] | None = None) -> int:
     prompt_tok_sum = 0
     gen_tok_sum = 0
     wall_sum = 0.0
+    agentic_toolset = resolve_toolset(manifest.get("toolset")) if method == "agentic" else None
     with raw_path.open("w") as raw:
         for item in prompts:
             any_correct = False
             for s in range(args.k):
                 if method == "agentic":
                     user_sim = CopilotCLIUser(persona=item["meta"]["persona"], model=args.user_model)
-                    episode = run_episode(client, user_sim, item, protocol=args.tool_protocol)
+                    episode = run_episode(client, user_sim, item, protocol=args.tool_protocol,
+                                          toolset=agentic_toolset)
                     res = agentic_scorer.score(episode, manifest["_key"].get(item["id"], {}))
                     perf = episode["perf"]
                     total_samples += 1
@@ -265,7 +279,9 @@ def main(argv: list[str] | None = None) -> int:
                     raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
                                           "episode": {"resolution": episode["resolution"],
                                                       "protocol": episode.get("protocol"),
+                                                      "toolset": episode.get("toolset"),
                                                       "tool_calls": episode["tool_calls"],
+                                                      "final_state": episode.get("final_state"),
                                                       "transcript": episode["transcript"]}}) + "\n")
                     continue
                 comp = client.complete([{"role": "user", "content": item["prompt"]}],

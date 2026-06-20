@@ -32,7 +32,8 @@ local-agent home-automation system.
 - [benchmarks/bfcl.md](benchmarks/bfcl.md) — Berkeley Function-Calling Leaderboard (tool-use; wraps bfcl-eval); **reference only** (registered-models-only, lags new models). Agentic eval lives in a model-agnostic custom scorer instead.
 - [benchmarks/humaneval-plus.md](benchmarks/humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk, pair with LiveCodeBench.
 - [benchmarks/decision-reasoning.md](benchmarks/decision-reasoning.md) — authored decision-making/reasoning scenarios, opus-4.8-judged; first run: VibeThinker 1/6.
-- [../benchmarks/email-triage/](../benchmarks/email-triage/README.md) — authored **agentic** tool-use set (answer-from-KB vs escalate); model-agnostic `agentic` rollout + Copilot user-sim; the flexible alternative to BFCL.
+- [../benchmarks/email-triage/](../benchmarks/email-triage/README.md) — authored **agentic** tool-use set (answer-from-KB vs escalate; `support` toolset); model-agnostic `agentic` rollout + Copilot user-sim; the flexible alternative to BFCL.
+- [../benchmarks/home-automation/](../benchmarks/home-automation/README.md) — authored **agentic** lighthouse set: smart-home act/confirm/refuse over a device world (`home_automation` toolset); deterministic device-state + confirm-before-sensitive scoring.
 
 ## Concepts
 - [concepts/llm-wiki-method.md](concepts/llm-wiki-method.md) — the Karpathy LLM-wiki pattern this repo runs on.
