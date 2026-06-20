@@ -121,7 +121,9 @@ class OllamaClient:
                     args = json.loads(args)
                 except (json.JSONDecodeError, ValueError):
                     args = {}
-            calls.append(ToolCall(name=fn.get("name", ""), arguments=args or {}))
+            if not isinstance(args, dict):  # guard: a list/scalar would crash apply()
+                args = {}
+            calls.append(ToolCall(name=fn.get("name", ""), arguments=args))
         return Completion(
             text=text,
             prompt_tokens=int(body.get("prompt_eval_count") or 0),
@@ -224,7 +226,9 @@ class OpenAICompatibleClient:
                 except (json.JSONDecodeError, ValueError):
                     args = {}
             else:
-                args = raw or {}
+                args = raw
+            if not isinstance(args, dict):  # guard: a list/scalar would crash apply()
+                args = {}
             calls.append(ToolCall(name=fn.get("name", ""), arguments=args, id=tc.get("id", "")))
         return Completion(
             text=text,

@@ -54,3 +54,6 @@ python3 -m harness.run --benchmark ../../benchmarks/home-automation \
 - Content scoring for the refuse/confirm *messages* (judge-assisted) beyond the
   deterministic state/policy checks.
 - Ambiguity ("turn on the light" with several lights) -> must `ask` which one.
+- **Structured `ask.device`/`action`** so `require_confirm` verifies the agent
+  confirmed *that* device, not merely that any `ask` preceded the action (v0.1
+  checks the latter - a proxy for "paused to confirm").

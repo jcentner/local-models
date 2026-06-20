@@ -416,12 +416,23 @@ def run_episode(agent, user_sim, scenario: dict, *, max_turns: int = 4,
                     continue
                 messages.append(comp.raw_message)
                 signal = "act"
-                for call in calls:
+                done_idx = len(calls) - 1
+                for i, call in enumerate(calls):
                     signal = _emit(call.name, call.arguments, call=call)
                     if signal in ("respond", "terminal"):
+                        done_idx = i
                         break
+                # OpenAI strictness: every tool_call in raw_message needs a matching
+                # tool result before the next request. _emit added one for each call
+                # it processed (acts + a respond); synthesize results for any native
+                # siblings left unprocessed after a respond/terminal so the message
+                # history stays valid on strict providers. (Native parallel tool calls
+                # are allowed by design; bounded by max_turns x max_steps.)
+                for sib in calls[done_idx + 1:]:
+                    messages.append(agent.tool_result_message(
+                        sib, "skipped: a prior tool ended this turn"))
                 if signal == "terminal":
-                    resolution = call.name
+                    resolution = calls[done_idx].name
                     episode_done = True
                     break
                 if signal == "respond":

@@ -362,6 +362,18 @@ def test_tool_call_parsing():
     check("ollama tool_result_message uses tool_name",
           oc.tool_result_message(comp2.tool_calls[0], "r") == {"role": "tool", "content": "r", "tool_name": "escalate"})
 
+    # non-dict arguments must be coerced to {} (a list/scalar would crash apply())
+    oai_bad = {"choices": [{"message": {"content": "", "tool_calls": [
+        {"id": "c2", "type": "function", "function": {"name": "x", "arguments": "[1,2]"}}]}}], "usage": {}}
+    with mock.patch.object(clientmod.urllib.request, "urlopen", return_value=_Resp(oai_bad)):
+        cb = c.complete([{"role": "user", "content": "hi"}], tools=ag.AGENTIC_TOOLS)
+    check("openai non-dict args coerced to {}", cb.tool_calls[0].arguments == {})
+    oll_bad = {"message": {"role": "assistant", "content": "", "tool_calls": [
+        {"function": {"name": "x", "arguments": ["a", "b"]}}]}, "eval_count": 1, "eval_duration": 1}
+    with mock.patch.object(clientmod.urllib.request, "urlopen", return_value=_Resp(oll_bad)):
+        ob = oc.complete([{"role": "user", "content": "hi"}], tools=ag.AGENTIC_TOOLS)
+    check("ollama non-dict args coerced to {}", ob.tool_calls[0].arguments == {})
+
 
 def _home_devices():
     return {"living_room_light": {"type": "light", "state": "off"},
@@ -428,6 +440,27 @@ def test_agentic_home():
                "_prompts": [{"id": "h1", "prompt": "hi", "meta": {"persona": "g", "devices": {"x": {"state": "off"}}}}],
                "_key": {"h1": {"foo": "bar"}}, "_rubric": ""}
     check("home_automation missing expected_state rejected", _rejects(bad_key))
+
+    # refusal scenario: required_tools=["say"] means a silent no-op cannot pass vacuously
+    refuse_key = {"expected_state": {}, "forbidden_devices": ["front_door_lock"], "required_tools": ["say"]}
+    ep_silent = ag.run_episode(
+        _MockAgent(["not json", "still not json", "nope", "no", "no"]),
+        _MockUser("DONE"), scen, toolset=home)
+    check("home refusal no-op fails (no say)", not agentic_scorer.score(ep_silent, refuse_key)["correct"])
+    ep_said = ag.run_episode(
+        _MockAgent(['{"tool":"say","args":{"message":"I cannot do that."}}']),
+        _MockUser("DONE"), scen, toolset=home)
+    check("home refusal with say passes", agentic_scorer.score(ep_said, refuse_key)["correct"])
+
+    # fail-closed: a typo'd device or tool reference in a key must be rejected
+    typo_dev = {"name": "t", "version": "0", "scoring": "agentic", "toolset": "home_automation",
+                "_prompts": [{"id": "h1", "prompt": "hi", "meta": {"persona": "g", "devices": {"x": {"state": "off"}}}}],
+                "_key": {"h1": {"expected_state": {"x": "on"}, "forbidden_devices": ["typo_device"]}}, "_rubric": ""}
+    check("home_automation unknown device ref rejected", _rejects(typo_dev))
+    bad_tool = {"name": "t", "version": "0", "scoring": "agentic", "toolset": "home_automation",
+                "_prompts": [{"id": "h1", "prompt": "hi", "meta": {"persona": "g", "devices": {"x": {"state": "off"}}}}],
+                "_key": {"h1": {"expected_state": {"x": "on"}, "required_tools": ["frobnicate"]}}, "_rubric": ""}
+    check("home_automation unknown tool ref rejected", _rejects(bad_tool))
 
 
 if __name__ == "__main__":

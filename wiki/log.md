@@ -218,3 +218,23 @@ row in results.csv, dropped the misconfigured temp-0.9 (Think-sampling-on-No-Thi
 template) row. Minor: one judge call returned invalid JSON on an 18k-char degenerate
 input (harness scored it not-correct; judge-robustness note). Model page + decision-
 reasoning wiki updated.
+
+## [2026-06-19] note | Harden agentic harness (gpt-5.5 cross-model review)
+Adopted the **commit-as-you-go + background cross-model review** workflow
+(copilot-cli-background-tasks skill): a read-only **gpt-5.5** audit of the agentic
+commits ran in the background, then I triaged each finding (confirm with file:line
+or push back). Fixes landed: (1) **Critical** - the home refuse scenario (h5) could
+pass via a silent no-op; now `required_tools:["say"]` so a refusal must actually be
+spoken. (2) **Major** - native multi-tool messages left unmatched `tool_call`s
+before the next request (invalid on strict OpenAI providers); now synthesize a tool
+result for every unprocessed sibling after a respond/terminal. (3) **Major** -
+fail-closed validation now rejects answer-key references to unknown devices or tools
+(a typo silently disabled a guard). (4) **Major** - non-dict tool arguments (a list/
+scalar) are coerced to `{}` in both clients (would have crashed `apply()`). (5)
+**Minor** - validation uses the `TOOLSETS` registry instead of a hardcoded set.
+**Pushed back** on two: native parallel tool calls are legitimate (bounded, no
+scoring impact) - documented not changed; and `require_confirm` is a v0.1 proxy
+(ask-before-act, not ask-named-device) - documented + deferred to v0.2. Also added
+`tools_used` to the agentic raw write (offline re-scoring footgun). Selftest 58
+checks ALL PASS; both agentic benchmarks still validate; prompt-mode home 6/6 holds
+(h5 re-scored True with the new key). Review notes: tmp/review-agentic-harness.md.

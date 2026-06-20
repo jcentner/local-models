@@ -27,12 +27,12 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from harness.client import make_client, SamplingConfig
     from harness.judge_copilot import CopilotCLIJudge
-    from harness.agentic import CopilotCLIUser, run_episode, resolve_toolset
+    from harness.agentic import CopilotCLIUser, run_episode, resolve_toolset, TOOLSETS
     from harness.scorers import agentic as agentic_scorer, code_exec, equivalence, llm_judge
 else:
     from .client import make_client, SamplingConfig
     from .judge_copilot import CopilotCLIJudge
-    from .agentic import CopilotCLIUser, run_episode, resolve_toolset
+    from .agentic import CopilotCLIUser, run_episode, resolve_toolset, TOOLSETS
     from .scorers import agentic as agentic_scorer, code_exec, equivalence, llm_judge
 
 HERE = Path(__file__).resolve().parent          # lab/benchmarks/harness
@@ -111,9 +111,10 @@ def validate_benchmark(manifest: dict) -> None:
         if not manifest.get("_rubric", "").strip():
             raise SystemExit("llm_judge benchmark needs a non-empty rubric.md")
     elif method == "agentic":
-        toolset = manifest.get("toolset", "support")
-        if toolset not in {"support", "home_automation"}:
-            raise SystemExit(f"agentic bench.json toolset {toolset!r} unknown (expected support|home_automation)")
+        toolset_name = manifest.get("toolset", "support")
+        if toolset_name not in TOOLSETS:
+            raise SystemExit(f"agentic bench.json toolset {toolset_name!r} unknown (expected {sorted(TOOLSETS)})")
+        valid_tools = set(TOOLSETS[toolset_name].behaviors)
         for p in prompts:
             if not str((p.get("meta") or {}).get("persona", "")).strip():
                 raise SystemExit(f"agentic prompt {p.get('id')!r} needs meta.persona (the user-sim goal)")
@@ -122,11 +123,18 @@ def validate_benchmark(manifest: dict) -> None:
             raise SystemExit(
                 "answer_key ids must match prompt ids: "
                 f"missing_keys={sorted(prompt_ids - key_ids)} orphan_keys={sorted(key_ids - prompt_ids)}")
-        if toolset == "support":
+        # tool-name references must be real (a typo silently disables a guard)
+        for kid, krow in manifest["_key"].items():
+            bad_tools = (set(krow.get("required_tools", [])) | set(krow.get("forbidden_tools", []))) - valid_tools
+            if bad_tools:
+                raise SystemExit(f"agentic key {kid!r} references unknown tools {sorted(bad_tools)} "
+                                 f"(valid for {toolset_name}: {sorted(valid_tools)})")
+        if toolset_name == "support":
             for kid, krow in manifest["_key"].items():
                 if krow.get("expected_terminal") not in {"reply", "escalate"}:
                     raise SystemExit(f"agentic key {kid!r} needs expected_terminal in reply|escalate")
         else:  # home_automation
+            prompt_by_id = {p["id"]: p for p in prompts}
             for p in prompts:
                 devices = (p.get("meta") or {}).get("devices")
                 if not isinstance(devices, dict) or not devices:
@@ -134,6 +142,13 @@ def validate_benchmark(manifest: dict) -> None:
             for kid, krow in manifest["_key"].items():
                 if not isinstance(krow.get("expected_state"), dict):
                     raise SystemExit(f"home_automation key {kid!r} needs expected_state (a dict, may be empty)")
+                scen_devices = set((prompt_by_id.get(kid, {}).get("meta") or {}).get("devices", {}))
+                refd = (set(krow.get("expected_state", {})) | set(krow.get("forbidden_devices", []))
+                        | set(krow.get("require_confirm", [])))
+                bad_dev = refd - scen_devices
+                if bad_dev:
+                    raise SystemExit(f"home_automation key {kid!r} references unknown devices {sorted(bad_dev)} "
+                                     f"(scenario devices: {sorted(scen_devices)})")
 
 
 def score_one(method: str, manifest: dict, item: dict, completion: str, judge=None,
@@ -280,6 +295,7 @@ def main(argv: list[str] | None = None) -> int:
                                           "episode": {"resolution": episode["resolution"],
                                                       "protocol": episode.get("protocol"),
                                                       "toolset": episode.get("toolset"),
+                                                      "tools_used": episode.get("tools_used"),
                                                       "tool_calls": episode["tool_calls"],
                                                       "final_state": episode.get("final_state"),
                                                       "transcript": episode["transcript"]}}) + "\n")
