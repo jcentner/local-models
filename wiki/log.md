@@ -459,3 +459,16 @@ read-only. Aesthetic = Vercel/Geist (tokens from VoltAgent/awesome-design-md;
 in [lab/journal/2026-06-20-run-viewer.md](../lab/journal/2026-06-20-run-viewer.md).
 Run: `python3 tools/run-viewer/server.py`. Also installed the **impeccable** design
 skill globally (skill-only, no hooks) into `~/.agents/skills/`.
+
+## [2026-06-20] note | run-viewer: base_model grouping + minimal wiki reader
+Two follow-ups on the viewer. (1) Scoped the wiki tab to a **minimal reader**
+(wiki↔wiki links navigate in-app, everything else opens a new tab; no graph/
+backlinks/dataview) rather than half-rebuilding Obsidian. (2) **Grouping results by
+base model**: added a `--base-model` flag to the harness writing a `base_model`
+column in `results.csv` (canonical id = `wiki/models/<id>.md` slug; defaults to
+`--model`), backfilled the 24 existing rows. The viewer now groups runs base →
+variant → run, a base header opens a variant×benchmark comparison matrix (the
+quant-sweep view), and runs link to the model's wiki page — fixing "the run page
+never says what model it is". Two gpt-5.5 background reviews; the 2nd caught a real
+`.crit`-grid regression + 3 robustness fixes. Narrative:
+[lab/journal/2026-06-20-run-viewer.md](../lab/journal/2026-06-20-run-viewer.md).

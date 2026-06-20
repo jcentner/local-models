@@ -88,11 +88,36 @@ back on full item pagination (runs are ≤12 items) and on vendoring the CDN lib
 (disproportionate for a localhost tool — the strict CSP's `connect-src 'self'` already
 blocks exfiltration), documenting both as deliberate.
 
+## Session 2 — minimal wiki reader + grouping by base model
+
+The wiki tab grew dead links fast (the wiki cross-links heavily to `../README.md`,
+`../lab/...`), which raised the right question: am I rebuilding Obsidian? No — the
+viewer's edge is run content; Obsidian owns the wiki. So I scoped the wiki tab to a
+**minimal reader**: wiki↔wiki links navigate in-app, everything else opens in a new
+tab, hard stop (no graph/backlinks/dataview). Also bumped the rail contrast (`#888`
+on black is ~3.5:1 — genuinely too faint, not just a small window).
+
+The bigger piece: **grouping results by base model.** The `model` column in
+`results.csv` is an ad-hoc config label (`g4v2-A-Q3KM-f16-ngl99`), not the model
+identity — and MiniCPM5 even shows up under two labels (Ollama alias + SGLang HF
+name). The durable fix wasn't a naming convention (that's the disease) but a
+*structured field*: a `--base-model` flag on the harness writing a `base_model`
+column, chosen to match the `wiki/models/<id>.md` slug. Backfilled the 24 existing
+rows once. The viewer now groups base → variant → run; a base header opens a
+variant×benchmark comparison matrix (the quant-sweep view — Q4_K_M + q4_0 KV drops
+code to 0.50 at a glance); and every run + the matrix link to the model's wiki page.
+That also fixes "the run page never says what model it is."
+
+Two gpt-5.5 background reviews ran across the session. The second caught a real
+regression I'd missed: the `.crit` grid rule got dropped when I added `.prose`, so
+the judge scorecard lost its columns (no judge run happened to be in my screenshots
+after that change). Plus three cheap robustness fixes — link `..` underflow, a
+symlink-safe `raw_exists`, a line-based fence parser. Cross-model review keeps
+earning its keep.
+
 ## Open / next
 
-- Code completions that are prose + a ```python fence get the prose keywords
-  highlighted too — minor; could highlight only inside fences.
-- Wiki markdown is sanitized (CSP + DOM denylist) but still reads only my own
-  `wiki/`; I wouldn't point it at untrusted markdown.
-- Possible later: a top-level results table / sort+filter, and folding this into
-  the `/benchmark` flow as the "go look at what happened" step.
+- A top-level results table / sort+filter across all models, and folding the viewer
+  into the `/benchmark` flow as the "go look at what happened" step.
+- Have `/benchmark` pass `--base-model` per model by default.
+- Wiki markdown is sanitized (CSP + DOM denylist) but reads only my own `wiki/`.

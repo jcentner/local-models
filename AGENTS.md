@@ -134,6 +134,11 @@ triage). Models under test run **local (Ollama, the daily driver) or API
 (OpenAI-compatible, e.g. Z.AI GLM)** via the harness `--provider` flag; record
 **capability and cost** (`cost_usd` from `--price-in/--price-out`). Running the
 same benchmark local vs API and comparing capability + cost is a first-class goal.
+Each result row records a **`base_model`** (canonical id, `--base-model`, defaults
+to `--model`; matches the `wiki/models/<id>.md` slug) alongside the variant
+`model` label, so runs group across quant/serving variants (e.g. all `g4v2-*`
+quants → `gemma-4-12b-agentic-fable5`). The viewer ([tools/run-viewer](tools/run-viewer/README.md))
+reads `results.csv` to browse run content grouped by base model.
 Definitions are machine-independent (wiki); results are **per-environment** (lab):
 per-machine for local, per-provider + per-date for API (prices/models drift).
 Workflow verbs: `/new-benchmark` (ingest an existing one),
