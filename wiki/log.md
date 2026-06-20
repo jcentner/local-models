@@ -398,3 +398,28 @@ base on retail/MMLU-Pro by design - **unverified**. No Q2_K this release. Staged
 throughput + code-basics + home-automation quality. Prereq: llama.cpp not built
 here (no host CUDA toolkit) -> build via rootless-podman CUDA. Page + index
 updated; experiment at lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep.
+
+## [2026-06-20] note | llama.cpp CUDA container verified + v2 sweep expanded to 5 cells
+Stood up llama.cpp via the official prebuilt CUDA image
+(ghcr.io/ggml-org/llama.cpp:server-cuda, build 9737) in rootless Podman+CDI -
+same pattern as the SGLang container. GPU visible (RTX 5070, **only ~6999 of 8150
+MiB free** - real budget ~6.8 GB). Grounded in primary docs: llama.cpp docker.md
+(server-cuda/-cuda13 images, entrypoint=llama-server), server README (-ctk/-ctv
+q4_0, -ngl, -fa, --jinja default-on, -hf auto-download, -fit, timings tok/s), and
+NVIDIA CDI docs. Marked stacks/llama-cpp.md container-verified with the recipe.
+Expanded the gemma-4-12B v2 quant sweep to **5 cells** (added A2: Q3+q4_0 KV to
+isolate KV effect; D: Q4 full-GPU @4K to isolate offload) - the 6.8 GB budget
+means Q4_K_M likely cannot run full-GPU (expect OOM), making the sweep about
+whether Q4 runs at all vs Q3. Container up; model download + run pending confirm.
+
+## [2026-06-20] ingest | stacks/podman-gpu.md — portable GPU-container setup
+Factored the shared one-time GPU-in-Podman setup (was buried in stacks/sglang.md)
+into a canonical stacks/podman-gpu.md so the container serving stack can be
+reproduced on a new box from one page. Concrete + verified: podman 4.9.3,
+nvidia-container-toolkit 1.19.1, CDI at /etc/cdi/nvidia.yaml (device
+nvidia.com/gpu=all), the shared run pattern (--device nvidia.com/gpu=all
+--security-opt=label=disable --ipc=host + shared ~/.cache/huggingface mount), and
+a SGLang-vs-llama.cpp "pick per model" table. De-duplicated the CDI steps in
+sglang.md + cross-linked llama-cpp.md and hardware/proart-p16.md; added the index
+line. Machine-specific bits (free VRAM, -ngl, mem-fraction) kept on the hardware
+/ experiment pages per the portability rule.

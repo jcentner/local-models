@@ -16,6 +16,7 @@ local-agent home-automation system.
 - [hardware/xdna2-npu.md](hardware/xdna2-npu.md) — Ryzen AI 9 HX 370 NPU (XDNA 2): what it can do and why it's a Windows-side experiment.
 
 ## Stacks
+- [stacks/podman-gpu.md](stacks/podman-gpu.md) — **shared foundation**: run GPU LLM servers (SGLang, llama.cpp) as official CUDA images under rootless Podman + NVIDIA CDI; no host toolkit. The page to reproduce the setup on a new box.
 - [stacks/ollama.md](stacks/ollama.md) — daily driver. GGUF, OpenAI-compatible API. Already installed.
 - [stacks/llama-cpp.md](stacks/llama-cpp.md) — engine-level control, llama-bench, the DiffusionGemma diffusion branch.
 - [stacks/vllm.md](stacks/vllm.md) — high-throughput serving; Linux-only; stretch goal on 8 GB.

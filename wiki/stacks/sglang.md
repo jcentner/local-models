@@ -91,9 +91,8 @@ Stood SGLang up for [MiniCPM5-1B](../models/minicpm5-1b.md). Findings:
 ## Install — the container route (recommended here)
 
 ```bash
-# One-time: NVIDIA Container Toolkit + CDI for rootless Podman GPU (needs sudo)
-sudo apt-get install -y nvidia-container-toolkit          # from NVIDIA's apt repo
-sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+# One-time GPU-in-Podman setup (toolkit + CDI) is shared across stacks -> see
+# stacks/podman-gpu.md. Then just pull the SGLang image:
 podman pull docker.io/lmsysorg/sglang:latest
 
 # Serve MiniCPM5-1B (GPU via CDI, reuse the HF model cache, OpenAI API on :30000)

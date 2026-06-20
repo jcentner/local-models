@@ -54,6 +54,7 @@ VRAM math and quant trade-offs: [concepts/quantization.md](../concepts/quantizat
   installed + CDI generated (`/etc/cdi/nvidia.yaml`); the RTX 5070 is visible via
   `--device nvidia.com/gpu=all --security-opt=label=disable`. Base Podman per
   [github.com/jcentner/podman-wsl-setup](https://github.com/jcentner/podman-wsl-setup).
+  Canonical reproducible setup (both serving stacks): [stacks/podman-gpu.md](../stacks/podman-gpu.md).
 
 ## Upgrade notes
 
