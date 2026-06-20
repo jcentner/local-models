@@ -108,7 +108,9 @@ two halves split across the wiki/lab boundary:
 Scoring is per-domain: math = answer extraction + equivalence; code = execute
 against tests **in a sandbox** (Podman, `--code-sandbox podman`); **agentic/tool-use
 = a model-agnostic rollout** (agent under test + Copilot-CLI user-simulator + mocked
-tools, scored on terminal action + tool policy; `harness/agentic.py` - the flexible
+tools over a **tool set** - `support` act/ask/escalate or `home_automation`
+act/confirm/refuse - via a `prompt` or `native` function-calling protocol; scored
+deterministically on end-state + tool policy; `harness/agentic.py` - the flexible
 alternative to registered-model benchmarks like BFCL); open-ended
 (creative writing, reasoning) =
 rubric LLM-judge by a **frontier model** (claude-opus-4.8 via the Copilot CLI -

@@ -13,10 +13,15 @@ before using any of the benchmark prompts.
 **Status (2026-06-19):** **four working scorers** — `llm_judge` (frontier judge =
 opus-4.8 via Copilot CLI), `equivalence`, `code_tests` (locked-down **Podman**
 sandbox, `--code-sandbox podman`), and **`agentic`** (model-agnostic tau-bench-style
-tool-use rollout with a Copilot-CLI user-simulator; [email-triage](../../benchmarks/email-triage/README.md)
-v0). Authored benchmarks run end to end: [decision-reasoning](decision-reasoning.md)
-(VibeThinker-3B 1/6), `code-basics` (qwen3.5:4b 3/4), email-triage (qwen3.5:4b
-passed e1 live). Models under test run **local (Ollama) or API (OpenAI-compatible,
+rollout + Copilot-CLI user-simulator; two **tool sets** — `support` (act/ask/escalate)
+and `home_automation` (act/confirm/refuse) — over a `prompt` or `native`
+function-calling protocol). Authored benchmarks run end to end:
+[decision-reasoning](decision-reasoning.md) (VibeThinker 1/6, MiniCPM5 0/6\*),
+`code-basics` (qwen3.5:4b 3/4), [email-triage](../../benchmarks/email-triage/README.md)
+(qwen3.5:4b 4/5 native · 3/5 prompt; MiniCPM5 0/5\*),
+[home-automation](../../benchmarks/home-automation/README.md) (qwen3.5:4b 6/6
+prompt · 5/6 native). \*MiniCPM5 confounded by uncontrollable `<think>` over Ollama.
+Models under test run **local (Ollama) or API (OpenAI-compatible,
 e.g. Z.AI GLM)** via `--provider`; results record **cost** alongside capability.
 **External-first:** wrap existing benchmarks aligned with my interests
 (decision-making, agentic/triage) before authoring custom ones; custom benchmarks
@@ -32,7 +37,7 @@ scoring**, and it differs by domain:
 | Math (AIME/HMMT/IMO-style) | answer extraction + symbolic/numeric equivalence | scorer exists; not a current focus |
 | Code (HumanEval+/MBPP+/LiveCodeBench) | execute candidate code against hidden tests in a **Podman sandbox** (`--code-sandbox podman`) | locked-down container; `--no-think` for thinking models |
 | Open-ended (creative writing, reasoning) | **rubric LLM-judge** by a frontier model (opus-4.8 via Copilot CLI; never a local small model) | pin judge model+version+rubric; judge config is part of the result |
-| Tool-use / agentic | model-agnostic **rollout**: agent + Copilot user-sim + mocked tools; state/policy scored | **built** (`agentic`); benchmarks/email-triage v0 |
+| Tool-use / agentic | model-agnostic **rollout**: agent + Copilot user-sim + mocked tools; deterministic state/policy scored | **built** (`agentic`); 2 tool sets (`support`, `home_automation`) x 2 protocols (`prompt`, `native`); email-triage + home-automation |
 
 **Prefer wrapping existing eval frameworks** ([evalplus](https://github.com/evalplus/evalplus),
 [lm-eval-harness](https://github.com/EleutherAI/lm-evaluation-harness),
