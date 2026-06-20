@@ -430,3 +430,17 @@ now/next/research/models/maintenance), linked from index.md. Fixed two stale
 experiment headers that said "not yet run" but had completed Results: the
 MiniCPM5 SGLang-controlled run (2026-06-20) and the MiniCPM5 Ollama first-run
 (2026-06-19, the run that motivated the SGLang re-test).
+
+## [2026-06-20] bench | gemma-4-12B v2 quant x KV x offload sweep (5 cells, llama.cpp container)
+Ran the v2 GGUF on llama-server (build 9737) in the podman CUDA container across
+5 configs on the ProArt P16 (8 GB, ~6.8 GB free). **Winner: Q3_K_M + f16 KV,
+full GPU, 16K ctx** - 4/4 code-basics, **11/12 home-automation** (v0.2 agentic,
+native Gemma 4 tools), ~32 tok/s, 7.78 GB. Findings: v2 is a strong local agent
+(10-11/12 every config, vs MiniCPM5 7/12); **q4_0 KV measurably costs quality**
+(f16-KV cells all 4/4 code; q4_0-KV cells 3/4 and 2/4) for a ~1.2 GB VRAM save;
+Q4_K_M IS runnable full-GPU but only with q4_0 KV (7.8 GB) or CPU offload
+(-ngl 30, ~15 tok/s, half speed); Q4+f16 KV crammed on-GPU at 4K "fits" (7.85 GB)
+but throughput collapses to ~3 tok/s (no headroom). Q4 quality edge never showed.
+Still open: no base gemma-4-12B-it head-to-head, so the ~3.5x tau2 claim is NOT
+validated - only v2 absolute score. Transcripts in lab/benchmarks/runs/ (git-
+ignored). Experiment + model page + index + backlog updated.

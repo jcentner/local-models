@@ -29,7 +29,7 @@ local-agent home-automation system.
 - [models/diffusiongemma.md](models/diffusiongemma.md) — diffusion/block-AR MoE (26B-A4B); first model to try.
 - [models/vibethinker-3b.md](models/vibethinker-3b.md) — WeiboAI 3B dense reasoning specialist (Qwen2.5-based, MIT); frontier-ish math/code scores, runs full-GPU here.
 - [models/minicpm5-1b.md](models/minicpm5-1b.md) — OpenBMB 1B dense on-device model (Llama-arch, Apache-2.0); via SGLang: weak abstract reasoner (decision-reasoning 0/6) but a decent home-automation **tool-executor** (7/12) — a home-agent executor, not the deliberation brain.
-- [models/gemma-4-12b-agentic-fable5.md](models/gemma-4-12b-agentic-fable5.md) — yuxinlu1 community **coding + agentic** finetune of Gemma 4 12B v2 (dense, `gemma4_unified`, Apache-2.0, 256K ctx, native tool-use + thinking); author self-eval ~3.5× base on tau2-telecom (**unverified**); needs llama.cpp `--jinja`; Q3_K_M fits 8 GB full-GPU.
+- [models/gemma-4-12b-agentic-fable5.md](models/gemma-4-12b-agentic-fable5.md) — yuxinlu1 community **coding + agentic** finetune of Gemma 4 12B v2 (dense, `gemma4_unified`, Apache-2.0, 256K ctx, native tool-use + thinking); **local-verified strong agent: 11/12 home-automation, 4/4 code-basics (Q3_K_M)**; needs llama.cpp `--jinja`; runs full-GPU on 8 GB.
 
 ### Aide models (STT / TTS / embeddings / retrieval)
 The non-generative support models for the home agent — see [concepts/aide-models.md](concepts/aide-models.md) for the track; ingest with [`/new-aide`](../.github/prompts/new-aide.prompt.md).

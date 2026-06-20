@@ -1,8 +1,8 @@
 ---
 title: Gemma-4-12B v2 — Coding + Agentic (Fable5 × Composer2.5)
-tags: [model, coding, agentic, tool-use, dense, gemma4, thinking, to-try]
+tags: [model, coding, agentic, tool-use, dense, gemma4, thinking, tested]
 updated: 2026-06-20
-status: to-try
+status: tested
 ---
 
 # Gemma-4-12B v2 — Coding + Agentic Edition
@@ -82,6 +82,13 @@ telecom; v3 *guessed* at 60–70%; some remaining misses are a **bug in the
 benchmark's own APN tool**, not the model. **No independent verification yet** —
 this is the prime reason to run our own [agentic harness](../benchmarks/README.md).
 
+**Verified locally (2026-06-20, our harness, Q3_K_M full-GPU):** **11/12**
+home-automation (v0.2 agentic, native Gemma 4 tools) and **4/4** code-basics — a
+genuinely strong local agent, and quant-robust (10–11/12 across every sweep config).
+Caveat: we ran **only v2, not base gemma-4-12B-it**, so the author's ~3.5× *delta*
+is still unverified — only v2's strong absolute score is established. Full
+[sweep](../../lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep/README.md).
+
 ## Size & resource requirements (machine-independent)
 
 GGUF file sizes (HF sidebar). **No Q2_K this release** — the author's imatrix Q2_K
@@ -138,16 +145,20 @@ llama-server -m gemma4-v2-Q8_0.gguf \
   -ngl 99 -ngld 99 -fa on --jinja
 ```
 
-## Can it run here?
+## Can it run here? (verified 2026-06-20)
 
-Per-machine fit + a quant-config throughput/quality sweep for the ProArt P16
-(8 GB VRAM) lives in the experiment:
-[lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep](../../lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep/README.md).
-Short version: **Q3_K_M (6.09 GB) fits fully on the 8 GB GPU** with ~16K context;
-**Q4_K_M (7.38 GB) does not fit full-GPU with usable context** without help — either
-**`q4_0` KV cache** (shrinks KV to stay on GPU) or **partial CPU offload** (slower,
-bounded by [WSL RAM](../concepts/wsl2-memory.md)). The experiment measures exactly
-that trade-off.
+Ran a 5-cell quant × KV × offload sweep on the ProArt P16 (8 GB, ~6.8 GB free):
+[experiment](../../lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep/README.md).
+**Verdict: Q3_K_M + f16 KV, full GPU, 16K ctx is the sweet spot** — 4/4 code-basics,
+11/12 home-automation, ~32 tok/s, 7.78 GB VRAM. Findings:
+- **Q4_K_M *is* runnable** (an earlier OOM guess was wrong): full-GPU **only with
+  `q4_0` KV** (~7.8 GB), or via partial CPU offload (`-ngl ~30`, f16 KV, ~5.9 GB).
+- **`q4_0` KV measurably costs quality** (code-basics 4/4→3/4 at Q3, →2/4 at Q4;
+  every f16-KV cell stayed 4/4) — the ~1.2 GB VRAM saving isn't free.
+- **CPU offload halves throughput** (~32→~15 tok/s); cramming Q4+f16 KV fully on
+  GPU at 4K "fits" (7.85 GB) but throughput **collapses to ~3 tok/s** (no headroom).
+- Net: **Q4's quality edge didn't show** on these benchmarks, and every way to fit
+  it costs quality or speed → **stick with Q3_K_M f16 full-GPU**.
 
 ## Trust & caveats
 

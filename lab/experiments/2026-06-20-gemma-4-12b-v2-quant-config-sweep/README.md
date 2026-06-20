@@ -98,30 +98,43 @@ them distinct. Capture VRAM/RAM with `nvidia-smi` / `podman stats` while loaded.
 > reported to crash on the draft loader. Skip the draft for this sweep (it doesn't
 > affect quality), or pin a b9553 image separately if testing speed.
 
-## Result (matrix to fill)
+## Result (run 2026-06-20, llama.cpp build 9737, ProArt P16)
 
-| Cell | Quant | KV | -ngl | ctx | loaded? | prompt tok/s | gen tok/s | VRAM | RAM | code-basics | home-automation |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| A | Q3_K_M | f16 | 99 | 16K | | | | | | | |
-| A′ | Q3_K_M | q4_0 | 99 | 16K | | | | | | | |
-| B | Q4_K_M | q4_0 | 99 | 16K | | | | | | | |
-| C | Q4_K_M | f16 | ~30 | 16K | | | | | | | |
-| D | Q4_K_M | f16 | 99 | 4K | | | | | | | |
+| Cell | Quant | KV | -ngl | ctx | loaded? | prompt tok/s | gen tok/s | VRAM | code-basics | home-automation |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **A** | Q3_K_M | f16 | 99 | 16K | ✅ | 66 | **32** | 7780 MiB | **4/4** | **11/12** |
+| **A′** | Q3_K_M | q4_0 | 99 | 16K | ✅ | — | 28 | 6562 MiB | 3/4 | 10/12 |
+| **B** | Q4_K_M | q4_0 | 99 | 16K | ✅ | 48 | 31 | 7796 MiB | 2/4 | 11/12 |
+| **C** | Q4_K_M | f16 | 30 | 16K | ✅ (offload) | 45 | 15–17 | 5868 MiB | **4/4** | **11/12** |
+| **D** | Q4_K_M | f16 | 99 | 4K | ✅ but **~3 tok/s** | 3.7 | **3** | 7848 MiB | 4/4 | skipped (non-viable speed) |
 
-Record per the harness: model, quant, runner+version (llama.cpp build 9737),
-context, `-ngl`, tok/s (prompt+gen), VRAM/RAM, **machine = ProArt P16**, date.
+Failures are genuine task errors (transcripts in `runs/home-automation-g4v2-*.jsonl`,
+`episode.transcript` + `episode.tool_calls`): A/h5 hit `max_turns` and toggled a
+device it shouldn't (`unchanged_ok` fail); B&C/h9 ended `done` with a wrong final
+state (`state_ok` fail). code-basics runs greedy (temp 0, deterministic);
+home-automation runs temp 1.0 (stochastic — the *which* item fails varies, the
+aggregate is stable).
 
 ## Learnings
 
-(blank — after the run, update
-[wiki/models/gemma-4-12b-agentic-fable5.md](../../../wiki/models/gemma-4-12b-agentic-fable5.md)
-"Can it run here?" with the winning config, append a `bench` line to
-[wiki/log.md](../../../wiki/log.md), and record whether v2 beat base on our own
-agentic set — the unverified-self-eval question.)
+**Winner: Cell A — Q3_K_M, f16 KV, full GPU, 16K ctx** (4/4 code, 11/12 agentic,
+~32 tok/s, 7.78 GB). The daily-driver config.
 
-Capture specifically:
-- **Does Q4 run at all** on ~6.8 GB free, or is Q3 full-GPU the only practical path?
-- Best **throughput ↔ quality** config; is Q4's quality bump worth any speed cost?
-- Does `q4_0` KV measurably hurt agentic/long-ctx quality vs f16 (A vs A′)?
-- v2 **vs base** gemma-4-12B-it on our agentic set (tests the ~3.5× self-eval claim
-  under our harness).
+1. **v2 is a strong local home-automation agent** — **10–11/12** across every
+   config, far above MiniCPM5-1B's 7/12. The capability is real and quant-robust.
+2. **Q4_K_M *is* runnable on 8 GB** (my OOM hypothesis was wrong): full-GPU with
+   `q4_0` KV (B, 7.8 GB) or via CPU offload (C, `-ngl 30`, 5.9 GB).
+3. **`q4_0` KV measurably costs quality.** Every f16-KV cell (A, C, D) scored
+   **4/4** code-basics; both q4_0-KV cells dropped (A′ 3/4, B 2/4), and q4_0 KV
+   cost A′ one agentic item (10 vs 11). The ~1.2 GB VRAM saving isn't free.
+4. **Q4's quality edge never showed** on these benchmarks — Q4 (B) tied/again trailed
+   Q3 (A). At this size the weight-quant step Q3→Q4 matters less than the KV dtype.
+5. **Throughput:** full-GPU ≈ 28–32 tok/s; CPU offload (`-ngl 30`) halves it to
+   ~13–17; cramming Q4+f16 KV fully on-GPU at 4K **"fits" (7848 MiB) but collapses
+   to ~3 tok/s** — no compute headroom. **"Fits" ≠ "usable".**
+6. Net: **use Q3_K_M + f16 KV full-GPU.** Every path to Q4 costs quality (q4_0 KV)
+   or speed (offload/thrash) for no measured quality gain.
+
+**Still open:** ran v2 only — **no base gemma-4-12B-it head-to-head**, so the
+author's ~3.5× tau2-telecom claim is *not* validated here (we only established v2's
+strong absolute agentic score). That comparison is the next step → [backlog](../../../wiki/backlog.md).
