@@ -80,6 +80,35 @@ a { color: inherit; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .run .missing { font-family: var(--mono); font-size: 10px; color: var(--dimmer); grid-column: 2; }
 
+/* grouped rail: base -> variant -> run */
+.baseblk { margin-bottom: 2px; }
+.baserow { display: flex; align-items: center; gap: 2px; border-radius: var(--radius); }
+.baserow.sel { box-shadow: inset 0 0 0 1px #333; background: var(--sel); }
+.caret { background: none; border: none; color: var(--dim); cursor: pointer; padding: 5px 4px; font-size: 11px; font-family: var(--mono); }
+.basename { flex: 1; text-align: left; background: none; border: none; color: var(--fg); cursor: pointer;
+  font-family: var(--mono); font-weight: 500; font-size: 12px; padding: 6px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.basename:hover { color: var(--good); }
+.cnt { color: var(--dim); font-weight: 400; }
+.varblk { margin: 1px 0 6px 14px; }
+.varlabel { font-family: var(--mono); font-size: 10px; color: #b0b0b0; padding: 5px 4px 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* detail: base subhead + wiki link */
+.subhead { font-family: var(--mono); font-size: 12px; color: var(--dim); margin: 2px 0 14px; display: flex; align-items: center; gap: 8px; }
+.wikilink { background: none; border: 1px solid var(--border); color: var(--good); cursor: pointer;
+  font-family: var(--mono); font-size: 11px; padding: 2px 9px; border-radius: 999px; }
+.wikilink:hover { border-color: var(--good); }
+
+/* base-model comparison matrix */
+.matrix { border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+.matrix th, .matrix td { border: 1px solid var(--border); padding: 6px 12px; text-align: center; }
+.matrix th { color: var(--dim); font-family: var(--mono); font-weight: 500; font-size: 11px; }
+.matrix th:first-child, .matrix td.vname { text-align: left; }
+.matrix td.vname { font-family: var(--mono); color: var(--fg); }
+.matrix td .pill { cursor: pointer; border: none; }
+.matrix .dash { color: var(--dimmer); }
+.hint { font-family: var(--mono); font-size: 11px; color: var(--dim); margin-top: 10px; }
+
 .pill {
   font-family: var(--mono); font-size: 11px; padding: 1px 7px; border-radius: 999px;
   white-space: nowrap;

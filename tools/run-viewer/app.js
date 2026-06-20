@@ -94,26 +94,57 @@ async function getJSON(url) {
   return r.json();
 }
 
-// ---------- run list ----------
-function RunList({ runs, sel, onSelect }) {
+// ---------- grouped run rail ----------
+// base_model (grouping key, = wiki slug) -> variant label (model) -> runs.
+function groupRuns(runs) {
+  const bases = [];
+  const bmap = new Map();
+  runs.forEach((r, i) => {
+    const base = r.base_model || r.model;
+    let b = bmap.get(base);
+    if (!b) { b = { base, variants: [], vmap: new Map(), runs: [] }; bmap.set(base, b); bases.push(b); }
+    b.runs.push(i);
+    let v = b.vmap.get(r.model);
+    if (!v) { v = { label: r.model, runs: [] }; b.vmap.set(r.model, v); b.variants.push(v); }
+    v.runs.push(i);
+  });
+  return bases;
+}
+
+function GroupedRail({ runs, sel, expanded, onToggle, onSelectRun, onSelectBase }) {
+  const bases = groupRuns(runs);
   return html`
     <div class="rail">
-      <div class="h">runs · ${runs.length}</div>
-      ${runs.map((r, i) => {
-        const pk = r.observed_pass_at_k;
-        const disabled = !r.raw_exists;
+      <div class="h">${runs.length} runs · ${bases.length} models</div>
+      ${bases.map((b) => {
+        const open = expanded[b.base] !== false;
+        const baseSel = sel && sel.type === 'base' && sel.base === b.base;
         return html`
-          <button
-            class=${'run' + (i === sel ? ' sel' : '')}
-            disabled=${disabled}
-            title=${disabled ? 'raw run file not present on this machine' : r.raw_file}
-            onClick=${() => !disabled && onSelect(i)}>
-            <span class="m">${r.model}</span>
-            ${disabled
-              ? html`<span class="missing">no raw</span>`
-              : html`<span class=${'pill ' + passClass(pk)}>${fmt(pk)}</span>`}
-            <span class="b">${r.benchmark} · ${r.scoring}</span>
-          </button>`;
+          <div class="baseblk">
+            <div class=${'baserow' + (baseSel ? ' sel' : '')}>
+              <button class="caret" onClick=${() => onToggle(b.base)} title=${open ? 'collapse' : 'expand'}>${open ? '▾' : '▸'}</button>
+              <button class="basename" onClick=${() => onSelectBase(b.base)} title="compare variants">
+                ${b.base} <span class="cnt">${b.runs.length}</span>
+              </button>
+            </div>
+            ${open ? b.variants.map((v) => html`
+              <div class="varblk">
+                ${b.variants.length > 1 || v.label !== b.base ? html`<div class="varlabel" title=${v.label}>${v.label}</div>` : null}
+                ${v.runs.map((i) => {
+                  const r = runs[i];
+                  const disabled = !r.raw_exists;
+                  const runSel = sel && sel.type === 'run' && sel.i === i;
+                  return html`<button class=${'run' + (runSel ? ' sel' : '')} disabled=${disabled}
+                      title=${disabled ? 'raw run file not present' : r.raw_file}
+                      onClick=${() => !disabled && onSelectRun(i)}>
+                      <span class="m">${r.benchmark.split(' ')[0]}</span>
+                      ${disabled ? html`<span class="missing">no raw</span>`
+                        : html`<span class=${'pill ' + passClass(r.observed_pass_at_k)}>${fmt(r.observed_pass_at_k)}</span>`}
+                      <span class="b">${r.scoring}${r.provider === 'openai-compatible' ? ' · api' : ''}</span>
+                    </button>`;
+                })}
+              </div>`) : null}
+          </div>`;
       })}
     </div>`;
 }
@@ -266,16 +297,59 @@ function pickRenderer(scoring) {
   return GenericItem;
 }
 
+// ---------- base-model overview (variant x benchmark matrix) ----------
+function BaseOverview({ runs, base, wikiHas, onOpenWiki, onSelectRun }) {
+  const idxs = runs.map((r, i) => i).filter((i) => (runs[i].base_model || runs[i].model) === base);
+  const variants = [], benches = [], vset = new Set(), bset = new Set();
+  idxs.forEach((i) => {
+    const v = runs[i].model; if (!vset.has(v)) { vset.add(v); variants.push(v); }
+    const bn = runs[i].benchmark.split(' ')[0]; if (!bset.has(bn)) { bset.add(bn); benches.push(bn); }
+  });
+  const cell = (v, bn) => {
+    const ms = idxs.filter((i) => runs[i].model === v && runs[i].benchmark.split(' ')[0] === bn);
+    if (!ms.length) return null;
+    ms.sort((a, b) => parseFloat(runs[b].observed_pass_at_k) - parseFloat(runs[a].observed_pass_at_k));
+    return { i: ms[0], n: ms.length, pk: runs[ms[0]].observed_pass_at_k };
+  };
+  const wp = `models/${base}.md`;
+  return html`
+    <div class="detail">
+      <div class="crumb">model overview</div>
+      <div class="dhead">
+        <h2>${base}</h2>
+        ${wikiHas(wp) ? html`<button class="wikilink" onClick=${() => onOpenWiki(wp)}>model page ↗</button>` : null}
+      </div>
+      <div class="meta">
+        <span><b>${variants.length}</b> variants</span><span><b>${idxs.length}</b> runs</span><span><b>${benches.length}</b> benchmarks</span>
+      </div>
+      <table class="matrix">
+        <thead><tr><th>variant</th>${benches.map((bn) => html`<th>${bn}</th>`)}</tr></thead>
+        <tbody>
+          ${variants.map((v) => html`<tr>
+            <td class="vname">${v}</td>
+            ${benches.map((bn) => { const c = cell(v, bn); return html`<td>${c
+              ? html`<button class=${'pill ' + passClass(c.pk)} onClick=${() => onSelectRun(c.i)} title="open run">${fmt(c.pk)}${c.n > 1 ? html` <span class="cnt">×${c.n}</span>` : ''}</button>`
+              : html`<span class="dash">—</span>`}</td>`; })}
+          </tr>`)}
+        </tbody>
+      </table>
+      <div class="hint">best pass@k per variant×benchmark · ×n = multiple runs · click a cell to open the run</div>
+    </div>`;
+}
+
 // ---------- run detail ----------
-function RunDetail({ run, data }) {
-  if (!run) return html`<div class="empty">Select a run from the left.</div>`;
+function RunDetail({ run, data, wikiHas, onOpenWiki }) {
+  if (!run) return html`<div class="empty">Select a run, or a model header to compare variants.</div>`;
   if (!data) return html`<div class="empty">Loading ${run.raw_file} …</div>`;
   if (data.error) return html`<div class="empty">${data.error}: ${data.file || ''}</div>`;
   const Renderer = pickRenderer(run.scoring);
+  const base = run.base_model || run.model;
+  const wp = `models/${base}.md`;
   const meta = [
     ['provider', run.provider], ['tok/s', fmt(run.mean_gen_tok_s, 1)],
     ['cost', '$' + fmt(run.cost_usd, 4)], ['ctx', run.num_ctx], ['date', run.date],
   ];
+  const sub = (base !== run.model ? base : '') ;
   return html`
     <div class="detail">
       <div class="crumb">${run.benchmark} / ${run.scoring} / ${data.n_items} items${data.parse_errors ? ` · ${data.parse_errors} parse errors` : ''}</div>
@@ -283,6 +357,7 @@ function RunDetail({ run, data }) {
         <h2>${run.model}</h2>
         <span class=${'pill ' + passClass(run.observed_pass_at_k)}>pass@${run.k || 1} ${fmt(run.observed_pass_at_k)}</span>
       </div>
+      ${(sub || wikiHas(wp)) ? html`<div class="subhead">${sub ? html`${base} ` : ''}${wikiHas(wp) ? html`<button class="wikilink" onClick=${() => onOpenWiki(wp)}>model page ↗</button>` : ''}</div>` : null}
       <div class="meta">${meta.map(([k, v]) => html`<span>${k} <b>${v || '—'}</b></span>`)}
         <span>sampling <b>${run.sampling || '—'}</b></span>
       </div>
@@ -358,34 +433,39 @@ function WikiPane({ files, sel, onSelect, htmlContent }) {
 function App() {
   const [tab, setTab] = useState('runs');
   const [runs, setRuns] = useState([]);
-  const [sel, setSel] = useState(-1);
+  const [sel, setSel] = useState(null); // {type:'run',i} | {type:'base',base} | null
+  const [expanded, setExpanded] = useState({});
   const [data, setData] = useState(null);
   const [wikiFiles, setWikiFiles] = useState(null);
   const [wikiSel, setWikiSel] = useState(null);
   const [wikiHtml, setWikiHtml] = useState('');
 
-  useEffect(() => { getJSON('/api/runs').then((d) => setRuns(d.runs || [])).catch(() => setRuns([])); }, []);
+  useEffect(() => {
+    getJSON('/api/runs').then((d) => setRuns(d.runs || [])).catch(() => setRuns([]));
+    getJSON('/api/wiki').then((d) => setWikiFiles(d.files || [])).catch(() => setWikiFiles([]));
+  }, []);
+
+  const wikiHas = useCallback((p) => (wikiFiles || []).includes(p), [wikiFiles]);
 
   const selectRun = useCallback((i) => {
-    setSel(i); setData(null);
+    setSel({ type: 'run', i }); setData(null);
     getJSON('/api/run?file=' + encodeURIComponent(runs[i].raw_file))
       .then(setData)
       .catch((e) => setData({ error: String((e && e.message) || e), file: runs[i].raw_file }));
   }, [runs]);
 
-  const openWiki = useCallback(() => {
-    setTab('wiki');
-    if (wikiFiles == null) getJSON('/api/wiki').then((d) => setWikiFiles(d.files || [])).catch(() => setWikiFiles([]));
-  }, [wikiFiles]);
+  const selectBase = useCallback((base) => { setSel({ type: 'base', base }); setData(null); }, []);
+  const toggleBase = useCallback((base) => setExpanded((m) => ({ ...m, [base]: m[base] === false })), []);
 
   const selectWiki = useCallback((f) => {
-    setWikiSel(f);
-    setWikiHtml('');
+    setWikiSel(f); setWikiHtml('');
     fetch('/api/wiki?path=' + encodeURIComponent(f))
       .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
       .then((md) => setWikiHtml(sanitizeHtml(marked.parse(preprocessMd(md)))))
       .catch(() => setWikiHtml('<p>Failed to load page.</p>'));
   }, []);
+
+  const openWikiPage = useCallback((p) => { setTab('wiki'); selectWiki(p); }, [selectWiki]);
 
   return html`
     <div class="shell">
@@ -393,13 +473,16 @@ function App() {
         <div class="brand">Benchmark Run Viewer<span class="sub">lab/benchmarks</span></div>
         <div class="tabs">
           <button class=${'tab' + (tab === 'runs' ? ' active' : '')} onClick=${() => setTab('runs')}>runs</button>
-          <button class=${'tab' + (tab === 'wiki' ? ' active' : '')} onClick=${openWiki}>wiki</button>
+          <button class=${'tab' + (tab === 'wiki' ? ' active' : '')} onClick=${() => setTab('wiki')}>wiki</button>
         </div>
       </div>
       ${tab === 'runs'
         ? html`<div class="body">
-            <${RunList} runs=${runs} sel=${sel} onSelect=${selectRun} />
-            <${RunDetail} run=${sel >= 0 ? runs[sel] : null} data=${data} />
+            <${GroupedRail} runs=${runs} sel=${sel} expanded=${expanded}
+              onToggle=${toggleBase} onSelectRun=${selectRun} onSelectBase=${selectBase} />
+            ${sel && sel.type === 'base'
+              ? html`<${BaseOverview} runs=${runs} base=${sel.base} wikiHas=${wikiHas} onOpenWiki=${openWikiPage} onSelectRun=${selectRun} />`
+              : html`<${RunDetail} run=${sel && sel.type === 'run' ? runs[sel.i] : null} data=${data} wikiHas=${wikiHas} onOpenWiki=${openWikiPage} />`}
           </div>`
         : html`<${WikiPane} files=${wikiFiles || []} sel=${wikiSel} onSelect=${selectWiki} htmlContent=${wikiHtml} />`}
     </div>`;
