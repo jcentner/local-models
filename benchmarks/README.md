@@ -13,6 +13,7 @@ benchmarks/<name>/
   README.md       provenance, design rationale, what it measures, critic sign-off
   prompts.jsonl   one JSON object per line: {"id", "prompt", "meta": {...}}
   answer_key.jsonl   {"id", "answer"|"tests"|"rubric_ref"} — SEPARATE from prompts
+                     (agentic: {"id","expected_terminal","required_tools","forbidden_tools"})
   rubric.md       for LLM-judged (open-ended) benchmarks
 ```
 
@@ -39,6 +40,7 @@ Declared in `wiki/benchmarks/<name>.md` and consumed by the harness:
 - `equivalence` — short-answer/numeric matching (sympy + normalizer)
 - `code_tests` — execute candidate against `tests` in a locked-down **Podman** sandbox (`--code-sandbox podman`; `local-unsafe` host exec is opt-in)
 - `llm_judge` — rubric-scored by a **frontier** judge (claude-opus-4.8 via Copilot CLI; never a local small model)
+- `agentic` — model-agnostic tau-bench-style rollout (agent + Copilot-CLI user-simulator + mocked tools); deterministic state/policy scoring (terminal action + required/forbidden tools). See [email-triage](email-triage/README.md).
 
 ## Creating one
 

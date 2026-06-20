@@ -10,15 +10,17 @@ status: living
 How this repo thinks about, documents, runs, and authors benchmarks. Read this
 before using any of the benchmark prompts.
 
-**Status (2026-06-19):** `llm_judge` fully working (frontier judge = opus-4.8 via
-Copilot CLI); `equivalence` works; `code_tests` works via a locked-down **Podman**
-sandbox (`--code-sandbox podman`). Two authored benchmarks have run end to end:
-[decision-reasoning](decision-reasoning.md) (VibeThinker-3B) and a `code-basics`
-smoke set (qwen3.5:4b 3/4). Models under test run **local (Ollama) or API
-(OpenAI-compatible, e.g. Z.AI GLM)** via `--provider`; results record **cost**
-alongside capability. **External-first:** wrap existing benchmarks aligned with my
-interests (decision-making, agentic/triage) before authoring custom ones; custom
-benchmarks earn their keep for my own use-cases (home automation, email triage).
+**Status (2026-06-19):** **four working scorers** — `llm_judge` (frontier judge =
+opus-4.8 via Copilot CLI), `equivalence`, `code_tests` (locked-down **Podman**
+sandbox, `--code-sandbox podman`), and **`agentic`** (model-agnostic tau-bench-style
+tool-use rollout with a Copilot-CLI user-simulator; [email-triage](../../benchmarks/email-triage/README.md)
+v0). Authored benchmarks run end to end: [decision-reasoning](decision-reasoning.md)
+(VibeThinker-3B 1/6), `code-basics` (qwen3.5:4b 3/4), email-triage (qwen3.5:4b
+passed e1 live). Models under test run **local (Ollama) or API (OpenAI-compatible,
+e.g. Z.AI GLM)** via `--provider`; results record **cost** alongside capability.
+**External-first:** wrap existing benchmarks aligned with my interests
+(decision-making, agentic/triage) before authoring custom ones; custom benchmarks
+earn their keep for my own use-cases (home automation, email triage).
 
 ## A benchmark = prompts + a scoring harness
 
@@ -29,7 +31,8 @@ scoring**, and it differs by domain:
 |---|---|---|
 | Math (AIME/HMMT/IMO-style) | answer extraction + symbolic/numeric equivalence | scorer exists; not a current focus |
 | Code (HumanEval+/MBPP+/LiveCodeBench) | execute candidate code against hidden tests in a **Podman sandbox** (`--code-sandbox podman`) | locked-down container; `--no-think` for thinking models |
-| Open-ended (creative writing, agentic, reasoning) | **rubric LLM-judge** by a frontier model (opus-4.8 via Copilot CLI; never a local small model) | pin judge model+version+rubric; judge config is part of the result |
+| Open-ended (creative writing, reasoning) | **rubric LLM-judge** by a frontier model (opus-4.8 via Copilot CLI; never a local small model) | pin judge model+version+rubric; judge config is part of the result |
+| Tool-use / agentic | model-agnostic **rollout**: agent + Copilot user-sim + mocked tools; state/policy scored | **built** (`agentic`); benchmarks/email-triage v0 |
 
 **Prefer wrapping existing eval frameworks** ([evalplus](https://github.com/evalplus/evalplus),
 [lm-eval-harness](https://github.com/EleutherAI/lm-evaluation-harness),
@@ -107,16 +110,16 @@ that fits these interests before hand-authoring. See the
   against the reusable [creative-writing rubric](../../benchmarks/_rubrics/creative-writing.md).
   Prefer pairwise-vs-reference to cut judge variance. *Judge path built; author a
   fresh prompt set via `/author-benchmark`.*
-- **Tool-use / agentic** — needs a rollout harness: give the model tools (real or
-  mocked), run a multi-step task, and check success (right tools, right order,
-  goal achieved). **Primary path: a lightweight tau-bench-style scorer in our
-  harness** — model-agnostic (runs any Ollama tag or API model, so brand-new
-  models like MiniCPM-5 work day one), with the **Copilot CLI as the user-simulator**
-  (same frontier-model mechanism as the judge) and state/policy-based scoring on
-  *our* use-cases (home automation, email-triage escalation). External cross-check:
-  **[tau³-bench](https://github.com/sierra-research/tau2-bench)** (model-agnostic via
-  litellm). **[BFCL](bfcl.md)** is a rigid **reference** (registered models only —
-  it lags new models), good for published comparisons, not the daily driver.
+- **Tool-use / agentic** — ***Built (v0): the `agentic` scorer.*** A lightweight
+  tau-bench-style **rollout** in our harness — model-agnostic (runs any Ollama tag
+  or API model via a prompt-mode JSON tool protocol, so brand-new models like
+  MiniCPM-5 work day one), with the **Copilot CLI as the user-simulator** (same
+  frontier-model mechanism as the judge) and deterministic state/policy scoring
+  (terminal action + required/forbidden tools) on *our* use-cases. First set:
+  [email-triage](../../benchmarks/email-triage/README.md) (escalation). External
+  cross-check: **[tau³-bench](https://github.com/sierra-research/tau2-bench)**
+  (model-agnostic via litellm). **[BFCL](bfcl.md)** is a rigid **reference**
+  (registered models only — lags new models), for published comparisons only.
   VibeThinker is a good **negative control** here.
 
 ## Documented benchmarks
@@ -124,3 +127,4 @@ that fits these interests before hand-authoring. See the
 - [bfcl.md](bfcl.md) — Berkeley Function-Calling Leaderboard (tool-use/agentic; wraps bfcl-eval); **reference only** — registered-models-only rigidity lags new models; use for published comparisons, not the daily agentic driver.
 - [humaneval-plus.md](humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk.
 - [decision-reasoning.md](decision-reasoning.md) — authored decision-making/reasoning scenarios; `llm_judge` (opus-4.8); fresh/held-out.
+- [email-triage](../../benchmarks/email-triage/README.md) — authored **agentic** tool-use set (answer-from-KB vs escalate); `agentic` rollout + Copilot user-sim; fresh/held-out.

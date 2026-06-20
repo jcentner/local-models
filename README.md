@@ -55,8 +55,9 @@ Slash-prompts in [`.github/prompts/`](.github/prompts/) drive the recurring work
 | `/benchmark <model>` | recommend relevant benchmarks, estimate cost, run via the harness, record results |
 | `/author-benchmark <scenario>` | author a fresh held-out benchmark with a gpt-5.5/opus-4.8 critic loop |
 
-Benchmark scoring is `equivalence` (math), `code_tests` (sandboxed execution), or
-`llm_judge` (frontier judge = opus-4.8 via Copilot CLI). Models can be **local
+Benchmark scoring is `equivalence` (math), `code_tests` (sandboxed execution),
+`llm_judge` (frontier judge = opus-4.8 via Copilot CLI), or `agentic` (model-agnostic
+tool-use rollout with a Copilot-CLI user-simulator). Models can be **local
 (Ollama) or API (OpenAI-compatible)** — results capture capability *and* cost. See
 [wiki/benchmarks/README.md](wiki/benchmarks/README.md).
 

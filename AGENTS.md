@@ -106,8 +106,11 @@ two halves split across the wiki/lab boundary:
   per-environment; raw run output in git-ignored `runs/`).
 
 Scoring is per-domain: math = answer extraction + equivalence; code = execute
-against tests **in a sandbox** (Podman, `--code-sandbox podman`); open-ended
-(creative writing, agentic, reasoning) =
+against tests **in a sandbox** (Podman, `--code-sandbox podman`); **agentic/tool-use
+= a model-agnostic rollout** (agent under test + Copilot-CLI user-simulator + mocked
+tools, scored on terminal action + tool policy; `harness/agentic.py` - the flexible
+alternative to registered-model benchmarks like BFCL); open-ended
+(creative writing, reasoning) =
 rubric LLM-judge by a **frontier model** (claude-opus-4.8 via the Copilot CLI -
 never a local small model; see `.github/skills/copilot-cli`), pinned (model +
 version + rubric). **Prefer wrapping existing eval frameworks**

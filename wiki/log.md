@@ -135,3 +135,17 @@ Q4_K_M 688 MB / Q8_0 1.15 GB / F16 2.17 GB, runs trivially on the 8 GB GPU
 RL on DAPO-Math-17k) — verify on fresh problems + the tool-use axis. Wrote
 wiki/models/minicpm5-1b.md; staged lab/experiments/2026-06-19-minicpm5-1b-first-run.
 Weights not pulled yet (awaiting go-ahead).
+
+## [2026-06-19] note | Agentic harness (model-agnostic tau-bench-style scorer)
+Built the flexible agentic eval BFCL couldn't give us (4th working scorer:
+`agentic`). Runs ANY model (Ollama tag or API) via a **prompt-mode JSON tool
+protocol** - no native tool-calling or model registration. `harness/agentic.py`:
+episode runner (agent under test <-> **Copilot-CLI user-simulator** <-> mocked
+tools over mutable state) + tolerant JSON action parser; `CopilotCLIUser` is the
+user-sim twin of the judge (`--user-model`). `scorers/agentic.py`: deterministic
+state/policy scoring (terminal action reply|escalate + required/forbidden tools).
+run.py wires `method=agentic`; selftest +15 (mocked agent+user) = ALL PASS.
+Authored `benchmarks/email-triage` v0 (5 scenarios: answer-from-KB vs escalate vs
+search-then-decline). **Verified end-to-end live:** qwen3.5:4b passed e1
+(search_kb -> reply), 0 malformed steps. Docs synced (harness/wiki READMEs, AGENTS,
+index). tau3-bench remains the external cross-check; BFCL stays a reference.

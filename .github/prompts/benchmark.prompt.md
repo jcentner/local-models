@@ -62,11 +62,16 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model <api-model> \
   **evalplus**, broad coverage via **lm-eval-harness**), run that framework against
   Ollama's `:11434/v1` endpoint per the benchmark's wiki page - don't reimplement.
   Record results in the same `results.csv` schema.
-- For `llm_judge` (creative-writing/agentic/reasoning) benchmarks the harness judge
+- For `llm_judge` (creative-writing/reasoning) benchmarks the harness judge
   is a **frontier model via Copilot CLI** - `--judge-model` defaults to
   `claude-opus-4.8` (use `gpt-5.5` for a second opinion). **Never a local small
   model.** The judge config is recorded automatically; you may also drive a
   subagent judge for interactive runs.
+- For `agentic` (tool-use) benchmarks the harness runs a model-agnostic rollout:
+  the agent under test + a **Copilot-CLI user-simulator** (`--user-model`, default
+  `claude-opus-4.8`) over mocked tools, scored on terminal action + tool policy.
+  Use `--no-think` for thinking models (short JSON actions). The flexible
+  alternative to registered-model benchmarks like BFCL.
 - **Code execution is gated.** Run `code_tests` with `--code-sandbox podman`
   (recommended - locked-down container) or `local-unsafe` (host exec, opt-in). For
   thinking models add `--no-think` so CoT doesn't eat the token budget before the

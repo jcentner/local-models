@@ -13,19 +13,21 @@ harness/
   client.py            OllamaClient (native /api/chat) + OpenAICompatibleClient (/v1)
                        + make_client factory; sampling + num_ctx + tok/s
   run.py               CLI: load dataset -> sample k -> score -> results.csv + runs/
+  agentic.py           tau-bench-style episode runner + Copilot-CLI user-simulator
   selftest.py          offline test of the scoring core (no model needed)
   scorers/
     equivalence.py     math/numeric answer matching (sympy optional)
     code_exec.py       sandboxed code execution against tests
     llm_judge.py       rubric LLM-judge (pinned judge model)
+    agentic.py         state/policy scoring for the agentic rollout
 ```
 
 ## Dataset format (`benchmarks/<name>/`)
 
 ```
-bench.json       {"name","version","scoring":equivalence|code_tests|llm_judge,"system"?,"judge"?}
-prompts.jsonl    {"id","prompt","meta"?}
-answer_key.jsonl equivalence: {"id","answer"} | code_tests: {"id","tests"} | llm_judge: (rubric.md)
+bench.json       {"name","version","scoring":equivalence|code_tests|llm_judge|agentic,"system"?,"judge"?}
+prompts.jsonl    {"id","prompt","meta"?}   (agentic: meta={"persona","policy","kb"})
+answer_key.jsonl equivalence:{"id","answer"} code_tests:{"id","tests"} agentic:{"id","expected_terminal","required_tools","forbidden_tools"} llm_judge:(rubric.md)
 rubric.md        for llm_judge benchmarks
 ```
 
@@ -65,6 +67,10 @@ python3 -m harness.run --benchmark ../../benchmarks/<code-bench> \
 # llm-judged (open-ended) benchmark - judge is opus-4.8 via Copilot CLI (default):
 python3 -m harness.run --benchmark ../../benchmarks/<name> \
   --model <under-test> --judge-model claude-opus-4.8
+
+# agentic rollout (tool-use) - agent under test + Copilot user-simulator:
+python3 -m harness.run --benchmark ../../benchmarks/email-triage \
+  --model qwen3.5:4b --no-think --temperature 0 --user-model claude-opus-4.8
 ```
 
 Datasets live under [`benchmarks/<name>/`](../../../benchmarks/README.md) and are
@@ -110,6 +116,13 @@ created with `/author-benchmark`. Output: a row appended to
   (`claude-opus-4.8` via the Copilot CLI; use `gpt-5.5` for a second opinion).
   **Never a local small model.** The judge config (model+version+rubric) is
   recorded with the result; LLM-judged scores only compare within the same config.
+- **agentic** — a model-agnostic tau-bench-style **rollout**: the agent under test
+  (any Ollama tag / API model, via a prompt-mode JSON tool protocol) talks to a
+  **Copilot-CLI user-simulator** (`--user-model`, a frontier model playing a
+  persona with a hidden goal) over mocked tools. Scored **deterministically** on
+  the terminal action (reply vs escalate) + required/forbidden tool use - no native
+  function-calling or model registration needed (the flexible alternative to BFCL).
+  Dataset: [benchmarks/email-triage](../../../benchmarks/email-triage/README.md).
 
 ## Wrapping upstream frameworks
 

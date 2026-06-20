@@ -1,6 +1,6 @@
 ---
 name: benchmark-harness
-description: Drive this repo's local benchmark harness (lab/benchmarks/harness) to run a benchmark against a model under test and record results. Use when running a benchmark, choosing a provider (local Ollama vs OpenAI-compatible API like Z.AI GLM), wiring up cost tracking, picking a scorer (equivalence / code_tests / llm_judge), handling thinking-model truncation, or reading/writing results.csv. Complements the /benchmark prompt; defers judge invocation to the copilot-cli skill.
+description: Drive this repo's local benchmark harness (lab/benchmarks/harness) to run a benchmark against a model under test and record results. Use when running a benchmark, choosing a provider (local Ollama vs OpenAI-compatible API like Z.AI GLM), wiring up cost tracking, picking a scorer (equivalence / code_tests / llm_judge / agentic tool-use rollout), handling thinking-model truncation, or reading/writing results.csv. Complements the /benchmark prompt; defers judge invocation to the copilot-cli skill.
 user-invocable: false
 ---
 
@@ -58,6 +58,13 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model glm-4.6 \
 - `llm_judge` — rubric judged by a **frontier model via the Copilot CLI**
   (`--judge-model`, default `claude-opus-4.8`; never a local small model). For the
   judge invocation details see the **copilot-cli** skill.
+- `agentic` — model-agnostic tau-bench-style tool-use **rollout**: the agent under
+  test (prompt-mode JSON tool protocol, so any model works) talks to a **Copilot-CLI
+  user-simulator** (`--user-model`, a frontier model with a hidden goal) over mocked
+  tools; scored deterministically on terminal action (reply vs escalate) +
+  required/forbidden tools. Use `--no-think`. Set:
+  [benchmarks/email-triage](../../../benchmarks/email-triage/README.md). The
+  flexible alternative to registered-model benchmarks like BFCL.
 
 ## Thinking-model gotcha (bites every time)
 
