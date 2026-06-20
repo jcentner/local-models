@@ -79,9 +79,11 @@ Stood SGLang up for [MiniCPM5-1B](../models/minicpm5-1b.md). Findings:
 - **`--tool-call-parser minicpm5` is BROKEN for MiniCPM5-1B in 0.5.13.** It's
   vendor-recommended and auto-detected, but it **swallows the model's `<function
   name=...>` XML and emits no `tool_calls`** (verified: content empty,
-  `tool_calls: null`). The model's tool *intent* is correct; the parser doesn't
-  surface it. So native tool-use is currently unscoreable via SGLang here — try a
-  newer build or an XML-tolerant harness fallback. (Reasoning control is fine:
+  `tool_calls: null`). **Workaround that works:** run the server **without**
+  `--tool-call-parser` (XML stays in `content`) and let the harness's
+  `parse_xml_tool_calls()` fallback convert it -> MiniCPM5 then scored **2/5
+  email-triage, 7/12 home-automation** (native). Revisit a newer build for a
+  native parser. (Reasoning control is fine either way:
   `chat_template_kwargs={"enable_thinking":false}` reliably suppresses the CoT.)
 - **8 GB fit:** 1B BF16 ~2.16 GB; `--mem-fraction-static 0.7 --context-length
   16384` leaves headroom. **WSL RAM** is a non-issue at 1B ([wsl2-memory](../concepts/wsl2-memory.md)).
@@ -101,7 +103,9 @@ podman run -d --name sglang-minicpm5 \
   docker.io/lmsysorg/sglang:latest \
   python3 -m sglang.launch_server --model-path openbmb/MiniCPM5-1B \
     --host 0.0.0.0 --port 30000 --mem-fraction-static 0.7 --context-length 16384 \
-    --tool-call-parser minicpm5 --reasoning-parser deepseek-r1
+    --reasoning-parser deepseek-r1
+    # NB: OMIT --tool-call-parser minicpm5 (broken in 0.5.13 - swallows the XML);
+    # the harness parse_xml_tool_calls() fallback reads the raw <function> XML instead.
 ```
 
 **pip/uv install is documented but does NOT work on this toolchain-less box** (see

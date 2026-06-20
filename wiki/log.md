@@ -367,3 +367,21 @@ reasoning brain). Tool-use (email-triage native) **0/5 — blocked by SGLang**:
 `tool_calls` (model intent is correct). results.csv: 3 rows kept. Stack page +
 model page + experiment updated. NEXT: newer SGLang build or XML-tolerant harness
 fallback to salvage a fair tool-use score.
+
+## [2026-06-20] bench | MiniCPM5-1B tool-use unblocked via XML fallback (2/5, 7/12)
+Did the "XML-tolerant fallback" from the previous entry. Verified MiniCPM5's exact
+emitted format (`<function name="search_kb"><param name="query">...</param></function>`)
+against a parser-less server, then added `parse_xml_tool_calls()` to harness
+`client.py` — a guarded fallback (both clients) that converts `<function ...>` XML
+in `content` into native `tool_calls` + a synthesized valid assistant message when
+the provider returns none. **Run the SGLang server WITHOUT `--tool-call-parser`**
+(0.5.13's `minicpm5` parser swallows the XML); the fallback reads the raw XML.
+Result: email-triage native **0/5 → 2/5**, home-automation native **7/12 (0.583)** —
+MiniCPM5-1B handles act / confirm-unlock / read-only / **ambiguity→ask**, fails
+refuse / scene / compound. **Two verdicts for one model:** weak abstract reasoner
+(decision-reasoning 0/6) but a **decent home-automation tool-executor** (7/12) — its
+tool-use tilt is real, back in the running as an executor (not the deliberation
+brain). selftest +4 checks (XML fallback) ALL PASS. results.csv: 4 MiniCPM5 rows
+(dec-reasoning No-Think/Think, email-triage 2/5, home-automation 7/12). Updated
+client/selftest + experiment + model page + stack page (omit the broken parser,
+use the fallback).

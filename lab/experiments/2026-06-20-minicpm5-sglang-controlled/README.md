@@ -122,33 +122,44 @@ The serving fix lifted output from *gibberish* (0.17) to *coherent-but-shallow*
 judgment genuinely doesn't clear the bar. Same failure shape as VibeThinker
 (decisive, misreads the crux).
 
-**Tool-use (email-triage, native) - 0/5, BLOCKED by an SGLang parser bug, not the
-model.** The model emits the **correct tool intent** (`search_kb` with the right
-query) but in its native **XML** (`<function name="search_kb"><param ...>`).
-SGLang 0.5.13's `--tool-call-parser minicpm5` (vendor-recommended, auto-detected)
-**swallows that XML and emits no `tool_calls`** (verified by direct curl: content
-empty, `tool_calls: null`, finish_reason stop). Prompt-mode is no cleaner - the
-active parser strips the XML there too, and the model emits XML not our JSON
-protocol. So MiniCPM5-1B tool-use is **unscoreable through SGLang 0.5.13 + this
-harness**, despite correct intent.
+**Tool-use - SGLang's `minicpm5` parser is BROKEN, but a harness XML fallback
+recovers it -> a REAL tool-use signal.** The model emits the **correct tool
+intent** (`search_kb` with the right query) in its native **XML**
+(`<function name="search_kb"><param ...>`). SGLang 0.5.13's
+`--tool-call-parser minicpm5` (vendor-recommended, auto-detected) **swallows that
+XML and emits no `tool_calls`** (verified by direct curl: content empty,
+`tool_calls: null`). **Fix:** run the server *without* a tool-call parser (XML
+stays in `content`) and added `parse_xml_tool_calls()` to the harness clients - a
+guarded fallback that converts `<function name=...><param ...>` into native
+`tool_calls` when the provider returns none. With that:
 
-`results.csv`: 3 rows kept (decision-reasoning No-Think + Think; email-triage
-native). Dropped a misconfigured no-parser run and a parser-confounded prompt-mode
-run.
+| benchmark (native, No-Think) | before (parser swallows) | **after (XML fallback)** |
+|---|---|---|
+| email-triage (5) | 0/5 | **2/5** (e2, e4) |
+| home-automation (12) | n/a | **7/12** (0.583) |
+
+**home-automation 7/12 is the headline:** MiniCPM5-1B handles concrete home
+tool-use well - act (h1/h2), confirm-before-unlock (h3), multi-device (h4),
+read-only (h6/h11), **ambiguity -> ask (h8)** - and fails the harder ones: refuse
+(h5/h10), scene/routine (h7), a second confirm (h9), compound act+read (h12). So
+its agentic *tool-use tilt is real*, unlike its abstract reasoning.
+
+`results.csv`: 4 rows kept (decision-reasoning No-Think + Think 0/6; **email-triage
+2/5; home-automation 7/12**). Dropped the parser-swallowed 0/5 and earlier
+misconfigured runs.
 
 ## Learnings
 
-- **The pivot paid off as a *diagnostic*, not a pass.** We can now separate "model
-  is weak" from "serving was broken." MiniCPM5-1B over Ollama looked catastrophic
-  (gibberish); served correctly it's **coherent but a weak reasoner** (0/6, mean
-  ~3) - a real 1B judgment ceiling, not an artifact. **Home-agent verdict:
-  not a viable reasoning brain** on these decision scenarios.
-- **Tool-use stays an open question, now pinned on tooling.** The model *tries* the
-  right call; SGLang 0.5.13's `minicpm5` parser doesn't surface it. Next: try a
-  newer SGLang build, file/check an upstream issue, or add an **XML-tolerant
-  fallback** to the harness's native parser (read `<function name=...>` from
-  content when `tool_calls` is empty) - that would salvage a fair tool-use score
-  without waiting on SGLang.
+- **Two different verdicts for one model.** Served correctly, MiniCPM5-1B is a
+  **weak abstract reasoner** (decision-reasoning 0/6, coherent-but-shallow - a real
+  1B ceiling) **but a decent home-automation tool-user** (7/12: act/confirm/read/
+  disambiguate). For the home-agent lighthouse that tool-use competence matters
+  more than tradeoff-reasoning - so MiniCPM5-1B is **back in the running as a
+  tool-executor**, just not as the deliberation brain.
+- **The SGLang `minicpm5` parser is broken in 0.5.13** (swallows the XML). The
+  durable workaround is the harness's `parse_xml_tool_calls()` fallback +
+  **launching the server without `--tool-call-parser`**. Revisit a newer SGLang
+  build later; the fallback also helps any XML-tool model.
 - **Infra is the durable win:** Blackwell + rootless Podman + CDI + the SGLang
   container is now a working **second runner** for thinking/tool models. Recorded
   on the [SGLang stack page](../../../wiki/stacks/sglang.md). pip SGLang is a dead

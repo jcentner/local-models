@@ -258,22 +258,25 @@ of the confounded 2026-06-19 Ollama runs.
   **serving artifact**; the real verdict is **coherent-but-shallow** judgment
   (inverts risk, self-contradictory) — a genuine 1B ceiling, same shape as
   [VibeThinker-3B](vibethinker-3b.md). **Not a viable reasoning brain** here.
-- **Tool-use (email-triage native) 0/5 — blocked by SGLang, not the model.** The
-  model emits the **right tool intent** (`search_kb` + correct query) in native
-  **XML**, but SGLang 0.5.13's `--tool-call-parser minicpm5` **swallows it and
-  emits no `tool_calls`** (verified by direct curl). Unscoreable through this
-  stack; the *capability* question stays open pending a newer SGLang build or an
-  XML-tolerant harness fallback.
+- **Tool-use — SGLang's parser is broken, but a harness XML fallback recovers it.**
+  The model emits the **right intent** (`search_kb` + correct query) as native
+  **XML**, which SGLang 0.5.13's `--tool-call-parser minicpm5` **swallows** (no
+  `tool_calls`). Running the server *without* the parser + a new harness
+  `parse_xml_tool_calls()` fallback gives a real score: **email-triage 2/5,
+  home-automation 7/12** (native, No-Think). It handles act / confirm-unlock /
+  read-only / **ambiguity→ask**, and fails refuse / scene / compound. **Its agentic
+  tool-use tilt is real** — a plausible home-agent *tool-executor* even if not the
+  deliberation brain.
 
 Writeup: [lab/experiments/2026-06-20-minicpm5-sglang-controlled](../../lab/experiments/2026-06-20-minicpm5-sglang-controlled/README.md).
 
 ## Open questions
-- Does the agentic/tool-use strength survive on its **native tool path** (SGLang
-  `minicpm5` XML parser → OpenAI `tool_calls`)? **Partly answered (2026-06-20):**
-  SGLang stood up via the container, but **0.5.13's `minicpm5` parser swallows the
-  model's `<function>` XML and emits no `tool_calls`** — so the native path is
-  *blocked by the parser*, not the model (intent is correct). Still open: a newer
-  SGLang build, or an XML-tolerant fallback in the harness native parser.
+- Does the agentic/tool-use strength survive on its **native tool path**?
+  **Answered (2026-06-20):** SGLang 0.5.13's `minicpm5` parser swallows the
+  model's `<function>` XML, but running **without** the parser + the harness
+  `parse_xml_tool_calls()` fallback scores it fairly — **email-triage 2/5,
+  home-automation 7/12** (native). The tool-use tilt is real; it's a decent
+  home-automation *executor*. (Open: a newer SGLang build with a working parser.)
 - How does it do on the fresh [decision-reasoning](../benchmarks/decision-reasoning.md)
   set vs [VibeThinker-3B](vibethinker-3b.md)? **Answered (2026-06-19, over Ollama):**
   0/6 vs VibeThinker 1/6 - but confounded by the uncontrollable-`<think>` serving

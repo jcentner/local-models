@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -66,6 +67,32 @@ class Completion:
     wall_s: float = 0.0
     tool_calls: list = field(default_factory=list)   # list[ToolCall], native mode
     raw_message: dict = field(default_factory=dict)  # provider-native assistant msg to echo back
+
+
+_XML_FUNC_RE = re.compile(r'<function\s+name="([^"]+)"\s*>(.*?)</function>', re.DOTALL)
+_XML_PARAM_RE = re.compile(r'<param\s+name="([^"]+)"\s*>(.*?)</param>', re.DOTALL)
+
+
+def parse_xml_tool_calls(text: str) -> tuple[list, str]:
+    """Fallback parser for MiniCPM-style XML tool calls embedded in content:
+
+        <function name="NAME"><param name="KEY">VALUE</param>...</function>
+
+    Returns ``(calls, cleaned_text)`` - ``calls`` is a list[ToolCall] (param
+    values kept as strings), ``cleaned_text`` is the content with the function
+    blocks removed. Returns ``([], text)`` if none found. Used when a provider
+    returns no native ``tool_calls`` but the model emitted XML calls in the text
+    (e.g. MiniCPM5 served by SGLang without - or with a mismatched - tool-call
+    parser). Guarded by a cheap substring check so non-XML models are untouched.
+    """
+    if not text or "<function name=" not in text:
+        return [], text
+    calls = []
+    for i, m in enumerate(_XML_FUNC_RE.finditer(text)):
+        args = {k: v.strip() for k, v in _XML_PARAM_RE.findall(m.group(2))}
+        calls.append(ToolCall(name=m.group(1), arguments=args, id=f"xmlcall_{i}"))
+    cleaned = _XML_FUNC_RE.sub("", text).strip()
+    return calls, cleaned
 
 
 @dataclass
@@ -124,6 +151,13 @@ class OllamaClient:
             if not isinstance(args, dict):  # guard: a list/scalar would crash apply()
                 args = {}
             calls.append(ToolCall(name=fn.get("name", ""), arguments=args))
+        if not calls:  # XML-in-content fallback (e.g. MiniCPM5 emitting <function ...>)
+            xml_calls, cleaned = parse_xml_tool_calls(text)
+            if xml_calls:
+                calls, text = xml_calls, cleaned
+                msg = {"role": "assistant", "content": cleaned,
+                       "tool_calls": [{"function": {"name": c.name, "arguments": c.arguments}}
+                                      for c in calls]}
         return Completion(
             text=text,
             prompt_tokens=int(body.get("prompt_eval_count") or 0),
@@ -235,6 +269,14 @@ class OpenAICompatibleClient:
             if not isinstance(args, dict):  # guard: a list/scalar would crash apply()
                 args = {}
             calls.append(ToolCall(name=fn.get("name", ""), arguments=args, id=tc.get("id", "")))
+        if not calls:  # XML-in-content fallback (e.g. MiniCPM5 over a parser-less SGLang)
+            xml_calls, cleaned = parse_xml_tool_calls(text)
+            if xml_calls:
+                calls, text = xml_calls, cleaned
+                msg = {"role": "assistant", "content": cleaned or None,
+                       "tool_calls": [{"id": c.id, "type": "function",
+                                       "function": {"name": c.name, "arguments": json.dumps(c.arguments)}}
+                                      for c in calls]}
         return Completion(
             text=text,
             prompt_tokens=int(usage.get("prompt_tokens") or 0),

@@ -258,6 +258,15 @@ def test_agentic():
     check("parse malformed -> None", ag.parse_action("no json here") is None)
     check("parse defaults args", ag.parse_action('{"tool":"escalate"}')["args"] == {})
 
+    # XML-in-content tool-call fallback (MiniCPM5 over a parser-less SGLang)
+    _xml = ('<function name="search_kb"><param name="query">support hours</param></function>\n'
+            '<function name="search_kb"><param name="query">refund policy</param></function>')
+    _calls, _clean = clientmod.parse_xml_tool_calls("I will look it up. " + _xml)
+    check("xml fallback: 2 calls", len(_calls) == 2)
+    check("xml fallback: name+args", _calls[0].name == "search_kb" and _calls[0].arguments == {"query": "support hours"})
+    check("xml fallback: text cleaned", "<function" not in _clean and "look it up" in _clean)
+    check("xml fallback: non-xml untouched", clientmod.parse_xml_tool_calls("just text")[0] == [])
+
     scen_reply = {"id": "t1", "prompt": "what are your hours?",
                   "meta": {"persona": "goal", "policy": "answer from kb",
                            "kb": [{"q": "hours", "keywords": "hours when", "a": "9-5 ET"}]}}
