@@ -173,6 +173,24 @@ def test_cost_computation():
     check("local run is free", runmod.compute_cost(100, 200, 0.0, 0.0) == 0.0)
 
 
+def test_meta_slice():
+    print("viewer meta-slice (A0 whitelist):")
+    fields = runmod.slice_fields({})
+    check("default whitelist is tier+category", set(fields) == {"tier", "category"})
+    item = {"id": "d1", "meta": {"tier": "T2", "category": "risk", "persona": "secret",
+                                 "devices": {"x": {"state": "off"}}, "tags": ["a", "b"]}}
+    ms = runmod.meta_slice(item, fields)
+    check("keeps whitelisted scalars", ms == {"tier": "T2", "category": "risk"})
+    check("drops persona (not whitelisted)", "persona" not in ms)
+    check("drops object/array values", "devices" not in ms and "tags" not in ms)
+    check("no meta -> empty dict", runmod.meta_slice({"id": "x"}, fields) == {})
+    # numeric scalar kept; bench.json may NARROW (never widen) the whitelist
+    numeric = {"id": "d2", "meta": {"tier": 3, "category": "x"}}
+    check("numeric scalar kept", runmod.meta_slice(numeric, fields)["tier"] == 3)
+    narrowed = runmod.slice_fields({"slice_fields": ["category", "persona"]})
+    check("override narrows + drops non-whitelist", set(narrowed) == {"category"})
+
+
 def test_reliability_metrics():
     print("reliability metrics (pass^k / flaky / sem):")
     rm = runmod.reliability_metrics
@@ -523,6 +541,7 @@ if __name__ == "__main__":
     test_judge()
     test_podman_sandbox()
     test_cost_computation()
+    test_meta_slice()
     test_reliability_metrics()
     test_openai_compatible_client()
     test_agentic()

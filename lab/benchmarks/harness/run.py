@@ -61,6 +61,35 @@ def compute_cost(prompt_tokens: int, gen_tokens: int,
     return round(prompt_tokens / 1e6 * price_in + gen_tokens / 1e6 * price_out, 6)
 
 
+# Whitelisted meta keys persisted on raw run lines for the run-viewer's interactive
+# slicing (small + categorical). See tmp/meta-schema-contract.md. A bench.json may
+# NARROW this set via a "slice_fields" list (intersected with the whitelist), but
+# never widen it - persona/policy/devices must never leak onto every line (F6).
+SLICE_WHITELIST = ("tier", "category")
+
+
+def slice_fields(manifest: dict) -> tuple:
+    """The whitelisted meta keys to persist for viewer slicing on this benchmark."""
+    override = manifest.get("slice_fields")
+    if isinstance(override, (list, tuple)) and override:
+        return tuple(f for f in override if f in SLICE_WHITELIST)
+    return SLICE_WHITELIST
+
+
+def meta_slice(item: dict, fields) -> dict:
+    """Flat ``str|int|float`` subset of ``item.meta`` for the whitelisted fields.
+
+    Non-scalar values (objects/arrays) are dropped so the viewer contract holds:
+    flat values only, identical across an item's k samples (computed once per item).
+    """
+    meta = item.get("meta") or {}
+    out = {}
+    for k in fields:
+        if k in meta and isinstance(meta[k], (str, int, float)):
+            out[k] = meta[k]
+    return out
+
+
 def reliability_metrics(per_item_correct: list[int], k: int) -> dict:
     """Reliability summary from per-item correct counts (each 0..k).
 
@@ -326,8 +355,10 @@ def main(argv: list[str] | None = None) -> int:
     per_item_correct: list[int] = []          # correct count (0..k) per item -> reliability
     slice_groups: dict[str, list[int]] = {}   # meta[slice_by] value -> per-item correct counts
     agentic_toolset = resolve_toolset(manifest.get("toolset")) if method == "agentic" else None
+    fields = slice_fields(manifest)
     with raw_path.open("w") as raw:
         for item in prompts:
+            item_meta = meta_slice(item, fields)
             correct_this_item = 0
             for s in range(args.k):
                 if method == "agentic":
@@ -345,6 +376,7 @@ def main(argv: list[str] | None = None) -> int:
                         sample_correct += 1
                         correct_this_item += 1
                     raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
+                                          "meta": item_meta,
                                           "episode": {"resolution": episode["resolution"],
                                                       "protocol": episode.get("protocol"),
                                                       "toolset": episode.get("toolset"),
@@ -366,6 +398,7 @@ def main(argv: list[str] | None = None) -> int:
                     sample_correct += 1
                     correct_this_item += 1
                 raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
+                                      "meta": item_meta,
                                       "prompt_tokens": comp.prompt_tokens,
                                       "gen_tokens": comp.gen_tokens,
                                       "wall_s": comp.wall_s,
