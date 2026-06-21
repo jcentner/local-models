@@ -471,6 +471,49 @@ class _ScriptUser:
         return m
 
 
+def test_concurrency():
+    print("concurrency execution + resolve (Phase 2, no network):")
+    # resolve_concurrency: auto is method-aware; int overrides; <1 rejected
+    check("auto -> 3 for agentic", runmod.resolve_concurrency("auto", "agentic") == 3)
+    check("auto -> 3 for llm_judge", runmod.resolve_concurrency("auto", "llm_judge") == 3)
+    check("auto -> 1 for code_tests", runmod.resolve_concurrency("auto", "code_tests") == 1)
+    check("auto -> 1 for equivalence", runmod.resolve_concurrency("auto", "equivalence") == 1)
+    check("explicit int overrides auto", runmod.resolve_concurrency("5", "agentic") == 5)
+    bad = False
+    try:
+        runmod.resolve_concurrency("0", "agentic")
+    except SystemExit:
+        bad = True
+    check("concurrency < 1 rejected", bad)
+
+    # _execute_tasks: results are keyed (i, s) so collection order is independent of
+    # completion order -> N=1 and N=3 must produce identical results + ordered reads.
+    tasks = [(i, {"id": f"q{i}"}, s) for i in range(4) for s in range(3)]
+    def work(item, s):
+        return {"correct": (s == 0), "v": f"{item['id']}-{s}"}
+    r1 = runmod._execute_tasks(tasks, work, 1)
+    r3 = runmod._execute_tasks(tasks, work, 3)
+    check("N=1 ran all 12 tasks", len(r1) == 12)
+    check("N=3 ran all 12 tasks", len(r3) == 12)
+    check("N=1 results == N=3 results", r1 == r3)
+    order1 = [r1[(i, s)]["v"] for i in range(4) for s in range(3)]
+    order3 = [r3[(i, s)]["v"] for i in range(4) for s in range(3)]
+    check("ordered collection identical + starts q0-0", order1 == order3 and order1[0] == "q0-0")
+
+    # fail-fast: a worker exception propagates (caller writes no results row) at N=1 and N>1
+    def boom(item, s):
+        if item["id"] == "q2" and s == 1:
+            raise RuntimeError("boom")
+        return {"correct": True}
+    for n in (1, 3):
+        raised = False
+        try:
+            runmod._execute_tasks(tasks, boom, n)
+        except RuntimeError:
+            raised = True
+        check(f"worker exception propagates at N={n}", raised)
+
+
 def test_agentic():
     print("agentic rollout (mocked agent + user):")
     check("parse clean json", ag.parse_action('{"tool":"reply","args":{"text":"hi"}}')["tool"] == "reply")
@@ -1098,6 +1141,7 @@ if __name__ == "__main__":
     test_system_suffix()
     test_meta_slice()
     test_reliability_metrics()
+    test_concurrency()
     test_openai_compatible_client()
     test_agentic()
     test_agentic_native()

@@ -23,6 +23,7 @@ import socket
 import sys
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 # Allow running both as ``-m harness.run`` and as a direct script.
@@ -322,6 +323,51 @@ def apply_system_suffix(base: str | None, suffix: str | None) -> str | None:
     return (base + "\n\n" + suffix) if base else suffix
 
 
+def resolve_concurrency(arg, method: str) -> int:
+    """Resolve --concurrency. ``auto`` -> 3 for the Copilot-bound methods
+    (``agentic``, ``llm_judge``), else 1; an explicit int overrides (>=1)."""
+    if str(arg).lower() == "auto":
+        return 3 if method in ("agentic", "llm_judge") else 1
+    try:
+        n = int(arg)
+    except (TypeError, ValueError):
+        raise SystemExit(f"--concurrency must be 'auto' or a positive integer, got {arg!r}")
+    if n < 1:
+        raise SystemExit("--concurrency must be >= 1")
+    return n
+
+
+def _execute_tasks(tasks, work_fn, concurrency: int, on_done=None) -> dict:
+    """Run ``work_fn(item, s)`` for each ``(i, item, s)`` task; return ``{(i, s): result}``.
+
+    Inline at ``concurrency == 1`` (the serial path); a bounded thread pool otherwise -
+    the pool only OVERLAPS each worker's Copilot-CLI wait with another worker's GPU
+    generation (the model server still runs serially), it does not parallelize the GPU.
+    Workers must be pure (touch no shared aggregates). On the first worker exception OR
+    a KeyboardInterrupt: cancel pending futures and re-raise (fail-fast; the caller then
+    writes no results row). ``on_done(i, s, result)`` is an optional progress callback.
+    """
+    results: dict = {}
+    if concurrency == 1:
+        for i, item, s in tasks:
+            results[(i, s)] = work_fn(item, s)
+            if on_done:
+                on_done(i, s, results[(i, s)])
+        return results
+    with ThreadPoolExecutor(max_workers=concurrency) as ex:
+        futs = {ex.submit(work_fn, item, s): (i, s) for i, item, s in tasks}
+        try:
+            for fut in as_completed(futs):
+                i, s = futs[fut]
+                results[(i, s)] = fut.result()
+                if on_done:
+                    on_done(i, s, results[(i, s)])
+        except BaseException:                 # worker error or Ctrl-C
+            ex.shutdown(cancel_futures=True)  # cancel pending; in-flight finish or time out
+            raise
+    return results
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Run a benchmark against a local model.")
     ap.add_argument("--benchmark", required=True, help="path to benchmarks/<name>/ dir")
@@ -397,12 +443,19 @@ def main(argv: list[str] | None = None) -> int:
                     help="execution mode for code_tests (REQUIRED for code_tests). "
                          "'podman' = locked-down throwaway container (recommended); "
                          "'local-unsafe' = host subprocess, weak isolation (opt-in).")
+    ap.add_argument("--concurrency", default="auto",
+                    help="parallel (item,sample) workers to overlap Copilot-CLI waits with "
+                         "GPU generation. 'auto' (default) = 3 for agentic/llm_judge "
+                         "(Copilot-bound), 1 for equivalence/code_tests. An int overrides "
+                         "(1 = the serial path). Keep modest: Ollama serves serially and "
+                         "Copilot rate-limits on heavy fan-out.")
     args = ap.parse_args(argv)
 
     bench_dir = Path(args.benchmark).resolve()
     manifest = load_benchmark(bench_dir)
     validate_benchmark(manifest)
     method = manifest["scoring"]
+    concurrency = resolve_concurrency(args.concurrency, method)
     prompts = manifest["_prompts"]
     if args.limit:
         prompts = prompts[: args.limit]
@@ -433,7 +486,7 @@ def main(argv: list[str] | None = None) -> int:
         msg_judge = CopilotCLIJudge(model=args.judge_model, effort=args.judge_effort)
 
     print(f"benchmark={manifest['name']} v{manifest.get('version','?')} method={method} "
-          f"items={len(prompts)} k={args.k}")
+          f"items={len(prompts)} k={args.k} concurrency={concurrency}")
     print(f"provider={args.provider} model={args.model} endpoint={resolved_base} "
           f"sampling={sampling.to_options()}")
     if args.dry_run:
@@ -474,78 +527,99 @@ def main(argv: list[str] | None = None) -> int:
     ep_max_steps = int(manifest.get("max_steps", 5))
     ep_max_turns = int(manifest.get("max_turns", 4))
     fields = slice_fields(manifest)
+    # --- per-sample worker: PURE (touches no shared aggregates) so it is safe to run
+    # in a thread. Clients/judge are reentrant; each agentic episode gets a fresh
+    # user-sim + state. Returns a result struct the single-threaded collector folds in.
+    def run_one_sample(item: dict, s: int) -> dict:
+        if method == "agentic":
+            user_sim = CopilotCLIUser(persona=item["meta"]["persona"], model=args.user_model)
+            episode = run_episode(client, user_sim, item, protocol=args.tool_protocol,
+                                  toolset=agentic_toolset,
+                                  max_steps=ep_max_steps, max_turns=ep_max_turns,
+                                  system_suffix=args.system_suffix)
+            res = agentic_scorer.score(episode, manifest["_key"].get(item["id"], {}), judge=msg_judge)
+            perf = episode["perf"]
+            raw_dict = {"id": item["id"], "sample_index": s, "result": res,
+                        "meta": meta_slice(item, fields),
+                        "think": think_lbl,
+                        "system_suffix": args.system_suffix,
+                        "compute_s": perf.get("compute_s"),
+                        "user_sim_wall_s": perf.get("user_sim_wall_s"),
+                        "user_sim_calls": perf.get("user_sim_calls"),
+                        "judge_wall_s": res.get("judge_wall_s"),
+                        "episode": {"resolution": episode["resolution"],
+                                    "protocol": episode.get("protocol"),
+                                    "toolset": episode.get("toolset"),
+                                    # did_* are scorer inputs for support (reply vs
+                                    # escalate) - persist so a raw line re-scores offline.
+                                    "did_reply": episode.get("did_reply"),
+                                    "did_escalate": episode.get("did_escalate"),
+                                    "tools_used": episode.get("tools_used"),
+                                    "tool_calls": episode["tool_calls"],
+                                    "final_state": episode.get("final_state"),
+                                    "transcript": episode["transcript"]}}
+            return {"correct": bool(res.get("correct")),
+                    "prompt_tokens": perf["prompt_tokens"], "gen_tokens": perf["gen_tokens"],
+                    "wall_s": perf["wall_s"], "compute_s": perf.get("compute_s", 0.0),
+                    "usersim_wall": perf.get("user_sim_wall_s", 0.0),
+                    "judge_wall": res.get("judge_wall_s") or 0.0,
+                    "tok_s": (perf["gen_tokens"] / perf["wall_s"]) if perf["wall_s"] else 0.0,
+                    "raw": raw_dict}
+        comp = client.complete([{"role": "user", "content": item["prompt"]}],
+                               system=apply_system_suffix(manifest.get("system"), args.system_suffix))
+        res = score_one(method, manifest, item, comp.text, judge,
+                        sandbox=args.code_sandbox or "local-unsafe")
+        raw_dict = {"id": item["id"], "sample_index": s, "result": res,
+                    "meta": meta_slice(item, fields),
+                    "think": think_lbl,
+                    "system_suffix": args.system_suffix,
+                    "prompt_tokens": comp.prompt_tokens,
+                    "gen_tokens": comp.gen_tokens,
+                    "wall_s": comp.wall_s,
+                    "compute_s": comp.compute_s,
+                    "judge_wall_s": res.get("judge_wall_s"),
+                    "gen_tok_per_s": comp.gen_tok_per_s,
+                    "completion": comp.text}
+        return {"correct": bool(res.get("correct")),
+                "prompt_tokens": comp.prompt_tokens, "gen_tokens": comp.gen_tokens,
+                "wall_s": comp.wall_s, "compute_s": comp.compute_s,
+                "usersim_wall": 0.0, "judge_wall": res.get("judge_wall_s") or 0.0,
+                "tok_s": comp.gen_tok_per_s, "raw": raw_dict}
+
+    # --- execute every (item, sample), then collect deterministically ---
+    tasks = [(i, it, s) for i, it in enumerate(prompts) for s in range(args.k)]
+    done = 0
+
+    def _progress(i, s, r):
+        nonlocal done
+        done += 1
+        print(f"  [{done}/{len(tasks)}] {prompts[i]['id']} s{s} "
+              f"{'ok' if r['correct'] else 'x'}", flush=True)
+
     run_start = time.monotonic()
+    results = _execute_tasks(tasks, run_one_sample, concurrency,
+                             on_done=_progress if concurrency > 1 else None)
+
+    # Collector (single-threaded): fold results in (item, sample) order and write raw
+    # lines in that order - the run-viewer keys off first-seen id order, so a
+    # concurrent run must still produce a deterministically ordered raw file.
     with raw_path.open("w") as raw:
-        for item in prompts:
-            item_meta = meta_slice(item, fields)
+        for i, item in enumerate(prompts):
             correct_this_item = 0
             for s in range(args.k):
-                if method == "agentic":
-                    user_sim = CopilotCLIUser(persona=item["meta"]["persona"], model=args.user_model)
-                    episode = run_episode(client, user_sim, item, protocol=args.tool_protocol,
-                                          toolset=agentic_toolset,
-                                          max_steps=ep_max_steps, max_turns=ep_max_turns,
-                                          system_suffix=args.system_suffix)
-                    res = agentic_scorer.score(episode, manifest["_key"].get(item["id"], {}),
-                                               judge=msg_judge)
-                    perf = episode["perf"]
-                    total_samples += 1
-                    prompt_tok_sum += perf["prompt_tokens"]
-                    gen_tok_sum += perf["gen_tokens"]
-                    wall_sum += perf["wall_s"]
-                    compute_sum += perf.get("compute_s", 0.0)
-                    usersim_wall_sum += perf.get("user_sim_wall_s", 0.0)
-                    judge_wall_sum += res.get("judge_wall_s") or 0.0
-                    tok_s_sum += (perf["gen_tokens"] / perf["wall_s"]) if perf["wall_s"] else 0.0
-                    if res.get("correct"):
-                        sample_correct += 1
-                        correct_this_item += 1
-                    raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
-                                          "meta": item_meta,
-                                          "think": think_lbl,
-                                          "system_suffix": args.system_suffix,
-                                          "compute_s": perf.get("compute_s"),
-                                          "user_sim_wall_s": perf.get("user_sim_wall_s"),
-                                          "user_sim_calls": perf.get("user_sim_calls"),
-                                          "judge_wall_s": res.get("judge_wall_s"),
-                                          "episode": {"resolution": episode["resolution"],
-                                                      "protocol": episode.get("protocol"),
-                                                      "toolset": episode.get("toolset"),
-                                                      # did_* are scorer inputs for support
-                                                      # (reply vs escalate) - persist so a raw
-                                                      # line can be re-scored offline.
-                                                      "did_reply": episode.get("did_reply"),
-                                                      "did_escalate": episode.get("did_escalate"),
-                                                      "tools_used": episode.get("tools_used"),
-                                                      "tool_calls": episode["tool_calls"],
-                                                      "final_state": episode.get("final_state"),
-                                                      "transcript": episode["transcript"]}}) + "\n")
-                    continue
-                comp = client.complete([{"role": "user", "content": item["prompt"]}],
-                                       system=apply_system_suffix(manifest.get("system"), args.system_suffix))
-                res = score_one(method, manifest, item, comp.text, judge,
-                                sandbox=args.code_sandbox or "local-unsafe")
+                r = results[(i, s)]
                 total_samples += 1
-                tok_s_sum += comp.gen_tok_per_s
-                prompt_tok_sum += comp.prompt_tokens
-                gen_tok_sum += comp.gen_tokens
-                wall_sum += comp.wall_s
-                compute_sum += comp.compute_s
-                judge_wall_sum += res.get("judge_wall_s") or 0.0
-                if res.get("correct"):
+                prompt_tok_sum += r["prompt_tokens"]
+                gen_tok_sum += r["gen_tokens"]
+                wall_sum += r["wall_s"]
+                compute_sum += r["compute_s"]
+                usersim_wall_sum += r["usersim_wall"]
+                judge_wall_sum += r["judge_wall"]
+                tok_s_sum += r["tok_s"]
+                if r["correct"]:
                     sample_correct += 1
                     correct_this_item += 1
-                raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
-                                      "meta": item_meta,
-                                      "think": think_lbl,
-                                      "system_suffix": args.system_suffix,
-                                      "prompt_tokens": comp.prompt_tokens,
-                                      "gen_tokens": comp.gen_tokens,
-                                      "wall_s": comp.wall_s,
-                                      "compute_s": comp.compute_s,
-                                      "judge_wall_s": res.get("judge_wall_s"),
-                                      "gen_tok_per_s": comp.gen_tok_per_s,
-                                      "completion": comp.text}) + "\n")
+                raw.write(json.dumps(r["raw"]) + "\n")
             per_item_correct.append(correct_this_item)
             if args.slice_by:
                 gv = str((item.get("meta") or {}).get(args.slice_by, "\u2014"))
