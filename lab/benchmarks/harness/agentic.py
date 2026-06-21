@@ -370,7 +370,8 @@ def _prompt_block(toolset: ToolSet) -> str:
 
 def run_episode(agent, user_sim, scenario: dict, *, max_turns: int = 4,
                 max_steps: int = 5, protocol: str = "prompt",
-                toolset: ToolSet | None = None) -> dict:
+                toolset: ToolSet | None = None,
+                system_suffix: str | None = None) -> dict:
     """Run one agentic episode against a tool set (support / home_automation).
 
     ``agent`` and ``user_sim`` are duck-typed:
@@ -398,6 +399,10 @@ def run_episode(agent, user_sim, scenario: dict, *, max_turns: int = 4,
         sys = sys + "\n\n" + ctx
     if not native:
         sys = sys + "\n\n" + _prompt_block(toolset)
+    # Run-time system suffix (e.g. a brevity nudge) - appended last so it is the
+    # most salient instruction; a run param, not part of the benchmark manifest.
+    if system_suffix:
+        sys = sys + "\n\n" + system_suffix
     tools = toolset.tools if native else None
     tool_names = ", ".join(toolset.behaviors)
     opening = scenario["prompt"]

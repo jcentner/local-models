@@ -189,6 +189,43 @@ def test_think_label():
           all(runmod.think_label(v) in {"on", "off", "default"} for v in (True, False, None)))
 
 
+def test_system_suffix():
+    print("system suffix (run-time brevity nudge appended to system prompt):")
+    # run.py helper (generative path)
+    check("no suffix -> base unchanged",
+          runmod.apply_system_suffix("BASE", None) == "BASE")
+    check("empty suffix -> base unchanged",
+          runmod.apply_system_suffix("BASE", "") == "BASE")
+    check("suffix appended after a blank line",
+          runmod.apply_system_suffix("BASE", "NUDGE") == "BASE\n\nNUDGE")
+    check("no base -> suffix alone (no leading separator)",
+          runmod.apply_system_suffix(None, "NUDGE") == "NUDGE")
+
+    # agentic path: run_episode threads the suffix into the system prompt the
+    # agent receives, appended LAST (most salient).
+    seen = {}
+
+    class _CapAgent:
+        def complete(self, messages, system=None, tools=None):
+            seen["system"] = system
+            return Completion(text='{"tool":"reply","args":{"text":"ok"}}',
+                              prompt_tokens=1, gen_tokens=1, wall_s=0.0)
+
+    scen = {"id": "s1", "prompt": "hi",
+            "meta": {"persona": "goal", "policy": "be brief", "kb": []}}
+    ag.run_episode(_CapAgent(), _MockUser("DONE"), scen,
+                   system_suffix="REASON_CONCISELY_XYZ")
+    check("agentic system carries the suffix",
+          "REASON_CONCISELY_XYZ" in seen.get("system", ""))
+    check("suffix is the tail of the agentic system prompt",
+          seen.get("system", "").rstrip().endswith("REASON_CONCISELY_XYZ"))
+
+    seen.clear()
+    ag.run_episode(_CapAgent(), _MockUser("DONE"), scen, system_suffix=None)
+    check("no suffix -> none injected into agentic system",
+          "REASON_CONCISELY_XYZ" not in seen.get("system", ""))
+
+
 def test_meta_slice():
     print("viewer meta-slice (A0 whitelist):")
     fields = runmod.slice_fields({})
@@ -938,6 +975,7 @@ if __name__ == "__main__":
     test_podman_sandbox()
     test_cost_computation()
     test_think_label()
+    test_system_suffix()
     test_meta_slice()
     test_reliability_metrics()
     test_openai_compatible_client()

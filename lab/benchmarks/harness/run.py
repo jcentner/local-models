@@ -308,6 +308,18 @@ def think_label(think: bool | None) -> str:
     return {True: "on", False: "off", None: "default"}[think]
 
 
+def apply_system_suffix(base: str | None, suffix: str | None) -> str | None:
+    """Append a run-time suffix (e.g. a brevity nudge) to a system prompt.
+
+    A run param recorded in the raw jsonl, NOT a bench.json edit - keeps the eval
+    pure + comparable across models. Returns ``base`` unchanged when ``suffix`` is
+    falsy; uses ``suffix`` alone when there is no base system prompt.
+    """
+    if not suffix:
+        return base
+    return (base + "\n\n" + suffix) if base else suffix
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Run a benchmark against a local model.")
     ap.add_argument("--benchmark", required=True, help="path to benchmarks/<name>/ dir")
@@ -338,6 +350,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--think", action=argparse.BooleanOptionalAction, default=None,
                     help="--no-think disables a thinking model's CoT (recommended for "
                          "deterministic code/equivalence scorers to avoid empty output).")
+    ap.add_argument("--system-suffix", default=None,
+                    help="append this text to the system prompt at runtime (e.g. a "
+                         "brevity nudge to tame over-long CoT). A run param recorded in "
+                         "the raw jsonl, NOT a bench.json edit - keeps the eval pure and "
+                         "comparable across models.")
     ap.add_argument("--base-url", default=None,
                     help="endpoint override; default per provider (ollama: "
                          "http://localhost:11434, openai-compatible: "
@@ -461,7 +478,8 @@ def main(argv: list[str] | None = None) -> int:
                     user_sim = CopilotCLIUser(persona=item["meta"]["persona"], model=args.user_model)
                     episode = run_episode(client, user_sim, item, protocol=args.tool_protocol,
                                           toolset=agentic_toolset,
-                                          max_steps=ep_max_steps, max_turns=ep_max_turns)
+                                          max_steps=ep_max_steps, max_turns=ep_max_turns,
+                                          system_suffix=args.system_suffix)
                     res = agentic_scorer.score(episode, manifest["_key"].get(item["id"], {}),
                                                judge=msg_judge)
                     perf = episode["perf"]
@@ -476,6 +494,7 @@ def main(argv: list[str] | None = None) -> int:
                     raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
                                           "meta": item_meta,
                                           "think": think_lbl,
+                                          "system_suffix": args.system_suffix,
                                           "episode": {"resolution": episode["resolution"],
                                                       "protocol": episode.get("protocol"),
                                                       "toolset": episode.get("toolset"),
@@ -490,7 +509,7 @@ def main(argv: list[str] | None = None) -> int:
                                                       "transcript": episode["transcript"]}}) + "\n")
                     continue
                 comp = client.complete([{"role": "user", "content": item["prompt"]}],
-                                       system=manifest.get("system"))
+                                       system=apply_system_suffix(manifest.get("system"), args.system_suffix))
                 res = score_one(method, manifest, item, comp.text, judge,
                                 sandbox=args.code_sandbox or "local-unsafe")
                 total_samples += 1
@@ -504,6 +523,7 @@ def main(argv: list[str] | None = None) -> int:
                 raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
                                       "meta": item_meta,
                                       "think": think_lbl,
+                                      "system_suffix": args.system_suffix,
                                       "prompt_tokens": comp.prompt_tokens,
                                       "gen_tokens": comp.gen_tokens,
                                       "wall_s": comp.wall_s,

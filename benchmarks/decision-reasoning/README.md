@@ -44,6 +44,15 @@ python3 -m harness.run --benchmark ../../benchmarks/decision-reasoning \
   --slice-by tier
 ```
 
+> **Taming over-long CoT (thinking models):** qwen3.5:4b thinks ~5-7K tokens/item
+> here (~266s/sample) while the judge only scores the visible `Recommendation:`, so
+> the CoT is paid-for-unscored. Add a brevity nudge via the harness `--system-suffix`
+> (a run param, not a `bench.json` edit), e.g.
+> `--system-suffix "Reason concisely - at most ~250 words of thinking - before your Recommendation:."`
+> then check the raw `gen_tokens`/sample actually drops; fall back to `--no-think`
+> (decision-reasoning judges the visible answer, so it only moves reasoning into the
+> visible channel) if the nudge doesn't shorten enough.
+
 ## Backlog
 
 v0.2 landed the structured expansion (done): difficulty **tiers** + **categories**
