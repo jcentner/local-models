@@ -105,10 +105,12 @@ alarm is disarm-with-confirm (`h19`).
 - [MiniCPM5-1B](../models/minicpm5-1b.md) (2026-06-20, SGLang, native, v0.2): **7/12**
   - a decent small tool-executor even though it's a weak abstract reasoner.
 - [MiniCPM5-1B](../models/minicpm5-1b.md) (2026-06-21, **v0.4 / 19 items**, SGLang +
-  XML fallback, native, **k=3**, **Think** (`think=on`), gpt-5.5 user-sim + msg-judge):
-  **observed_pass@3 0.632 / pass^3 0.210**, flaky 8/19. First v0.4 datapoint. Think
-  mode hurt - **51% of steps were prose no-ops** (narrates intent instead of calling
-  the tool); wants a No-Think v0.4 A/B (strong prior: No-Think wins).
+  XML fallback, native, **k=3**, gpt-5.5 user-sim + msg-judge) - **Think (t0.9):
+  observed_pass@3 0.632 / pass^3 0.210** (flaky 8/19); **No-Think (t0.7): 0.474 /
+  0.158** (flaky 6/19). Think is modestly AHEAD here (revises the first-pass
+  "no-think better" call). Both modes flail - ~51% of steps are `_no_tool` prose
+  (narrate instead of call the tool); pass^3 0.16-0.21 = weak. No-Think needs a
+  parser-less SGLang + 32K ctx (its flailing overflows 16K; not a runaway gen).
 
 > Earlier reference scores are **v0.1/v0.2 and k=1** and are superseded by v0.3 (18
 > items, device-aware confirm + dependency + injection + judged messages). gemma-4-12b

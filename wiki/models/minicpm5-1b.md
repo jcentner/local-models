@@ -275,31 +275,42 @@ of the confounded 2026-06-19 Ollama runs.
 
 Writeup: [lab/experiments/2026-06-20-minicpm5-sglang-controlled](../../lab/experiments/2026-06-20-minicpm5-sglang-controlled/README.md).
 
-## Think-mode agentic finding (2026-06-21)
+## Think vs No-Think agentic finding (2026-06-21)
 
-Re-ran the agentic suite with **Think mode on** (`enable_thinking=true`, temp 0.9 /
-top_p 0.95) to test the **thinking-as-default** policy — and got the **first
-home-automation v0.4 datapoint** for this model. Verdict: **thinking does not help a
-1B here; it makes it narrate instead of act.**
+Ran the agentic suite in **both modes** under controlled SGLang serving to test the
+**thinking-as-default** policy. Result: **mixed and task-dependent — no clean default
+— and the model stays weak on agentic either way.**
 
-| Benchmark | mode | observed_pass@3 | pass^3 | flaky |
-|---|---|---|---|---|
-| home-automation **v0.4** | Think | **0.632** | **0.210** | 8/19 |
-| email-triage **v0.3** | Think | **0.833** | **0.333** | 6/12 |
-| email-triage v0.2 | No-Think | 0.917 | 0.417 | 6/12 |
+| Benchmark (k=3) | Think (t0.9) | No-Think (t0.7) | edge |
+|---|---|---|---|
+| home-automation v0.4 (19) | obs **0.632** / pass^3 **0.210** | obs **0.474** / pass^3 **0.158** | **Think** |
+| email-triage (12) | v0.3 obs 0.833 / pass^3 0.333 | v0.2 obs 0.917 / pass^3 0.417 | No-Think |
 
-The mechanism is a **`_no_tool` no-op**: in Think mode the model writes prose
-narration of its intent into the answer channel — *"I need to clarify which light…"*,
-*"I don't have a tool to place orders…"* — instead of emitting the `<function>` tool
-call. **268 of 530 home-automation steps (51%)** and **63 of 166 email-triage steps
-(38%)** were such prose no-ops, with **zero** unparsed tool markup (so it's the
-model, not the harness). It **under-acts** (`h4` over-clarifies an unambiguous "turn
-off all the lights"; `h5`/`h10` narrate a refusal instead of using the `say` tool;
-`e7` never escalates), **confirm-loops** (`h17` asks "are you sure?" ×4, never
-refuses the smoke detector), or **mis-routes** (`e12` over-escalates a KB-answerable
-question). **Recommend `--no-think` for MiniCPM5 agentic runs.** (Caveat: the ET row
-is v0.3-Think vs the v0.2 No-Think row, so not a pure A/B; the narration mechanism
-is clean regardless — a No-Think v0.4/v0.3 run is the clean follow-up.) Writeup:
+On the harder **home-automation** set Think is **modestly ahead** (0.632 vs 0.474);
+on **email-triage** No-Think leads. Neither is a perfectly controlled A/B (ET compares
+v0.3-Think vs v0.2-No-Think — different versions; the HA pair differs in temp/parser/
+context per each mode's recommended serving), so read the *direction*, not the decimals.
+Net: pass^3 sits at **0.16–0.21 on home-automation** regardless — a weak agentic ceiling.
+
+**The dominant failure in BOTH modes is a `_no_tool` flail** — the model writes prose
+narration of its intent (*"I need to clarify which light…"*, *"I don't have a tool to
+order pizza…"*) instead of emitting the `<function>` call, then loops get_status → ask
+→ narrate → nudge without committing. In Think HA **51% of agent steps** were such
+no-ops; No-Think flails at least as much (it scores lower and accumulates so much
+history its episodes overflowed a 16K window — see below). So "narrate instead of act"
+is **the 1B's agentic ceiling, not a Think artifact** — the brief Think CoT actually
+helps it commit a little more often on home-automation. Wins (act / read-only /
+ambiguity→ask) and losses (grounding, refuse, compound double-confirm) are the same
+both ways.
+
+**Serving notes (reproducibility).** Over SGLang, run No-Think **parser-less**: the
+`--reasoning-parser deepseek-r1` routes No-Think output into `reasoning_content` and
+leaves `content` empty, so the harness sees nothing (a false **0/19**). No-Think also
+needs **≥32K context** — its flailing accumulates up to `max_turns×max_steps` (≈28)
+appended steps and overflowed 16K (email-triage, with shorter episodes, was fine at
+16K). Think stayed lean only because its CoT lands in `reasoning_content` (not re-fed
+into history). It is **not** a runaway generation — streaming every step showed all
+generations short (`finish=stop`, ≤~330 tokens). Writeup:
 [lab/experiments/2026-06-21-minicpm5-think-agentic](../../lab/experiments/2026-06-21-minicpm5-think-agentic/README.md).
 
 ## Open questions

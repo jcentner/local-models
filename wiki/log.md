@@ -733,3 +733,22 @@ lights off"; h5/h10 narrate a refusal; e7 never escalates), confirm-loops (h17 a
 question). Verdict: **`--no-think` is better for MiniCPM5 agentic**; a No-Think v0.4/v0.3
 run is the clean A/B follow-up. Both rows in results.csv (think=on, msgjudge:gpt-5.5).
 Writeup: lab/experiments/2026-06-21-minicpm5-think-agentic.
+
+## [2026-06-21] bench | MiniCPM5-1B home-automation v0.4 No-Think (corrects the think verdict)
+Ran the matching **No-Think** HA v0.4 (SGLang parser-less @32K, native, k=3, t0.7,
+gpt-5.5 user-sim + msg-judge): **observed_pass@3 0.474 / pass^3 0.158**, flaky 6/19 —
+**below** the Think run (0.632 / 0.210). So on home-automation **Think is modestly
+AHEAD**, which **revises** the previous entry's "`--no-think` is better" call (that
+leaned on email-triage alone). Net read across both benchmarks is **mixed / task-
+dependent** (HA → Think; ET → No-Think v0.2 0.917 vs v0.3-Think 0.833, different
+versions); pass^3 stays **0.16–0.21 on HA** either way — a weak agentic ceiling. The
+`_no_tool` flail (narrate-instead-of-act, loop get_status→ask→narrate) is the model's
+ceiling in **both** modes, not a Think artifact. **Serving findings:** No-Think over
+SGLang needs a **parser-less** server (the `deepseek-r1` reasoning parser routes
+No-Think output to `reasoning_content`, leaving `content` empty → a false 0/19) and
+**≥32K context** (No-Think flails for up to max_turns×max_steps≈28 appended steps and
+overflowed 16K; **not** a runaway generation — streaming ~50 samples incl. a gpt-5.5
+user-sim replay showed every gen short, `finish=stop`). Think stayed lean under 16K
+because its CoT lands in `reasoning_content` (not re-fed). Dropped the 0/19 artifact
+row (parser-present attempt) from results.csv; kept the real 0.474 No-Think row.
+Model page + experiment + HA benchmark page + backlog corrected.
