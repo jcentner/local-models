@@ -203,6 +203,15 @@ def validate_benchmark(manifest: dict) -> None:
             if bad_tools:
                 raise SystemExit(f"agentic key {kid!r} references unknown tools {sorted(bad_tools)} "
                                  f"(valid for {toolset_name}: {sorted(valid_tools)})")
+            # required_any: a list of OR-groups (each a non-empty list of valid tool names)
+            ra = krow.get("required_any")
+            if ra is not None:
+                if not isinstance(ra, list) or not all(isinstance(g, list) and g for g in ra):
+                    raise SystemExit(f"agentic key {kid!r} required_any must be a list of non-empty tool-name groups")
+                bad_any = {t for g in ra for t in g} - valid_tools
+                if bad_any:
+                    raise SystemExit(f"agentic key {kid!r} required_any references unknown tools {sorted(bad_any)} "
+                                     f"(valid for {toolset_name}: {sorted(valid_tools)})")
         # optional judge_message (A1) must name a message-bearing tool + carry valid criteria/threshold
         msg_tools = JUDGE_MSG_TOOLS.get(toolset_name, set())
         for kid, krow in manifest["_key"].items():
@@ -211,8 +220,10 @@ def validate_benchmark(manifest: dict) -> None:
                 continue
             if not isinstance(jm, dict):
                 raise SystemExit(f"agentic key {kid!r} judge_message must be an object")
-            if jm.get("tool") not in msg_tools:
-                raise SystemExit(f"agentic key {kid!r} judge_message.tool must be one of {sorted(msg_tools)}")
+            jt = jm.get("tool")
+            jts = jt if isinstance(jt, list) else [jt]
+            if not jts or any(t not in msg_tools for t in jts):
+                raise SystemExit(f"agentic key {kid!r} judge_message.tool must be one or more of {sorted(msg_tools)}")
             if not str(jm.get("criteria", "")).strip():
                 raise SystemExit(f"agentic key {kid!r} judge_message needs non-empty criteria")
             thr = jm.get("pass_threshold", 6.0)

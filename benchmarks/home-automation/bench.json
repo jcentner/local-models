@@ -1,1 +1,1 @@
-{"name": "home-automation", "version": "0.3", "scoring": "agentic", "toolset": "home_automation", "max_steps": 7}
+{"name": "home-automation", "version": "0.4", "scoring": "agentic", "toolset": "home_automation", "max_steps": 7}
