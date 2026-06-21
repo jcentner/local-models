@@ -59,6 +59,11 @@ with the frontier judge. See
   ever issuing the required `reply` -> `no_response`); `e6` 2/3 flaky. Ahead of
   qwen3.5:4b, but its user-sim is gpt-5.5 vs qwen's opus-4.8 (recorded in the `judge`
   column) - indicative, not apples-to-apples.
+- [gemma-4-12b-agentic-fable5](../models/gemma-4-12b-agentic-fable5.md) (2026-06-21,
+  **v0.3 / 12 items**, native, **k=3**, gpt-5.5 user-sim + msg-judge): **observed_pass@3
+  1.000 / pass^3 0.667**, flaky 4/12 (e6/e8/e10/e12). Perfect best-of-3 ceiling;
+  reliability dragged by `e12` (wrongly **escalates** a KB-answerable question 2/3 -
+  the same item MiniCPM5 over-escalates). Still the strongest local agent on v0.3.
 - [MiniCPM5-1B](../models/minicpm5-1b.md) (2026-06-21, **v0.2 / 12 items**, SGLang +
   XML fallback, native, **k=3**, **`--no-think`** (`think=off`), gpt-5.5 user-sim; `e5`
   parity-corrected like qwen): **observed_pass@3 0.917 / pass^3 0.417**, flaky 6/12.
@@ -81,7 +86,8 @@ with the frontier judge. See
 
 > The **v0.1 (5 items, k=1)** entries are historical, superseded by the **v0.2 (12
 > items, k=3)** baselines above (qwen / gemma / MiniCPM5). v0.3 sharpens `e5` (see the
-> qwen note); a clean cross-model **v0.3 `--k 3`** re-baseline is still pending. Note
+> qwen note); gemma + MiniCPM5 now have **v0.3 `--k 3`** runs (above) - **only qwen3.5:4b
+> still wants a clean v0.3 re-baseline** (its v0.3 rows are k=1 concurrency A/B). Note
 > the user-sim model + `think` state differ per row (recorded in the `judge` / `think`
 > columns) - compare with that in mind.
 
