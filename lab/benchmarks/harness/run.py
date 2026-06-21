@@ -181,6 +181,10 @@ def validate_benchmark(manifest: dict) -> None:
         toolset_name = manifest.get("toolset", "support")
         if toolset_name not in TOOLSETS:
             raise SystemExit(f"agentic bench.json toolset {toolset_name!r} unknown (expected {sorted(TOOLSETS)})")
+        for fld in ("max_steps", "max_turns"):
+            if fld in manifest and (isinstance(manifest[fld], bool)
+                                    or not isinstance(manifest[fld], int) or manifest[fld] < 1):
+                raise SystemExit(f"agentic bench.json {fld} must be a positive integer")
         valid_tools = set(TOOLSETS[toolset_name].behaviors)
         for p in prompts:
             if not str((p.get("meta") or {}).get("persona", "")).strip():
@@ -408,6 +412,10 @@ def main(argv: list[str] | None = None) -> int:
     per_item_correct: list[int] = []          # correct count (0..k) per item -> reliability
     slice_groups: dict[str, list[int]] = {}   # meta[slice_by] value -> per-item correct counts
     agentic_toolset = resolve_toolset(manifest.get("toolset")) if method == "agentic" else None
+    # bench.json may widen the per-turn step / turn budget for multi-step scenarios
+    # (e.g. a dependency that needs BLOCKED -> satisfy -> retry -> say); default 5/4.
+    ep_max_steps = int(manifest.get("max_steps", 5))
+    ep_max_turns = int(manifest.get("max_turns", 4))
     fields = slice_fields(manifest)
     with raw_path.open("w") as raw:
         for item in prompts:
@@ -417,7 +425,8 @@ def main(argv: list[str] | None = None) -> int:
                 if method == "agentic":
                     user_sim = CopilotCLIUser(persona=item["meta"]["persona"], model=args.user_model)
                     episode = run_episode(client, user_sim, item, protocol=args.tool_protocol,
-                                          toolset=agentic_toolset)
+                                          toolset=agentic_toolset,
+                                          max_steps=ep_max_steps, max_turns=ep_max_turns)
                     res = agentic_scorer.score(episode, manifest["_key"].get(item["id"], {}),
                                                judge=msg_judge)
                     perf = episode["perf"]

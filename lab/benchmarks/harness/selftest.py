@@ -748,6 +748,28 @@ def test_agentic_home_v03():
     check("home non-list forbidden_devices rejected",
           _rejects(base({"expected_state": {"x": "on"}, "forbidden_devices": "x"})))
 
+    # F7: bench.json max_steps/max_turns override (budget for dependency scenarios)
+    ms_ok = base({"expected_state": {"x": "on"}}); ms_ok["max_steps"] = 7; ms_ok["max_turns"] = 6
+    check("agentic max_steps/max_turns override validates", not _rejects(ms_ok))
+    ms_bad = base({"expected_state": {"x": "on"}}); ms_bad["max_steps"] = 0
+    check("agentic max_steps < 1 rejected", _rejects(ms_bad))
+    # the override actually widens the per-turn budget: 3 acts before say needs >=4 steps
+    dep = {"alarm": {"type": "alarm", "state": "armed"},
+           "garage_door": {"type": "garage", "state": "closed", "requires": {"alarm": "off"}}}
+    dep_scen = {"id": "hb", "prompt": "open garage",
+                "meta": {"persona": "g", "policy": "p", "devices": dep}}
+    acts = ['{"tool":"get_status","args":{"device":"garage_door"}}',
+            '{"tool":"set_device","args":{"device":"garage_door","state":"open"}}',
+            '{"tool":"set_device","args":{"device":"alarm","state":"off"}}',
+            '{"tool":"set_device","args":{"device":"garage_door","state":"open"}}',
+            '{"tool":"say","args":{"message":"open"}}']
+    ep_tight = ag.run_episode(_MockAgent(acts), _MockUser("DONE"), dep_scen, toolset=home, max_steps=3)
+    check("home tight budget (max_steps=3) cannot finish the 5-step path",
+          ep_tight["final_state"]["devices"]["garage_door"]["state"] != "open")
+    ep_wide = ag.run_episode(_MockAgent(acts), _MockUser("DONE"), dep_scen, toolset=home, max_steps=7)
+    check("home widened budget (max_steps=7) finishes the path",
+          ep_wide["final_state"]["devices"]["garage_door"]["state"] == "open")
+
 
 if __name__ == "__main__":
     test_equivalence()
