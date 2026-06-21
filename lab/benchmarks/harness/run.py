@@ -571,6 +571,17 @@ def main(argv: list[str] | None = None) -> int:
     }
     results_path = Path(args.results)
     write_header = not results_path.exists()
+    if not write_header:
+        # Append path: results.csv is appended WITHOUT re-writing the header, so
+        # the existing header MUST match this row's field order exactly or every
+        # appended row silently misaligns. Fail loudly instead.
+        with results_path.open(newline="") as rf:
+            existing_header = next(csv.reader(rf), [])
+        if existing_header and existing_header != list(row.keys()):
+            raise SystemExit(
+                f"results.csv header mismatch: existing {existing_header} != "
+                f"row {list(row.keys())}. Migrate the file (see tmp/migrate_results_*.py) "
+                "before appending so columns stay aligned.")
     with results_path.open("a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(row.keys()))
         if write_header:

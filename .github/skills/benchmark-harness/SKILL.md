@@ -74,6 +74,9 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model glm-4.6 \
   [email-triage](../../../benchmarks/email-triage/README.md)) and **home_automation**
   (act/confirm/refuse over a device world, [home-automation](../../../benchmarks/home-automation/README.md) -
   the lighthouse set; scores device end-state + confirm-before-sensitive + don't-over-actuate).
+  Optional **`--judge-messages`** (default off) adds a frontier-judge **AND gate** on one
+  message's text - catches verbal-only fabrication/injection a state check misses; can
+  tighten a pass, never relax one (recommended ON for the home-automation v0.4 baseline).
   The flexible alternative to registered-model benchmarks like BFCL.
 
 ## Thinking-model gotcha (bites every time)
@@ -81,8 +84,11 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model glm-4.6 \
 Thinking models (qwen3.5, vibethinker) spend the token budget on CoT and can emit
 **empty** output on trivial tasks → scored as a fail.
 - ollama provider: add `--no-think` for deterministic code/equivalence runs.
-- openai-compatible (incl. Ollama `/v1`): `--no-think` does **not** apply — give a
-  generous `--num-predict`, or run via the `ollama` provider instead.
+- openai-compatible: `--no-think`/`--think` is sent as
+  `chat_template_kwargs.enable_thinking` — works on SGLang (verified: MiniCPM5-1B
+  ran `--no-think` over SGLang), ignored by servers that don't support it (incl.
+  Ollama's `/v1` shim — use the `ollama` provider there). Give a generous
+  `--num-predict` regardless so a thinking model can't truncate the answer.
 - For long-CoT reasoning, set `--num-ctx` high (e.g. 32768) to avoid mid-thought
   truncation.
 
@@ -98,9 +104,9 @@ ALL k correct — reliability, weight this for the home agent), plus `flaky_item
 
 ## After a run
 
-The row is written automatically (schema: date, machine, model, provider, runner,
-runner_version, endpoint, benchmark, scoring, num_ctx, num_predict, sampling, think, seed,
-k, n_items, observed_pass_at_k, pass_hat_k, avg_correct, flaky_items, sem,
+The row is written automatically (schema: date, machine, model, base_model, provider,
+runner, runner_version, endpoint, benchmark, scoring, num_ctx, num_predict, sampling,
+think, seed, k, n_items, observed_pass_at_k, pass_hat_k, avg_correct, flaky_items, sem,
 mean_gen_tok_s, token totals,
 wall_s_total, cost_usd, judge, code_sandbox, raw_file, platform). `think` is the
 run-time CoT control (`on|off|default`; `default` = no flag, template/provider

@@ -119,9 +119,11 @@ created with `/author-benchmark`. Output: a row appended to
   For public suites prefer an upstream runner (evalplus). **Thinking-model gotcha:**
   pass `--no-think` for code tasks - a model that over-thinks can exhaust
   `--num-predict` before emitting code, yielding empty output (scored as a fail).
-  `--no-think` only works on the **ollama** provider; over `openai-compatible`
-  (incl. Ollama's `/v1` shim) you can't disable CoT, so give a thinking model a
-  generous `--num-predict` or run it via the `ollama` provider.
+  `--no-think`/`--think` works on **ollama** (the `think` flag) AND on
+  `openai-compatible` via `chat_template_kwargs.enable_thinking` (works on SGLang -
+  verified: MiniCPM5-1B ran `--no-think` over SGLang; ignored by Ollama's `/v1`
+  shim and servers that don't support it). Give a generous `--num-predict`
+  regardless so CoT can't truncate the answer.
 - **reliability metrics (multi-pass)** - over `--k` samples per item the runner
   reports `observed_pass_at_k` (best-of-k, >=1 correct - a capability ceiling that
   *rises* with k), **`pass_hat_k`** (tau-bench's pass^k, ALL k correct - reliability,
