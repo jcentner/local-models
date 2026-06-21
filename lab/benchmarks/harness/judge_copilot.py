@@ -74,7 +74,8 @@ def run_copilot_cli(cmd: list[str], timeout: int, tries: int = 3,
             if kind == "ok":
                 return out
             if kind == "permanent":
-                raise RuntimeError(f"{label} permanent error (not retried): {out!r}")
+                detail = f"stdout={out!r} stderr={err!r}" if (out or err) else "(no output)"
+                raise RuntimeError(f"{label} permanent error (not retried): {detail}")
             last = f"stdout={out!r} stderr={err!r}" if (out or err) else "empty output"
         if attempt < tries:
             delay = backoff_base * (2 ** (attempt - 1))

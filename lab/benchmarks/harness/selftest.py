@@ -514,6 +514,72 @@ def test_concurrency():
         check(f"worker exception propagates at N={n}", raised)
 
 
+def test_concurrency_full_run():
+    print("concurrency full main() path (mocked client, equivalence):")
+    import io, contextlib
+    from unittest import mock
+
+    class _Fixed:
+        def complete(self, messages, system=None, tools=None):
+            return Completion(text=r"\boxed{4}")
+
+    class _Boom:
+        def complete(self, messages, system=None, tools=None):
+            if "2+0?" in messages[-1]["content"]:   # q2 always raises (deterministic)
+                raise RuntimeError("boom")
+            return Completion(text=r"\boxed{4}")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        d = Path(tmp)
+        (d / "bench.json").write_text(json.dumps({"name": "ct", "version": "0", "scoring": "equivalence"}))
+        (d / "prompts.jsonl").write_text("\n".join(
+            json.dumps({"id": f"q{i}", "prompt": f"{i}+0?"}) for i in range(4)) + "\n")
+        (d / "answer_key.jsonl").write_text("\n".join(
+            json.dumps({"id": f"q{i}", "answer": "4"}) for i in range(4)) + "\n")
+
+        def run(conc, model, results_path, client):
+            runs = d / "runs"
+            before = set(runs.glob("*.jsonl")) if runs.exists() else set()
+            # patch LAB_BENCH so raw jsonl lands in the temp dir (auto-cleaned), not the real runs/
+            with mock.patch.object(runmod, "make_client", return_value=client), \
+                 mock.patch.object(runmod, "LAB_BENCH", d), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                rc = runmod.main(["--benchmark", str(d), "--model", model, "--k", "2",
+                                  "--concurrency", str(conc), "--results", str(results_path)])
+            new = sorted(set(runs.glob("*.jsonl")) - before)
+            return rc, (new[-1] if new else None)
+
+        # distinct model names so the two raw filenames differ even within one second
+        r1, raw1 = run(1, "m1", d / "r1.csv", _Fixed())
+        r2, raw2 = run(2, "m2", d / "r2.csv", _Fixed())
+        check("full run N=1 exit 0 + 1 results row",
+              r1 == 0 and len((d / "r1.csv").read_text().splitlines()) == 2)
+        check("full run N=2 exit 0 + 1 results row",
+              r2 == 0 and len((d / "r2.csv").read_text().splitlines()) == 2)
+        a = [json.loads(x) for x in raw1.read_text().splitlines()]
+        b = [json.loads(x) for x in raw2.read_text().splitlines()]
+        order = [(f"q{i}", s) for i in range(4) for s in range(2)]
+        check("raw order deterministic q0..q3 x k, N=1 == N=2",
+              [(x["id"], x["sample_index"]) for x in a] == order
+              and [(x["id"], x["sample_index"]) for x in b] == order)
+        check("scoring identical + all correct N=1 vs N=2",
+              [x["result"]["correct"] for x in a] == [x["result"]["correct"] for x in b]
+              and all(x["result"]["correct"] for x in a))
+
+        # fail-fast: a worker exception aborts main() and writes NO results row
+        raised = False
+        with mock.patch.object(runmod, "make_client", return_value=_Boom()), \
+             mock.patch.object(runmod, "LAB_BENCH", d), \
+             contextlib.redirect_stdout(io.StringIO()):
+            try:
+                runmod.main(["--benchmark", str(d), "--model", "boom", "--k", "2",
+                             "--concurrency", "2", "--results", str(d / "r3.csv")])
+            except RuntimeError:
+                raised = True
+        check("worker exception aborts main() (fail-fast)", raised)
+        check("failed run wrote NO results row", not (d / "r3.csv").exists())
+
+
 def test_agentic():
     print("agentic rollout (mocked agent + user):")
     check("parse clean json", ag.parse_action('{"tool":"reply","args":{"text":"hi"}}')["tool"] == "reply")
@@ -1142,6 +1208,7 @@ if __name__ == "__main__":
     test_meta_slice()
     test_reliability_metrics()
     test_concurrency()
+    test_concurrency_full_run()
     test_openai_compatible_client()
     test_agentic()
     test_agentic_native()

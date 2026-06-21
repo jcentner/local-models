@@ -641,12 +641,12 @@ def main(argv: list[str] | None = None) -> int:
           "across k; sem = standard error of the per-item mean)")
     compute_str = f"{round(compute_sum, 1)}s" if compute_sum > 0 else "n/a(no eval timing)"
     print(f"  wall_clock={wall_clock_s}s  gen_compute={compute_str}  "
-          f"request_wall_sum={round(wall_sum, 1)}s  copilot_wall={copilot_wall}s  "
-          f"overlap_saved~={round(wall_sum + copilot_wall - wall_clock_s, 1)}s "
+          f"request_wall_sum={round(wall_sum, 1)}s  copilot_wall={copilot_wall}s "
           f"(usersim={round(usersim_wall_sum, 1)}s judge={round(judge_wall_sum, 1)}s)")
-    print("  (wall_clock = true elapsed; request_wall_sum = sum of per-request wall "
-          "[includes server queue wait when --concurrency>1]; gen_compute = Ollama "
-          "queue-free eval time; copilot_wall = user-sim + judge GPU-idle time)")
+    print("  (wall_clock = true elapsed; copilot_wall = GPU-idle user-sim+judge time; "
+          "gen_compute = Ollama queue-free eval; request_wall_sum = per-request wall, "
+          "queue-inflated at concurrency>1. The concurrency speedup is the wall_clock "
+          "delta between --concurrency 1 and >1, NOT a single-run figure.)")
     if args.slice_by and slice_groups:
         print(f"  by meta.{args.slice_by}:")
         for gv in sorted(slice_groups):
