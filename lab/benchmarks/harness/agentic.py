@@ -87,11 +87,13 @@ SUPPORT_SYSTEM = """You are a customer-support email agent. Follow the policy st
 POLICY:
 {policy}
 
-You have three tools: search_kb, reply, and escalate. Always search the knowledge
-base before replying with facts. Reply only with facts from the knowledge base or
-the conversation - never invent prices, dates, or policies. Escalate requests that
-need a human (refunds, cancellations, account changes, legal) OR when the knowledge
-base lacks the answer. Call one tool at a time."""
+You have four tools: search_kb, ask, reply, and escalate. Always search the
+knowledge base before replying with facts. Reply only with facts from the
+knowledge base or the conversation - never invent prices, dates, or policies. If
+the request is AMBIGUOUS (you cannot tell what the customer means or which item
+they mean), use ask to clarify BEFORE you reply or escalate - do not guess.
+Escalate requests that need a human (refunds, cancellations, account changes,
+legal) OR when the knowledge base lacks the answer. Call one tool at a time."""
 
 HOME_SYSTEM = """You are a smart-home assistant that controls household devices. Follow the policy strictly.
 
@@ -130,6 +132,14 @@ SUPPORT_TOOLS = [
         "parameters": {"type": "object", "properties": {
             "reason": {"type": "string", "description": "why this needs a human"}},
             "required": ["reason"]}}},
+    {"type": "function", "function": {
+        "name": "ask",
+        "description": "Ask the customer a clarifying question when the request is "
+                       "ambiguous. Use this BEFORE replying or escalating - do not "
+                       "guess what they mean.",
+        "parameters": {"type": "object", "properties": {
+            "question": {"type": "string", "description": "the clarifying question"}},
+            "required": ["question"]}}},
 ]
 
 HOME_TOOLS = [
@@ -215,7 +225,7 @@ def _search_kb(state: dict, args: dict) -> str:
 
 def _init_support(scenario: dict) -> dict:
     meta = scenario.get("meta", {})
-    return {"kb": meta.get("kb", []), "replies": [], "escalated": None}
+    return {"kb": meta.get("kb", []), "replies": [], "escalated": None, "asked": []}
 
 
 def _apply_support(name: str, args: dict, state: dict) -> tuple[str, str]:
@@ -228,6 +238,10 @@ def _apply_support(name: str, args: dict, state: dict) -> tuple[str, str]:
         reason = str(args.get("reason", ""))
         state["escalated"] = reason
         return f"[escalated to human: {reason}]", "handed off"
+    if name == "ask":
+        q = str(args.get("question", args.get("text", "")))
+        state["asked"].append(q)
+        return q, "asked"
     if name == "search_kb":
         return "", _search_kb(state, args)
     return "", f"ERROR: unknown tool {name!r}"
@@ -295,7 +309,7 @@ class ToolSet:
 
 SUPPORT_TOOLSET = ToolSet(
     name="support", system=SUPPORT_SYSTEM, tools=SUPPORT_TOOLS,
-    behaviors={"search_kb": "act", "reply": "respond", "escalate": "respond_terminal"},
+    behaviors={"search_kb": "act", "ask": "respond", "reply": "respond", "escalate": "respond_terminal"},
     init_state=_init_support, apply=_apply_support, context=_context_none)
 
 HOME_TOOLSET = ToolSet(

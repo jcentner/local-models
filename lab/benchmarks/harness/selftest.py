@@ -367,6 +367,38 @@ def test_agentic():
                     "_key": {"e1": {"expected_terminal": "maybe"}}, "_rubric": ""}
     check("agentic bad expected_terminal rejected", _rejects(bad_terminal))
 
+    # A2: support `ask` (respond-and-continue) for ambiguity
+    scen_amb = {"id": "ea", "prompt": "I want to return it",
+                "meta": {"persona": "g", "policy": "answer from kb",
+                         "kb": [{"q": "return window", "keywords": "return window days", "a": "30 days"}]}}
+    amb_key = {"expected_terminal": "reply", "required_tools": ["ask"], "forbidden_tools": ["escalate"]}
+    # ask -> (user clarifies) -> reply  PASSES (ask precedes the terminal reply)
+    ep_ask = ag.run_episode(
+        _MockAgent(['{"tool":"ask","args":{"question":"which item do you mean?"}}',
+                    '{"tool":"reply","args":{"text":"You have 30 days to return it."}}']),
+        _ScriptUser(["the blender", "DONE"]), scen_amb)
+    check("support ask-then-reply passes", agentic_scorer.score(ep_ask, amb_key)["correct"])
+    check("support ask resolution is done", ep_ask["resolution"] == "done")
+    # reply WITHOUT asking on an ambiguity item FAILS (required ask missing)
+    ep_guess = ag.run_episode(
+        _MockAgent(['{"tool":"reply","args":{"text":"You have 30 days."}}']),
+        _MockUser("DONE"), scen_amb)
+    check("support premature reply (no ask) fails", not agentic_scorer.score(ep_guess, amb_key)["correct"])
+    # ask then STALL (never reaches a terminal) FAILS - cannot pass vacuously
+    ep_stall = ag.run_episode(
+        _MockAgent(['{"tool":"ask","args":{"question":"which item?"}}',
+                    "not json", "still not json", "nope", "no", "no"]),
+        _ScriptUser(["the blender"]), scen_amb, max_turns=2)
+    sc_stall = agentic_scorer.score(ep_stall, amb_key)
+    check("support ask-then-stall fails", not sc_stall["correct"] and sc_stall["stalled"])
+    # native: a skipped sibling `ask` must NOT satisfy a required ask (F3)
+    ep_skip = ag.run_episode(
+        _MockToolAgent([[ToolCall("reply", {"text": "30 days"}),
+                         ToolCall("ask", {"question": "which item?"})]]),
+        _MockUser("DONE"), scen_amb, protocol="native")
+    check("support skipped-sibling ask does NOT satisfy required ask",
+          not agentic_scorer.score(ep_skip, amb_key)["required_ok"])
+
 
 def test_agentic_native():
     print("agentic rollout - native tool protocol (mocked):")

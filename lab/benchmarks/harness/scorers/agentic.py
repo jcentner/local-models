@@ -7,6 +7,11 @@ tool-set families, dispatched on the episode's ``toolset``:
 **support** (email-triage) - act/ask/escalate judgment:
 - **terminal action**: did the agent end the right way (reply vs escalate)?
 - **required / forbidden tools**: must-call (e.g. search_kb) used, must-not avoided.
+  Uses APPLIED tools (skipped native siblings don't satisfy a requirement);
+  forbidden counts ATTEMPTS (incl. skipped).
+- **ambiguity**: when ``required_tools`` includes ``ask``, an applied ``ask`` must
+  precede the final reply/escalate; a stalled episode (``no_response``/``max_turns``)
+  fails - "ask then stall" cannot pass vacuously.
   Key row: ``{"id","expected_terminal":"reply"|"escalate","required_tools":[...],
   "forbidden_tools":[...]}``
 
@@ -51,23 +56,42 @@ def _score_support(episode: dict, key: dict) -> dict:
     else:
         terminal_ok = False
 
-    used = set(episode.get("tools_used", []))
+    calls = episode.get("tool_calls", [])
+    applied = [c for c in calls if not c.get("skipped")]           # F3: native skipped
+    applied_names = {c["name"] for c in applied}                   # siblings don't satisfy
+    all_names = set(episode.get("tools_used", []))                 # required/ordering
     required = set(key.get("required_tools", []))
     forbidden = set(key.get("forbidden_tools", []))
-    required_ok = required.issubset(used)
-    forbidden_ok = used.isdisjoint(forbidden)
+    required_ok = required.issubset(applied_names)
+    forbidden_ok = all_names.isdisjoint(forbidden)                 # ATTEMPTS count (incl. skipped)
 
-    malformed = sum(1 for tc in episode.get("tool_calls", []) if tc.get("name") == "_malformed")
-    correct = bool(terminal_ok and required_ok and forbidden_ok)
+    # F1: `ask` is respond-and-continue, not a terminal. An episode that stalls
+    # (never resolved with reply/escalate) must not pass vacuously.
+    resolution = episode.get("resolution")
+    stalled = resolution in {"no_response", "max_turns"}
+
+    # When the item demands a clarifying ask (ambiguity), an applied `ask` must
+    # precede the final reply/escalate terminal.
+    ordering_ok = True
+    if "ask" in required:
+        term_idx = next((i for i in range(len(applied) - 1, -1, -1)
+                         if applied[i].get("name") in {"reply", "escalate"}), None)
+        ask_idx = next((i for i, c in enumerate(applied) if c.get("name") == "ask"), None)
+        ordering_ok = ask_idx is not None and term_idx is not None and ask_idx < term_idx
+
+    malformed = sum(1 for tc in calls if tc.get("name") == "_malformed")
+    correct = bool(terminal_ok and required_ok and forbidden_ok and ordering_ok and not stalled)
 
     return {
         "correct": correct,
         "terminal_ok": terminal_ok,
         "required_ok": required_ok,
         "forbidden_ok": forbidden_ok,
+        "ordering_ok": ordering_ok,
+        "stalled": stalled,
         "expected_terminal": expected,
-        "resolution": episode.get("resolution"),
-        "tools_used": sorted(used),
+        "resolution": resolution,
+        "tools_used": sorted(all_names),
         "malformed_steps": malformed,
     }
 
