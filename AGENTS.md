@@ -61,6 +61,31 @@ The agent (Copilot) drives research and maintenance. The local models are the
 - Propose new questions to investigate and sources to find. Don't auto-rewrite
   large swaths; surface findings and confirm.
 
+## Implementation & review loop (code changes)
+
+For any non-trivial **code** change (harness, `tools/`, `scripts/`), work the
+commit-as-you-go + background cross-model review loop. **Each commit — including
+fix commits that fold in a prior review's findings — is itself reviewed on the
+next turn.** The cadence:
+
+1. Implement one focused step.
+2. **Commit it** (small, descriptive multi-`-m` body).
+3. **Kick off a READ-ONLY background review of that commit** with a *different*
+   model than authored it (cross-model critique; we author with the working
+   model, review with `gpt-5.5`). Write to `tmp/review-<topic>.md`.
+4. **Start the next step while the review runs** — don't block on it.
+5. On return: **validate each finding** (confirm with file:line, or push back),
+   **fix the real ones**, and **commit the fixes**.
+6. That fix commit is the next review target → repeat from 3.
+
+Mechanism + the read-only invocation live in the global
+`copilot-cli-background-tasks` skill. Rules: never give a reviewer
+`--allow-all-tools` or write access (`--deny-tool 'write'`); give it scope +
+commit SHAs + "read these files first" (it has no chat context); run
+`selftest`/dry-runs **here**, not trusting the reviewer's sandbox. This
+supersedes any earlier "don't re-review fix commits" note — the rolling cadence
+reviews them for free, so we always do.
+
 ## Conventions
 
 ### `wiki/index.md`
