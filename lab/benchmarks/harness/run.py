@@ -565,7 +565,7 @@ def main(argv: list[str] | None = None) -> int:
     print("  (observed_pass@k = >=1 correct in k [best-of-k capability ceiling]; "
           "pass^k = ALL k correct [tau-bench reliability]; flaky = items inconsistent "
           "across k; sem = standard error of the per-item mean)")
-    compute_str = f"{round(compute_sum, 1)}s" if compute_sum > 0 else "n/a(non-ollama)"
+    compute_str = f"{round(compute_sum, 1)}s" if compute_sum > 0 else "n/a(no eval timing)"
     print(f"  wall_clock={wall_clock_s}s  gen_compute={compute_str}  "
           f"request_wall_sum={round(wall_sum, 1)}s  copilot_wall={copilot_wall}s  "
           f"overlap_saved~={round(wall_sum + copilot_wall - wall_clock_s, 1)}s "
