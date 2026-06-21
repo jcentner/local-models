@@ -1,7 +1,7 @@
 ---
 title: Backlog / status board
 tags: [backlog, planning, index]
-updated: 2026-06-20
+updated: 2026-06-21
 ---
 
 # Backlog / status board
@@ -11,11 +11,11 @@ The single "what's next" view. Each item links to its authoritative page (the
 detail to the linked experiment/model page, and tick items here as they land.
 
 ## Now (in progress)
-- *(nothing actively running)* — last completed: the [gemma-4-12B v2 quant sweep](../lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep/README.md) (**Q3_K_M f16 full-GPU wins**; 11/12 home-automation, 4/4 code-basics, ~32 tok/s).
+- *(nothing actively running)* — last completed: the **2026-06-21** batch — [home-automation v0.4](../benchmarks/home-automation/README.md) (h5 grounding + h19 compound double-confirm), the [think/no-think axis](log.md) recorded in results.csv (schema v4), and the MiniCPM5-1B email-triage no-think promotion + e5 parity.
 
 ## Next (queued / staged)
-- **MiniCPM5 agentic suite at k=3 (gpt-5.5 user-sim, XML fallback)** — CONFIRMED runnable: SGLang WITHOUT `--tool-call-parser` (the `minicpm5` parser swallows the XML) + harness `parse_xml_tool_calls()`; `--no-think` works over SGLang. ET v0.2 **no-think** ran 2026-06-21 = **obs@3 0.917 / pass^3 0.417 / flaky 6/12** (capable best-of-3, unreliable) — **promoted to results.csv** with `think=off` (reconstructed row, `tmp/promote_minicpm5_et_run.py`: capability metrics exact from the raw; perf fields blank — the raw predates the `perf`/`think` fields; config = documented-recipe defaults). **e5 parity applied** (`tmp/apply_minicpm5_e5_parity.py`, matching the qwen v0.2 e5 post-correction): only s2 flipped (it delivered a sound KB-grounded reply; s0 genuinely stalled, s1 escalated) → avg 0.667→0.694, sem 0.1005→0.0959, headline obs/pass^3/flaky unchanged. **Still pending:** HA v0.4 (not yet run for MiniCPM5), and the think re-runs once "default to thinking" is set. SGLang recipe + flags in [the experiment](../lab/experiments/2026-06-20-minicpm5-sglang-controlled/README.md). (Commit hygiene: `wiki/models/minicpm5-1b.md` had parallel-agent uncommitted edits 2026-06-21 — don't clobber.)
-- **Re-baseline all models on home-automation v0.4** (k=3, **with `--judge-messages`** so the h5/h17/h18 message content is graded) — the v0.4 grounding + double-confirm redesign means prior h5 scores aren't comparable; this **subsumes** re-running any model still on an older HA version (qwen/gemma are on v0.3; MiniCPM5 ET done, HA pending). v0.4 shipped 2026-06-21 (see Recently done). The original "review refuse scoring" question was **resolved** by that redesign.
+- **MiniCPM5 agentic suite — HA v0.4 + think re-runs** — ET v0.2 no-think is done (in results.csv; see Recently done). **Pending:** home-automation v0.4 (not yet run for MiniCPM5) and the think re-runs once the thinking-default policy is set. SGLang recipe (forward-useful): serve WITHOUT `--tool-call-parser` (the `minicpm5` parser swallows the XML) + harness `parse_xml_tool_calls()`; `--no-think` works — [experiment](../lab/experiments/2026-06-20-minicpm5-sglang-controlled/README.md).
+- **Re-baseline all models on home-automation v0.4** (k=3, **with `--judge-messages`** so the h5/h17/h18 message content is graded) — the v0.4 grounding + double-confirm redesign means prior h5 scores aren't comparable; this **subsumes** re-running any model still on an older HA version (qwen/gemma are on v0.3; MiniCPM5 ET done, HA pending).
 - **[lfm2.5-colbert tool-selection](../lab/experiments/2026-06-20-lfm2.5-colbert-tool-selection/README.md)** — the router-aide eval (N tools → top-k), staged, not run.
 - **MiniCPM5 native tool-parser on a newer SGLang build** — `--tool-call-parser minicpm5` is broken in 0.5.13 ([sglang findings](stacks/sglang.md)); current path uses the harness XML fallback.
 
@@ -38,9 +38,10 @@ detail to the linked experiment/model page, and tick items here as they land.
 - Candidate experiments not yet scoped: [lab/experiments/README.md](../lab/experiments/README.md#candidate-experiments).
 
 ## Recently done (rolling, last few)
+- **MiniCPM5-1B email-triage no-think promoted to results.csv** (`think=off`) + **e5 parity** (s2 flip, matches the qwen v0.2 post-correction) — avg 0.667→0.694, headline obs/pass^3/flaky unchanged (2026-06-21).
+- **Journal backfill** (3 catch-up entries) + prompt/skill doc sync (2026-06-21).
 - **Record think/no-think axis (results.csv schema v4 + raw + run-viewer)** — new `think` column (`on|off|default`) after `sampling`; harness `think_label()` + both raw writes; 12 rows back-annotated (`tmp/migrate_results_v4.py`); viewer surfaces it in the header/pill + keys the variant matrix on (model, think); docs synced; selftest 175 ALL PASS. Unblocks thinking-as-default comparability (2026-06-21).
 - **home-automation v0.4**: split the muddled h5 into **grounding** (h5) + **compound double-confirm** (h19); scorer `required_any` (say∨ask) + list-form `judge_message.tool` + skipped-sibling `forbidden_device_attempts` + list-valued `expected_state`; gpt-5.5 cross-review folded; selftest 171 ALL PASS (2026-06-21).
-- **gemma-4-12B v2 quant × KV × offload sweep** (5 cells): Q3_K_M f16 full-GPU wins (11/12 home-automation, 4/4 code-basics, 32 tok/s); q4_0 KV costs quality; Q4 only fits full-GPU via q4_0 KV or offload (2026-06-20).
 - [stacks/podman-gpu.md](stacks/podman-gpu.md) portable GPU-container setup; llama.cpp container-verified (2026-06-20).
 - gemma-4 ingest pivoted to **v2-only** + 5-cell sweep staged (2026-06-20).
 - MiniCPM5-1B SGLang controlled re-test: 0/6 decision-reasoning, 7/12 home-automation, 2/5 email-triage (2026-06-20).
