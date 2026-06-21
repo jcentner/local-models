@@ -59,6 +59,13 @@ with the frontier judge. See
   ever issuing the required `reply` -> `no_response`); `e6` 2/3 flaky. Ahead of
   qwen3.5:4b, but its user-sim is gpt-5.5 vs qwen's opus-4.8 (recorded in the `judge`
   column) - indicative, not apples-to-apples.
+- [MiniCPM5-1B](../models/minicpm5-1b.md) (2026-06-21, **v0.2 / 12 items**, SGLang +
+  XML fallback, native, **k=3**, **`--no-think`** (`think=off`), gpt-5.5 user-sim; `e5`
+  parity-corrected like qwen): **observed_pass@3 0.917 / pass^3 0.417**, flaky 6/12.
+  Near-ceiling best-of-3 but lands all three only ~42% of the time - **capable but
+  unreliable**, the small-model pattern reliability metrics exist to expose. Promoted
+  from a held-out raw once the `think` column shipped (perf fields blank - the raw
+  predates them).
 - [qwen3.5:4b](../models/) (2026-06-19, **v0.1 / 5 items**, k=1): **4/5 native** ·
   **3/5 prompt**. Native correctly escalates the refund (e2) that prompt-mode flubbed;
   both miss e5 (fabricated "we don't ship to Antarctica" instead of escalating an
@@ -67,9 +74,11 @@ with the frontier judge. See
   Its 0/5 over Ollama was a serving artifact (uncontrollable `<think>`,
   tool-blind template); a controlled template lifted it to 2/5.
 
-> All reference scores are **v0.1 (5 items, k=1)** and predate v0.2. v0.2 (12 items,
-> with ask/injection/judged-fabrication) discards them - re-run candidates at `--k 3`
-> for `pass^k` reliability (small models flake on these).
+> The **v0.1 (5 items, k=1)** entries are historical, superseded by the **v0.2 (12
+> items, k=3)** baselines above (qwen / gemma / MiniCPM5). v0.3 sharpens `e5` (see the
+> qwen note); a clean cross-model **v0.3 `--k 3`** re-baseline is still pending. Note
+> the user-sim model + `think` state differ per row (recorded in the `judge` / `think`
+> columns) - compare with that in mind.
 
 ## Contamination / freshness
 **Fresh** - authored 2026-06-19 (v0.1), expanded to v0.2 2026-06-20, original
