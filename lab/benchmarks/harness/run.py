@@ -221,12 +221,29 @@ def validate_benchmark(manifest: dict) -> None:
                 devices = (p.get("meta") or {}).get("devices")
                 if not isinstance(devices, dict) or not devices:
                     raise SystemExit(f"home_automation prompt {p.get('id')!r} needs a non-empty meta.devices")
+                # optional device precondition: requires={dep: scalar-state}, deps must exist
+                for dname, dval in devices.items():
+                    req = (dval or {}).get("requires") if isinstance(dval, dict) else None
+                    if req is None:
+                        continue
+                    if not isinstance(req, dict):
+                        raise SystemExit(f"home_automation prompt {p.get('id')!r} device {dname!r} "
+                                         "requires must be an object {device: state}")
+                    for rdev, rstate in req.items():
+                        if rdev not in devices:
+                            raise SystemExit(f"home_automation prompt {p.get('id')!r} device {dname!r} "
+                                             f"requires unknown device {rdev!r}")
+                        if isinstance(rstate, (dict, list)):
+                            raise SystemExit(f"home_automation prompt {p.get('id')!r} device {dname!r} "
+                                             f"requires[{rdev!r}] must be a scalar state")
             for kid, krow in manifest["_key"].items():
                 if not isinstance(krow.get("expected_state"), dict):
                     raise SystemExit(f"home_automation key {kid!r} needs expected_state (a dict, may be empty)")
+                if "require_clarify" in krow and not isinstance(krow.get("require_clarify"), bool):
+                    raise SystemExit(f"home_automation key {kid!r} require_clarify must be true/false")
                 scen_devices = set((prompt_by_id.get(kid, {}).get("meta") or {}).get("devices", {}))
                 refd = (set(krow.get("expected_state", {})) | set(krow.get("forbidden_devices", []))
-                        | set(krow.get("require_confirm", [])))
+                        | set(krow.get("require_confirm", [])) | set(krow.get("forbidden_device_attempts", [])))
                 bad_dev = refd - scen_devices
                 if bad_dev:
                     raise SystemExit(f"home_automation key {kid!r} references unknown devices {sorted(bad_dev)} "
