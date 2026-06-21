@@ -124,8 +124,9 @@ def test_judge():
         def __init__(self, stdout, stderr=""):
             self.stdout, self.stderr, self.returncode = stdout, stderr, 0
 
-    # valid JSON judgement -> llm_judge parses + thresholds
-    judge = judge_copilot.CopilotCLIJudge(model="claude-opus-4.8")
+    # valid JSON judgement -> llm_judge parses + thresholds. tries=1 so the empty/Error
+    # raise checks below fail fast without incurring real retry backoff sleeps.
+    judge = judge_copilot.CopilotCLIJudge(model="claude-opus-4.8", tries=1)
     with mock.patch.object(subprocess, "run", return_value=_Proc('{"score": 8, "rationale": "good"}')):
         res = llm_judge.score("task", "response", "rubric", judge, pass_threshold=6.0)
     check("judge JSON parsed + passes threshold", res.get("correct") is True and res.get("score") == 8)
@@ -217,6 +218,29 @@ def test_copilot_retry():
         except RuntimeError:
             raised = True
     check("exhausted transient retries raises after tries", raised and n["c"] == 3)
+
+    # a SUCCESSFUL reply that happens to contain transient keywords must NOT be retried
+    # (real model text is never keyword-scanned).
+    n["c"] = 0
+    def _ok_with_kw(*a, **k):
+        n["c"] += 1
+        return _Proc("Sure, I can temporarily turn that off (see error 429 earlier).")
+    with mock.patch.object(subprocess, "run", side_effect=_ok_with_kw):
+        out = judge_copilot.run_copilot_cli(["copilot"], 5, tries=3, backoff_base=0.0)
+    check("successful stdout with transient keyword not retried", out.startswith("Sure") and n["c"] == 1)
+
+    # empty stdout + a REAL (non-transient) stderr error = permanent -> fail fast
+    n["c"] = 0
+    def _empty_real_err(*a, **k):
+        n["c"] += 1
+        return _Proc("", "fatal: config file missing")
+    raised = False
+    with mock.patch.object(subprocess, "run", side_effect=_empty_real_err):
+        try:
+            judge_copilot.run_copilot_cli(["copilot"], 5, tries=3, backoff_base=0.0)
+        except RuntimeError:
+            raised = True
+    check("empty stdout + real stderr fails fast (no retry)", raised and n["c"] == 1)
 
 
 def test_podman_sandbox():

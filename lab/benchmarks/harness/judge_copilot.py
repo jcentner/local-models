@@ -35,13 +35,21 @@ _TRANSIENT_SIGNS = ("authentication failed", "rate limit", "rate_limit", "429",
 
 
 def _classify_copilot(out: str, err: str) -> str:
-    """Return 'ok' | 'transient' | 'permanent' for a finished copilot run."""
-    blob = (out + " " + err).lower()
-    if any(s in blob for s in _TRANSIENT_SIGNS):
+    """Return 'ok' | 'transient' | 'permanent' for a finished copilot run.
+
+    Only DIAGNOSTIC streams are keyword-scanned. A successful response is real model
+    text (a user-sim reply or judge JSON) and may legitimately contain words like
+    "temporarily" or "429", so it is NEVER scanned: non-empty stdout that is not a
+    CLI ``Error:`` line is returned as-is.
+    """
+    if out and not out.startswith("Error:"):
+        return "ok"
+    diag = (err + " " + out).lower()   # out is "" or an "Error: ..." CLI line here
+    if any(s in diag for s in _TRANSIENT_SIGNS):
         return "transient"
-    if out.startswith("Error:"):    # invalid model/config: exits 0, prints Error: on stdout
-        return "permanent"
-    return "ok" if out else "transient"   # empty stdout = a blip; retry
+    if out.startswith("Error:") or err:
+        return "permanent"    # a real diagnostic with no transient marker -> fail fast
+    return "transient"        # empty stdout + empty stderr = the classic silent blip
 
 
 def run_copilot_cli(cmd: list[str], timeout: int, tries: int = 3,
@@ -67,11 +75,11 @@ def run_copilot_cli(cmd: list[str], timeout: int, tries: int = 3,
                 return out
             if kind == "permanent":
                 raise RuntimeError(f"{label} permanent error (not retried): {out!r}")
-            last = err or out or "empty output"
+            last = f"stdout={out!r} stderr={err!r}" if (out or err) else "empty output"
         if attempt < tries:
             delay = backoff_base * (2 ** (attempt - 1))
             time.sleep(delay + random.uniform(0, 0.5 * delay))
-    raise RuntimeError(f"{label} failed after {tries} tries (transient): {last!r}")
+    raise RuntimeError(f"{label} failed after {tries} tries (transient): {last}")
 
 
 @dataclass
