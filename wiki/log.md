@@ -718,3 +718,4 @@ that staleness creep in: the backlog was a first-class artifact (referenced in
 index.md, its own commit pattern) but **undocumented in AGENTS.md** - added a
 `### wiki/backlog.md` convention codifying it as the living, prunable forward queue
 (vs the append-only log/journal). Docs/backlog only; no code or results change.
+## [2026-06-21] note | Tool-protocol policy: default native, do not run both (/benchmark prompt + backlog)

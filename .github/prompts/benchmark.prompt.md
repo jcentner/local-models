@@ -82,9 +82,14 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model <api-model> \
   registered-model benchmarks like BFCL.
   - **`--tool-protocol prompt|native`** (default `prompt`): `prompt` injects a
     JSON tool protocol in the system message (any model, day one); `native` uses
-    the provider's function-calling (`message.tool_calls`). Prefer **`native`**
-    for tool-capable models — it's the fair path and what recent baselines use;
-    some models *require* it (e.g. MiniCPM5 via SGLang + the harness XML fallback).
+    the provider's function-calling (`message.tool_calls`). **Policy (decided
+    2026-06-21): default to `native`; run `prompt` only as a fallback when native
+    is unavailable** (tool-blind template / no function-calling). Native is the
+    faithful test (a deployed home-agent uses real tool-calling); some models
+    *require* it (e.g. MiniCPM5 via SGLang + the harness XML fallback). **Don't
+    run both** — the prompt-vs-native contrast is a banked, model+task-dependent
+    finding; pick one (native), and only run both when the protocol contrast is
+    itself the research question.
   - **`--judge-messages`** (default off): an opt-in hybrid layer that grades one
     message's text with the frontier judge as an **AND gate** over the
     deterministic result (catches verbal-only fabrication/injection a state check
