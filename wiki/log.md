@@ -655,3 +655,20 @@ wiki/benchmarks READMEs, eval-reliability, /benchmark prompt, run-viewer README)
 The think write-path (run.py `think_label` + selftest) landed in 94e1d04 (swept into
 a parallel-agent commit); data+viewer in 025dbff, docs in 5cc009b. Unblocks the
 "thinking-as-default" policy: think vs no-think rows are now comparable.
+
+## [2026-06-21] bench | Promote MiniCPM5-1B email-triage no-think run to results.csv (think=off)
+The MiniCPM5-1B ET v0.2 no-think run (raw 20260621-085733, SGLang + XML fallback,
+native, gpt-5.5 user-sim, k=3) had been held OUT of results.csv to avoid an
+unlabeled-think row before the `think` column existed. Now that v4 ships the column,
+promoted it with **`think=off`** (`tmp/promote_minicpm5_et_run.py`): **observed_pass@3
+0.917 / pass^3 0.417 / avg 0.667 / flaky 6/12 / sem 0.1005** (12 items) - capability
+metrics recomputed EXACTLY from the raw via the harness `reliability_metrics`. A
+**capable-but-unreliable** profile: near-ceiling best-of-3 but lands all three only
+~42% of the time - the small-model reliability pattern. Reconstruction limits (raw
+predates the `perf`/`think` fields): token/throughput fields left **blank** (honest,
+not zero); config = documented-recipe defaults (t=1.0, num_ctx 8192, num_predict 4096,
+seed none). Row labeled **v0.2** (the version it ran against) and NOT re-scored under
+the v0.3 e5 fix - unlike the e5-post-corrected qwen v0.2 row; MiniCPM5 e5 = s0 stall /
+s1 escalate / s2 reply, so parity would only nudge avg 0.667->0.694 (headline metrics
+unchanged) - flagged in the backlog. Model page (ET-v0.2-k3 reliability bullet) +
+backlog ticked. Still pending: HA v0.3 (not yet run) + the think re-runs.

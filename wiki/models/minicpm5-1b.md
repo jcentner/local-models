@@ -266,6 +266,12 @@ of the confounded 2026-06-19 Ollama runs.
   read-only / **ambiguity→ask**, and fails refuse / scene / compound. **Its agentic
   tool-use tilt is real** — a plausible home-agent *tool-executor* even if not the
   deliberation brain.
+- **Reliability (email-triage v0.2, 12 items, k=3, No-Think, gpt-5.5 user-sim):**
+  **observed_pass@3 0.917 / pass^3 0.417**, flaky **6/12** (`think=off`). It can
+  reach the right outcome on almost every item *given three tries* (high best-of-k
+  ceiling) but lands it on **all** three only ~42% of the time — **capable but
+  unreliable**, exactly the small-model pattern reliability metrics exist to expose
+  (the headline 2/5 above was the older v0.1 5-item k=1 set).
 
 Writeup: [lab/experiments/2026-06-20-minicpm5-sglang-controlled](../../lab/experiments/2026-06-20-minicpm5-sglang-controlled/README.md).
 
