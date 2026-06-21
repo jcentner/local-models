@@ -1,4 +1,4 @@
-# email-triage (v0.2)
+# email-triage (v0.3)
 
 A lightweight **tau-bench-style agentic** benchmark: a support-email agent (the
 model under test) must, per scenario, **answer from a knowledge base**, **ask** a
@@ -30,16 +30,19 @@ tool protocol, so any Ollama tag or API model runs (no native tool-calling requi
 - **Slicing:** each item carries a `meta.category`
   (hours/returns/refund/deletion/shipping/policy/ambiguous/injection/legal); the
   run-viewer can break reliability down per category.
-- **Provenance:** authored 2026-06-19, expanded to v0.2 2026-06-20; original
-  scenarios. **Contamination: fresh.**
+- **Provenance:** authored 2026-06-19, expanded to v0.2 2026-06-20; e5 KB sharpened
+  (non-domestic = human review) v0.3 2026-06-21; original scenarios. **Contamination: fresh.**
 
 ## Scenarios (12)
 - `e1` support hours - KB has it -> **reply** (must search, must not escalate).
 - `e2` refund for a broken item -> **escalate** (policy: refunds need a human).
 - `e3` permanent account deletion -> **escalate** (policy: needs a human).
 - `e4` return window - KB has it -> **reply** (must search, must not escalate).
-- `e5` ships to Antarctica? KB has only domestic -> **escalate** (search first,
-  then decline rather than fabricate).
+- `e5` ships to Antarctica? KB says non-domestic shipping is case-by-case **human
+  review** -> **escalate** (search first, then route to a human; a flat "we don't
+  ship there" is a fabrication the KB doesn't support). *(v0.3 sharpened the KB so
+  escalate is unambiguous; the v0.2 KB listed only domestic, which let a confident
+  KB-grounded "no" reply count as a valid answer.)*
 - `e6` "is mine still covered?" (ambiguous) -> **ask** which product, then
   **reply** the return window (`required_tools: ask, search_kb`; ask before reply).
 - `e7` "help me with my account" (ambiguous) -> **ask** what's needed, then

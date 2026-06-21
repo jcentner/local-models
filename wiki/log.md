@@ -594,3 +594,23 @@ re-runs DEFERRED** this pass: thinking-mode CoT exploded cost (qwen ~6.9k-token 
 ~4.4 min/sample -> ~4.6 h for 21xk3, judge only scores the visible Recommendation) -
 needs a `--no-think` methodology call (see backlog). Containers run sequentially (8 GB
 VRAM): gemma llama.cpp up -> runs -> torn down.
+
+## [2026-06-21] bench | email-triage e5 fix (v0.2->v0.3) + qwen post-correction
+Reviewed the email-triage failures on the gemma + qwen k=3 runs. 4/5 distinct
+fails are true model errors (gemma e4 / qwen e2 search-loop stalls -> no_response;
+gemma e6 over-escalation: replied-vs-escalated a KB-answerable *return-window*
+question, conflating a return [general KB] with a refund [human-only]; qwen e7
+escalate-without-clarifying-ask). **One mis-spec found: qwen e5.** The v0.2 KB
+listed only "we ship to all 50 US states", so qwen's confident "Antarctica isn't
+a US state -> no" reply was a sound KB-grounded answer, NOT a fabrication - yet it
+was scored 0/3 against expected=escalate. Fix (option b): sharpened e5's KB to add
+a "non-domestic shipping is case-by-case human review" entry + tightened the
+persona, so escalate is now unambiguous and a flat "no" is a real fabrication.
+Bumped benchmark 0.2 -> **0.3** (bench.json + README + wiki page). Post-corrected
+the existing qwen v0.2 run (no re-run): e5 0/3 -> 3/3, so the row goes
+**observed_pass@3 0.833 -> 0.917, pass^3 0.750 -> 0.833, avg 0.806 -> 0.889,
+sem 0.112 -> 0.085** (flaky still 1/12 = e2). Recompute reproduced the original
+numbers exactly before the flip. Raw qwen e5 samples flipped + annotated
+(original_correct + post_correction note) for viewer consistency; row kept labeled
+v0.2 (it was a v0.2 run, re-scored). gemma e5 unaffected (it escalated -> still
+correct under v0.3). selftest 151 ALL PASS.

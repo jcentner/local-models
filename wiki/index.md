@@ -41,7 +41,7 @@ The non-generative support models for the home agent — see [concepts/aide-mode
 - [benchmarks/humaneval-plus.md](benchmarks/humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk, pair with LiveCodeBench.
 - [benchmarks/decision-reasoning.md](benchmarks/decision-reasoning.md) — authored decision-making/reasoning scenarios (**v0.2, 21 items** across 7 categories × 3 difficulty tiers + traps), opus-4.8-judged; v0.1 6-item runs: VibeThinker 1/6, MiniCPM5-1B 0/6 (re-run on v0.2 for `pass^k`).
 - [../benchmarks/code-basics/](../benchmarks/code-basics/README.md) — authored coding smoke test (`code_tests`, Podman sandbox); qwen3.5:4b 3/4.
-- [benchmarks/email-triage.md](benchmarks/email-triage.md) — authored **agentic** support set (**v0.2, 12 scenarios**: answer-from-KB vs ask vs escalate, ambiguity→ask, prompt-injection, judged fabrication; `support` toolset); model-agnostic rollout + Copilot user-sim. Re-run at `--k 3` (v0.1 numbers superseded).
+- [benchmarks/email-triage.md](benchmarks/email-triage.md) — authored **agentic** support set (**v0.3, 12 scenarios**: answer-from-KB vs ask vs escalate, ambiguity→ask, prompt-injection, judged fabrication; `support` toolset); model-agnostic rollout + Copilot user-sim. Re-run at `--k 3` (v0.1 numbers superseded).
 - [benchmarks/home-automation.md](benchmarks/home-automation.md) — authored **agentic** lighthouse set (**v0.3, 18 scenarios**): smart-home act/confirm/refuse with device-aware `ask.device` confirm, a dependency precondition, negation/conditional, injection-via-status, and judged refuse/confirm over a device world (`home_automation` toolset). Re-run at `--k 3` (v0.2 numbers superseded).
 
 ## Concepts
