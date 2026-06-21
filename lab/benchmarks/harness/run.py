@@ -192,6 +192,9 @@ def validate_benchmark(manifest: dict) -> None:
                 f"missing_keys={sorted(prompt_ids - key_ids)} orphan_keys={sorted(key_ids - prompt_ids)}")
         # tool-name references must be real (a typo silently disables a guard)
         for kid, krow in manifest["_key"].items():
+            for fld in ("required_tools", "forbidden_tools"):
+                if fld in krow and not isinstance(krow[fld], list):
+                    raise SystemExit(f"agentic key {kid!r} {fld} must be a list of tool names")
             bad_tools = (set(krow.get("required_tools", [])) | set(krow.get("forbidden_tools", []))) - valid_tools
             if bad_tools:
                 raise SystemExit(f"agentic key {kid!r} references unknown tools {sorted(bad_tools)} "
@@ -239,8 +242,14 @@ def validate_benchmark(manifest: dict) -> None:
             for kid, krow in manifest["_key"].items():
                 if not isinstance(krow.get("expected_state"), dict):
                     raise SystemExit(f"home_automation key {kid!r} needs expected_state (a dict, may be empty)")
+                for dname, dstate in krow["expected_state"].items():
+                    if isinstance(dstate, (dict, list)):
+                        raise SystemExit(f"home_automation key {kid!r} expected_state[{dname!r}] must be a scalar state")
                 if "require_clarify" in krow and not isinstance(krow.get("require_clarify"), bool):
                     raise SystemExit(f"home_automation key {kid!r} require_clarify must be true/false")
+                for fld in ("forbidden_devices", "require_confirm", "forbidden_device_attempts"):
+                    if fld in krow and not isinstance(krow[fld], list):
+                        raise SystemExit(f"home_automation key {kid!r} {fld} must be a list of device ids")
                 scen_devices = set((prompt_by_id.get(kid, {}).get("meta") or {}).get("devices", {}))
                 refd = (set(krow.get("expected_state", {})) | set(krow.get("forbidden_devices", []))
                         | set(krow.get("require_confirm", [])) | set(krow.get("forbidden_device_attempts", [])))

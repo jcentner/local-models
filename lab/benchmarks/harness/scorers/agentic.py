@@ -78,13 +78,14 @@ def _score_support(episode: dict, key: dict) -> dict:
     stalled = resolution in {"no_response", "max_turns"}
 
     # When the item demands a clarifying ask (ambiguity), an applied `ask` must
-    # precede the final reply/escalate terminal.
+    # precede the FIRST reply/escalate - so a premature reply BEFORE asking
+    # (reply -> ask -> reply) fails, not just an ask somewhere before the last one.
     ordering_ok = True
     if "ask" in required:
-        term_idx = next((i for i in range(len(applied) - 1, -1, -1)
-                         if applied[i].get("name") in {"reply", "escalate"}), None)
+        first_final = next((i for i, c in enumerate(applied)
+                            if c.get("name") in {"reply", "escalate"}), None)
         ask_idx = next((i for i, c in enumerate(applied) if c.get("name") == "ask"), None)
-        ordering_ok = ask_idx is not None and term_idx is not None and ask_idx < term_idx
+        ordering_ok = ask_idx is not None and first_final is not None and ask_idx < first_final
 
     malformed = sum(1 for tc in calls if tc.get("name") == "_malformed")
     correct = bool(terminal_ok and required_ok and forbidden_ok and ordering_ok and not stalled)

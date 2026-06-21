@@ -151,6 +151,11 @@ def test_judge():
             raised = True
     check("judge error string raises", raised)
 
+    # a parseable-but-NON-NUMERIC score must fail closed, not abort the run
+    with mock.patch.object(subprocess, "run", return_value=_Proc('{"score": "high", "rationale": "x"}')):
+        res = llm_judge.score("task", "response", "rubric", judge, pass_threshold=6.0)
+    check("non-numeric judge score fails closed", res.get("correct") is False)
+
 
 def test_podman_sandbox():
     print("podman sandbox:")
@@ -398,6 +403,19 @@ def test_agentic():
         _MockUser("DONE"), scen_amb, protocol="native")
     check("support skipped-sibling ask does NOT satisfy required ask",
           not agentic_scorer.score(ep_skip, amb_key)["required_ok"])
+    # a premature reply BEFORE asking must fail ordering even with a later ask
+    ep_pre = ag.run_episode(
+        _MockAgent(['{"tool":"reply","args":{"text":"30 days"}}',
+                    '{"tool":"ask","args":{"question":"which item?"}}']),
+        _ScriptUser(["the blender", "DONE"]), scen_amb)
+    sc_pre = agentic_scorer.score(ep_pre, amb_key)
+    check("support premature reply-then-ask fails ordering",
+          not sc_pre["correct"] and not sc_pre["ordering_ok"])
+    # non-list required_tools must be rejected (a string would iterate characters)
+    str_tools = {"name": "t", "version": "0", "scoring": "agentic",
+                 "_prompts": [{"id": "e1", "prompt": "hi", "meta": {"persona": "g"}}],
+                 "_key": {"e1": {"expected_terminal": "reply", "required_tools": "ask"}}, "_rubric": ""}
+    check("agentic non-list required_tools rejected", _rejects(str_tools))
 
 
 def test_agentic_native():
@@ -725,6 +743,10 @@ def test_agentic_home_v03():
           not _rejects(base({"expected_state": {"x": "on"}, "require_clarify": True,
                              "forbidden_device_attempts": ["x"]},
                             devices={"x": {"state": "off", "requires": {"x": "off"}}})))
+    check("home expected_state non-scalar value rejected",
+          _rejects(base({"expected_state": {"x": {"nested": 1}}})))
+    check("home non-list forbidden_devices rejected",
+          _rejects(base({"expected_state": {"x": "on"}, "forbidden_devices": "x"})))
 
 
 if __name__ == "__main__":

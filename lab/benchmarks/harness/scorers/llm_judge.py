@@ -52,5 +52,10 @@ def score(task: str, response: str, rubric: str, judge_client, pass_threshold: f
     out = judge_client.complete([{"role": "user", "content": prompt}], system=JUDGE_SYSTEM)
     judgement = parse_judgement(getattr(out, "text", str(out)))
     s = judgement.get("score")
-    judgement["correct"] = (s is not None and float(s) >= pass_threshold)
+    try:
+        judgement["correct"] = (s is not None and float(s) >= pass_threshold)
+    except (TypeError, ValueError):
+        # a parseable-but-non-numeric score must FAIL closed, never abort the run
+        judgement["correct"] = False
+        judgement.setdefault("rationale", "non-numeric judge score")
     return judgement
