@@ -1,7 +1,7 @@
 ---
 title: Gemma-4-12B v2 — Coding + Agentic (Fable5 × Composer2.5)
 tags: [model, coding, agentic, tool-use, dense, gemma4, thinking, tested]
-updated: 2026-06-20
+updated: 2026-06-21
 status: tested
 ---
 
@@ -94,6 +94,19 @@ without closing) and **email-triage v0.2 observed_pass@3 0.917 / pass^3 0.833** 
 indicative, not apples-to-apples. Caveat: we measured **v2's absolute capability**, not a
 base head-to-head — the author's relative ~3.5× claim is not something we tested. Full
 [sweep](../../lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep/README.md).
+
+**Re-baselined on the current suite (2026-06-21, +`--judge-messages`, gpt-5.5
+user-sim+judge):** **home-automation v0.4 observed_pass@3 0.947 / pass^3 0.632**
+(flaky 6/19; **hard fail h19** the compound double-confirm — gemma folds the
+back-door unlock into the alarm's single `ask` instead of a separate
+`ask.device=back_door_lock`) and **email-triage v0.3 observed_pass@3 1.000 / pass^3
+0.667** (flaky 4/12; e12 wrongly escalates 2/3). obs@k rose vs the v0.3/v0.2 rows
+but pass^k fell — **not a regression**: the harder v0.4/v0.3 content (the new h19)
++ the message-judge AND-gate, which the prior numbers never faced. **Still the
+strongest local agent here**, far ahead of MiniCPM5-1B at matched version+judge (HA
+pass^3 0.632 vs 0.210; ET 0.667 vs 0.333). The one systematic gap is **per-device
+structured confirmation on compound requests** (h19).
+[Re-baseline](../../lab/experiments/2026-06-21-gemma-4-12b-v04-rebaseline/README.md).
 
 ## Size & resource requirements (machine-independent)
 

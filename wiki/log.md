@@ -768,3 +768,14 @@ results row). Overlaps Copilot waits with GPU generation; does NOT parallelize t
 scoring unchanged.** Reviews folded 3 real findings (classifier false-transient,
 overstated `overlap_saved`, mislabel). selftest 171 → 215 ALL PASS. Plan:
 tmp/harness-concurrency-plan.md.
+
+## [2026-06-21] bench | gemma-4-12b v2 on home-automation v0.4 + email-triage v0.3
+Re-baselined the strongest local agent on the current suite (Q3_K_M f16 full-GPU,
+llama.cpp/podman native tools, k=3, **+`--judge-messages`**, gpt-5.5 user-sim+judge).
+**HA v0.4: obs@3 0.947 / pass^3 0.632** (flaky 6/19, hard-fail h19 compound
+double-confirm) · **ET v0.3: obs@3 1.000 / pass^3 0.667** (flaky 4/12). obs@k up,
+pass^k down vs the older v0.3/v0.2 rows — harder content (h19) + msgjudge AND-gate,
+not a regression; still far ahead of MiniCPM5-1B (HA pass^3 0.632 vs 0.210). One
+systematic gap: per-device confirm on compound requests (h19). Mid-run harness fix:
+Copilot `Failed to load models` blip reclassified transient (retry, not abort) +
+selftest. [Experiment](../lab/experiments/2026-06-21-gemma-4-12b-v04-rebaseline/README.md).
