@@ -31,7 +31,13 @@ else:
 # --------------------------------------------------------------------------- #
 
 _TRANSIENT_SIGNS = ("authentication failed", "rate limit", "rate_limit", "429",
-                    "overloaded", "temporarily", "timed out", "timeout", "503")
+                    "overloaded", "temporarily", "timed out", "timeout", "503",
+                    # model-LIST service blip: the CLI momentarily can't fetch the
+                    # available-models list (confirmed recovers on retry within
+                    # seconds, no config change). Looks config-ish (prints auth
+                    # remediation) but is transient infra, so retry not fail-fast.
+                    "failed to load models", "failed to list models",
+                    "could not retrieve the list")
 
 
 def _classify_copilot(out: str, err: str) -> str:

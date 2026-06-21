@@ -196,6 +196,16 @@ def test_copilot_retry():
     check("auth-failed blip retried then recovers", out == "recovered" and n["c"] == 2)
 
     n["c"] = 0
+    def _modellist_then_ok(*a, **k):
+        n["c"] += 1
+        return _Proc("recovered") if n["c"] >= 2 else _Proc(
+            "", "Error: Failed to load models\n\nError: Failed to list models\n\n"
+            "Copilot could not retrieve the list of available models.")
+    with mock.patch.object(subprocess, "run", side_effect=_modellist_then_ok):
+        out = judge_copilot.run_copilot_cli(["copilot"], 5, tries=3, backoff_base=0.0)
+    check("model-list blip retried then recovers", out == "recovered" and n["c"] == 2)
+
+    n["c"] = 0
     def _perm(*a, **k):
         n["c"] += 1
         return _Proc('Error: Model "x" not available.')
