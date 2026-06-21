@@ -79,6 +79,16 @@ Append-only timeline. Every entry starts with a greppable prefix so
 
 Types: `ingest`, `query`, `bench`, `experiment`, `lint`, `note`.
 
+### `wiki/backlog.md`
+The single curated **forward queue** ("what's next") - the complement to the
+append-only log. Sections: Now / Next / Open research questions / Models to
+consider / Infra / Recently done. Unlike the log it is **living, not
+append-only**: refresh it as the last step of any change (tick items as they
+land, fix stale pointers like the `Now` line), keep it short, and **push detail
+to the linked experiment/model page** rather than letting items grow. Prune
+done/inconsequential entries (their history survives in the log); never prune the
+log or journal.
+
 ### Wiki pages
 - Start with optional YAML frontmatter (`title`, `tags`, `updated`, `status`) so
   Obsidian Dataview can query it.

@@ -705,3 +705,16 @@ scoring + `--tool-protocol`/`--judge-messages` in /benchmark, agentic manifest i
 /author-benchmark, gemma exemplar in /new-model) and the benchmark-harness +
 wrap-external skills (`base_model` schema column + `--judge-messages`). Docs/journal
 only; no code or results change.
+
+## [2026-06-21] note | Backlog refresh + prune + schema entry
+Maintenance pass on the forward queue. Fixed a stale `Now` pointer (still named
+the 06-20 gemma quant sweep as last-completed; now points to the 06-21 batch -
+HA v0.4, the think-axis schema v4, and the MiniCPM5 ET promotion + e5 parity),
+then pruned done/duplicated detail now living in the log + results.csv + experiment
+pages: the MiniCPM5 Next item lost its run-number/e5-provenance paragraph (kept the
+forward-useful SGLang recipe), the re-baseline item lost two closure sentences, and
+the oldest `Recently done` line (gemma sweep) was dropped. Closed the gap that let
+that staleness creep in: the backlog was a first-class artifact (referenced in
+index.md, its own commit pattern) but **undocumented in AGENTS.md** - added a
+`### wiki/backlog.md` convention codifying it as the living, prunable forward queue
+(vs the append-only log/journal). Docs/backlog only; no code or results change.
