@@ -11,6 +11,7 @@ Verified invocation (see .github/skills/copilot-cli/SKILL.md):
 """
 from __future__ import annotations
 
+import random
 import subprocess
 import time
 from dataclasses import dataclass
@@ -21,11 +22,64 @@ else:
     from .client import Completion
 
 
+# --------------------------------------------------------------------------- #
+# Shared Copilot-CLI runner with bounded retry. Copilot rate-limits / has
+# transient auth blips on rapid successive calls (confirmed); a single failure
+# must not abort a whole run - especially once calls fan out concurrently. Retry
+# ONLY transient signatures; FAIL FAST on permanent config errors (e.g. an
+# invalid --model exits 0 but prints `Error: Model ... not available` on stdout).
+# --------------------------------------------------------------------------- #
+
+_TRANSIENT_SIGNS = ("authentication failed", "rate limit", "rate_limit", "429",
+                    "overloaded", "temporarily", "timed out", "timeout", "503")
+
+
+def _classify_copilot(out: str, err: str) -> str:
+    """Return 'ok' | 'transient' | 'permanent' for a finished copilot run."""
+    blob = (out + " " + err).lower()
+    if any(s in blob for s in _TRANSIENT_SIGNS):
+        return "transient"
+    if out.startswith("Error:"):    # invalid model/config: exits 0, prints Error: on stdout
+        return "permanent"
+    return "ok" if out else "transient"   # empty stdout = a blip; retry
+
+
+def run_copilot_cli(cmd: list[str], timeout: int, tries: int = 3,
+                    label: str = "copilot", backoff_base: float = 2.0) -> str:
+    """Run a ``copilot -p`` command, returning clean stdout.
+
+    Retries TRANSIENT failures (timeout, empty stdout, auth/rate-limit text) with
+    exponential backoff + jitter, up to ``tries``. FAILS FAST on a permanent config
+    error (retrying just delays the real error). Raises ``RuntimeError`` on a
+    permanent error or after ``tries`` transient failures.
+    """
+    last = ""
+    for attempt in range(1, tries + 1):
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            last = f"timed out after {timeout}s"
+        else:
+            out = (proc.stdout or "").strip()
+            err = (proc.stderr or "").strip()
+            kind = _classify_copilot(out, err)
+            if kind == "ok":
+                return out
+            if kind == "permanent":
+                raise RuntimeError(f"{label} permanent error (not retried): {out!r}")
+            last = err or out or "empty output"
+        if attempt < tries:
+            delay = backoff_base * (2 ** (attempt - 1))
+            time.sleep(delay + random.uniform(0, 0.5 * delay))
+    raise RuntimeError(f"{label} failed after {tries} tries (transient): {last!r}")
+
+
 @dataclass
 class CopilotCLIJudge:
     model: str = "claude-opus-4.8"
     timeout: int = 180
     effort: str | None = None  # low|medium|high|xhigh|max
+    tries: int = 3
 
     def complete(self, messages: list[dict], system: str | None = None) -> Completion:
         user = "\n\n".join(m["content"] for m in messages if m.get("role") == "user")
@@ -42,17 +96,9 @@ class CopilotCLIJudge:
         if self.effort:
             cmd += ["--reasoning-effort", self.effort]
         t0 = time.monotonic()
-        try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
-        except subprocess.TimeoutExpired as e:
-            raise RuntimeError(f"copilot judge timed out after {self.timeout}s") from e
+        out = run_copilot_cli(cmd, self.timeout, tries=self.tries,
+                              label=f"copilot judge ({self.model})")
         wall = round(time.monotonic() - t0, 2)
-        out = (proc.stdout or "").strip()
-        # Invalid model / errors exit 0 but print "Error: Model ..." - check stdout.
-        if not out or out.startswith("Error:"):
-            raise RuntimeError(
-                f"copilot judge ({self.model}) produced no usable output: "
-                f"{out or proc.stderr.strip()!r}")
         return Completion(text=out, wall_s=wall)
 
     def describe(self) -> dict:

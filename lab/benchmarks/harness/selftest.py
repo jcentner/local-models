@@ -158,6 +158,67 @@ def test_judge():
     check("non-numeric judge score fails closed", res.get("correct") is False)
 
 
+def test_copilot_retry():
+    print("copilot retry/backoff (Phase 1, mocked subprocess, no real sleep):")
+    import subprocess
+    from unittest import mock
+
+    class _Proc:
+        def __init__(self, stdout, stderr=""):
+            self.stdout, self.stderr, self.returncode = stdout, stderr, 0
+
+    n = {"c": 0}
+
+    def _empty_then_ok(*a, **k):
+        n["c"] += 1
+        return _Proc("ok now") if n["c"] >= 2 else _Proc("")
+    with mock.patch.object(subprocess, "run", side_effect=_empty_then_ok):
+        out = judge_copilot.run_copilot_cli(["copilot"], 5, tries=3, backoff_base=0.0)
+    check("transient empty stdout retried then recovers", out == "ok now" and n["c"] == 2)
+
+    n["c"] = 0
+    def _timeout_then_ok(*a, **k):
+        n["c"] += 1
+        if n["c"] == 1:
+            raise subprocess.TimeoutExpired(cmd="copilot", timeout=5)
+        return _Proc("done")
+    with mock.patch.object(subprocess, "run", side_effect=_timeout_then_ok):
+        out = judge_copilot.run_copilot_cli(["copilot"], 5, tries=3, backoff_base=0.0)
+    check("transient timeout retried then recovers", out == "done" and n["c"] == 2)
+
+    n["c"] = 0
+    def _auth_then_ok(*a, **k):
+        n["c"] += 1
+        return _Proc("recovered") if n["c"] >= 2 else _Proc("", "Authentication failed")
+    with mock.patch.object(subprocess, "run", side_effect=_auth_then_ok):
+        out = judge_copilot.run_copilot_cli(["copilot"], 5, tries=3, backoff_base=0.0)
+    check("auth-failed blip retried then recovers", out == "recovered" and n["c"] == 2)
+
+    n["c"] = 0
+    def _perm(*a, **k):
+        n["c"] += 1
+        return _Proc('Error: Model "x" not available.')
+    raised = False
+    with mock.patch.object(subprocess, "run", side_effect=_perm):
+        try:
+            judge_copilot.run_copilot_cli(["copilot"], 5, tries=3, backoff_base=0.0)
+        except RuntimeError:
+            raised = True
+    check("permanent config error fails fast (no retry)", raised and n["c"] == 1)
+
+    n["c"] = 0
+    def _always_empty(*a, **k):
+        n["c"] += 1
+        return _Proc("")
+    raised = False
+    with mock.patch.object(subprocess, "run", side_effect=_always_empty):
+        try:
+            judge_copilot.run_copilot_cli(["copilot"], 5, tries=3, backoff_base=0.0)
+        except RuntimeError:
+            raised = True
+    check("exhausted transient retries raises after tries", raised and n["c"] == 3)
+
+
 def test_podman_sandbox():
     print("podman sandbox:")
     if not code_exec.podman_available():
@@ -1006,6 +1067,7 @@ if __name__ == "__main__":
     test_loaders()
     test_validation()
     test_judge()
+    test_copilot_retry()
     test_podman_sandbox()
     test_cost_computation()
     test_think_label()

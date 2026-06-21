@@ -15,15 +15,16 @@ from __future__ import annotations
 
 import copy
 import json
-import subprocess
 import time
 from dataclasses import dataclass
 from typing import Callable
 
 if __package__ in (None, ""):
     from client import Completion
+    from judge_copilot import run_copilot_cli
 else:
     from .client import Completion
+    from .judge_copilot import run_copilot_cli
 
 
 # --------------------------------------------------------------------------- #
@@ -49,6 +50,7 @@ class CopilotCLIUser:
     persona: str
     model: str = "claude-opus-4.8"
     timeout: int = 120
+    tries: int = 3
 
     def reply(self, transcript: list[dict]) -> str:
         convo = "\n".join(f"{t['speaker'].upper()}: {t['text']}" for t in transcript)
@@ -60,16 +62,8 @@ class CopilotCLIUser:
             "--no-custom-instructions", "--allow-all-tools", "--no-ask-user",
             "--log-level", "none", "-s",
         ]
-        try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
-        except subprocess.TimeoutExpired as e:
-            raise RuntimeError(f"copilot user-sim timed out after {self.timeout}s") from e
-        out = (proc.stdout or "").strip()
-        if not out or out.startswith("Error:"):
-            raise RuntimeError(
-                f"copilot user-sim ({self.model}) produced no usable output: "
-                f"{out or proc.stderr.strip()!r}")
-        return out
+        return run_copilot_cli(cmd, self.timeout, tries=self.tries,
+                               label=f"copilot user-sim ({self.model})")
 
     def describe(self) -> dict:
         return {"user_sim": "copilot-cli", "model": self.model}
