@@ -200,6 +200,8 @@ def test_system_suffix():
           runmod.apply_system_suffix("BASE", "NUDGE") == "BASE\n\nNUDGE")
     check("no base -> suffix alone (no leading separator)",
           runmod.apply_system_suffix(None, "NUDGE") == "NUDGE")
+    check("whitespace-only suffix -> base unchanged (no invisible change)",
+          runmod.apply_system_suffix("BASE", "   \n  ") == "BASE")
 
     # agentic path: run_episode threads the suffix into the system prompt the
     # agent receives, appended LAST (most salient).
@@ -215,7 +217,7 @@ def test_system_suffix():
             "meta": {"persona": "goal", "policy": "be brief", "kb": []}}
     ag.run_episode(_CapAgent(), _MockUser("DONE"), scen,
                    system_suffix="REASON_CONCISELY_XYZ")
-    check("agentic system carries the suffix",
+    check("agentic (prompt) system carries the suffix",
           "REASON_CONCISELY_XYZ" in seen.get("system", ""))
     check("suffix is the tail of the agentic system prompt",
           seen.get("system", "").rstrip().endswith("REASON_CONCISELY_XYZ"))
@@ -224,6 +226,32 @@ def test_system_suffix():
     ag.run_episode(_CapAgent(), _MockUser("DONE"), scen, system_suffix=None)
     check("no suffix -> none injected into agentic system",
           "REASON_CONCISELY_XYZ" not in seen.get("system", ""))
+
+    # native protocol shares the same constructed system prompt (only `tools`
+    # differs) - prove the suffix reaches the agent there too.
+    seen.clear()
+
+    class _CapToolAgent:
+        def complete(self, messages, system=None, tools=None):
+            seen["system"] = system
+            return Completion(text="", tool_calls=[], prompt_tokens=1, gen_tokens=1,
+                              wall_s=0.0, raw_message={"role": "assistant", "content": ""})
+        def tool_result_message(self, call, content):
+            return {"role": "tool", "content": content, "tool_name": call.name}
+
+    ag.run_episode(_CapToolAgent(), _MockUser("DONE"), scen, protocol="native",
+                   system_suffix="NATIVE_NUDGE_XYZ")
+    check("agentic (native) system carries the suffix",
+          "NATIVE_NUDGE_XYZ" in seen.get("system", ""))
+
+    # a whitespace-only suffix must yield the SAME system prompt as no suffix
+    seen.clear()
+    ag.run_episode(_CapAgent(), _MockUser("DONE"), scen, system_suffix=None)
+    _sys_none = seen.get("system", "")
+    seen.clear()
+    ag.run_episode(_CapAgent(), _MockUser("DONE"), scen, system_suffix="   \n ")
+    check("whitespace-only suffix == no-suffix system (no invisible change)",
+          seen.get("system", "") == _sys_none)
 
 
 def test_meta_slice():

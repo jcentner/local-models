@@ -313,9 +313,10 @@ def apply_system_suffix(base: str | None, suffix: str | None) -> str | None:
 
     A run param recorded in the raw jsonl, NOT a bench.json edit - keeps the eval
     pure + comparable across models. Returns ``base`` unchanged when ``suffix`` is
-    falsy; uses ``suffix`` alone when there is no base system prompt.
+    falsy or whitespace-only; uses ``suffix`` alone when there is no base system
+    prompt.
     """
-    if not suffix:
+    if not suffix or not suffix.strip():
         return base
     return (base + "\n\n" + suffix) if base else suffix
 

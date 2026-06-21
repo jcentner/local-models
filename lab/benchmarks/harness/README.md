@@ -98,7 +98,11 @@ created with `/author-benchmark`. Output: a row appended to
 - **`--system-suffix "<text>"`** appends text to the system prompt at run time (e.g.
   a brevity nudge to tame an over-thinking model's CoT). A **run param** recorded in
   the raw jsonl, NOT a `bench.json` edit — the eval stays pure and comparable across
-  models. Applies to both the generative (e.g. decision-reasoning) and agentic paths.
+  models. Applies to both the generative (e.g. decision-reasoning) and agentic paths;
+  on agentic runs it lands *after* the JSON/tool-protocol block, so the suffix **must
+  preserve the benchmark's required output/tool contract** (don't reuse a
+  generative-only nudge like a `Recommendation:` instruction on an agentic run).
+  Whitespace-only suffixes are a no-op.
 - **XML tool-call fallback:** when a provider returns no native `tool_calls` but the
   content holds MiniCPM-style `<function name=...><param ...>` XML,
   `parse_xml_tool_calls()` recovers it into native calls. Run SGLang **without**

@@ -401,7 +401,8 @@ def run_episode(agent, user_sim, scenario: dict, *, max_turns: int = 4,
         sys = sys + "\n\n" + _prompt_block(toolset)
     # Run-time system suffix (e.g. a brevity nudge) - appended last so it is the
     # most salient instruction; a run param, not part of the benchmark manifest.
-    if system_suffix:
+    # A whitespace-only suffix is a no-op (matches run.apply_system_suffix).
+    if system_suffix and system_suffix.strip():
         sys = sys + "\n\n" + system_suffix
     tools = toolset.tools if native else None
     tool_names = ", ".join(toolset.behaviors)
