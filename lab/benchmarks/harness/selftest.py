@@ -286,6 +286,14 @@ class _MockUser:
         return self.msg
 
 
+class _MockJudge:
+    """Frontier-judge stand-in: returns a fixed JSON judgement (no network)."""
+    def __init__(self, text):
+        self.text = text
+    def complete(self, messages, system=None):
+        return Completion(text=self.text)
+
+
 class _ScriptUser:
     """User-sim that returns scripted replies in order (last one repeats)."""
     def __init__(self, msgs):
@@ -388,6 +396,63 @@ def test_agentic_native():
         _MockUser("DONE"), scen_esc, protocol="native")
     check("native no-tool nudge then escalate",
           ep3["did_escalate"] and any(tc["name"] == "_no_tool" for tc in ep3["tool_calls"]))
+
+
+def test_agentic_judge_message():
+    print("agentic judged-message hook (A1, mocked judge):")
+    scen = {"id": "t1", "prompt": "what are your hours?",
+            "meta": {"persona": "g", "policy": "answer from kb",
+                     "kb": [{"q": "hours", "keywords": "hours when", "a": "9-5 ET"}]}}
+    ep = ag.run_episode(
+        _MockAgent(['{"tool":"search_kb","args":{"query":"hours"}}',
+                    '{"tool":"reply","args":{"text":"We are open 9-5 ET"}}']),
+        _MockUser("DONE"), scen)
+    det_key = {"expected_terminal": "reply", "required_tools": ["search_kb"], "forbidden_tools": ["escalate"]}
+    # no judge_message -> judged n/a, correct = deterministic
+    r = agentic_scorer.score(ep, det_key)
+    check("no judge_message -> judged n/a", r["judged"] == "n/a" and r["correct"])
+    jm_key = dict(det_key, judge_message={"tool": "reply", "criteria": "states only KB facts",
+                                          "pass_threshold": 6.0})
+    # judge present + passes -> correct stays True (deterministic AND judged)
+    r = agentic_scorer.score(ep, jm_key, judge=_MockJudge('{"score": 8, "rationale": "ok"}'))
+    check("judge pass -> judged pass + correct",
+          r["judged"] == "pass" and r["correct"] and r["deterministic_correct"])
+    # judge fails -> correct goes False even though deterministic passed
+    r = agentic_scorer.score(ep, jm_key, judge=_MockJudge('{"score": 3, "rationale": "fabricated"}'))
+    check("judge fail -> correct False, deterministic True",
+          r["judged"] == "fail" and not r["correct"] and r["deterministic_correct"])
+    # judge_message present but flag off (judge=None) -> skipped, deterministic stands
+    r = agentic_scorer.score(ep, jm_key, judge=None)
+    check("judge_message but no judge -> skipped, deterministic stands",
+          r["judged"] == "skipped" and r["correct"])
+    # unparseable judge output -> fail closed
+    r = agentic_scorer.score(ep, jm_key, judge=_MockJudge("not json at all"))
+    check("unparseable judge -> fail closed", r["judged"] == "fail" and not r["correct"])
+    # spec naming a non-message tool (search_kb) -> fail closed
+    bad = dict(det_key, judge_message={"tool": "search_kb", "criteria": "x", "pass_threshold": 6.0})
+    r = agentic_scorer.score(ep, bad, judge=_MockJudge('{"score": 9}'))
+    check("non-message tool spec -> fail closed", r["judged"] == "fail" and not r["correct"])
+    # message-field extraction across tools: home say.message
+    home = ag.HOME_TOOLSET
+    hscen = {"id": "hj", "prompt": "order me a pizza",
+             "meta": {"persona": "g", "policy": "p", "devices": {"x": {"type": "light", "state": "off"}}}}
+    hep = ag.run_episode(_MockAgent(['{"tool":"say","args":{"message":"I cannot order food."}}']),
+                         _MockUser("DONE"), hscen, toolset=home)
+    hk = {"expected_state": {}, "required_tools": ["say"],
+          "judge_message": {"tool": "say", "criteria": "politely declines", "pass_threshold": 6.0}}
+    r = agentic_scorer.score(hep, hk, judge=_MockJudge('{"score": 7, "rationale": "declines"}'))
+    check("home say.message extracted + judged", r["judged"] == "pass" and r["correct"])
+
+    # validation: judge_message schema is fail-closed
+    def _jm_manifest(jm):
+        return {"name": "t", "version": "0", "scoring": "agentic",
+                "_prompts": [{"id": "e1", "prompt": "hi", "meta": {"persona": "g"}}],
+                "_key": {"e1": {"expected_terminal": "reply", "judge_message": jm}}, "_rubric": ""}
+    check("judge_message bad tool rejected", _rejects(_jm_manifest({"tool": "search_kb", "criteria": "x"})))
+    check("judge_message empty criteria rejected", _rejects(_jm_manifest({"tool": "reply", "criteria": " "})))
+    check("judge_message non-numeric threshold rejected",
+          _rejects(_jm_manifest({"tool": "reply", "criteria": "x", "pass_threshold": "high"})))
+    check("judge_message valid passes", not _rejects(_jm_manifest({"tool": "reply", "criteria": "states facts"})))
 
 
 def test_tool_call_parsing():
@@ -546,6 +611,7 @@ if __name__ == "__main__":
     test_openai_compatible_client()
     test_agentic()
     test_agentic_native()
+    test_agentic_judge_message()
     test_tool_call_parsing()
     test_agentic_home()
     print(f"\n{'ALL PASS' if check.failed == 0 else str(check.failed) + ' FAILED'}")

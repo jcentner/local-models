@@ -20,10 +20,25 @@ tool-set families, dispatched on the episode's ``toolset``:
   ``required_tools: ["say"]`` so a silent no-op cannot pass vacuously.
   Key row: ``{"id","expected_state":{dev:state},"forbidden_devices":[...],
   "require_confirm":[...],"required_tools":[...],"forbidden_tools":[...]}``
+
+A key may optionally carry ``judge_message: {tool, criteria, pass_threshold}`` to
+grade the *text quality* of one message with a frontier judge (A1). This is an
+AND gate over the deterministic result, applied only when a judge is passed in
+(``--judge-messages``); it can tighten a pass, never relax one. See ``score()``.
 """
 from __future__ import annotations
 
+if __package__ in (None, ""):
+    import llm_judge
+else:
+    from . import llm_judge
 
+
+# Each message-bearing tool -> the args field carrying its user-facing text.
+_MSG_FIELD = {
+    "reply": "text", "escalate": "reason",     # support
+    "ask": "question", "say": "message",        # home_automation
+}
 def _score_support(episode: dict, key: dict) -> dict:
     expected = key.get("expected_terminal")
     did_escalate = episode.get("did_escalate", False)
@@ -98,8 +113,48 @@ def _score_home(episode: dict, key: dict) -> dict:
     }
 
 
-def score(episode: dict, key: dict) -> dict:
-    if episode.get("toolset") == "home_automation" or "expected_state" in key:
-        return _score_home(episode, key)
-    return _score_support(episode, key)
+def score(episode: dict, key: dict, judge=None) -> dict:
+    res = (_score_home(episode, key)
+           if episode.get("toolset") == "home_automation" or "expected_state" in key
+           else _score_support(episode, key))
+    res["deterministic_correct"] = res["correct"]
+    spec = key.get("judge_message")
+    if not spec:
+        res["judged"] = "n/a"
+        return res
+    if judge is None:                       # --judge-messages off: deterministic stands
+        res["judged"] = "skipped"
+        return res
+    jr = _judge_message(episode, spec, judge)
+    res["judged"] = jr["judged"]
+    res["judge_message_score"] = jr.get("score")
+    res["judge_message_rationale"] = jr.get("rationale")
+    res["correct"] = bool(res["deterministic_correct"] and jr["judged"] == "pass")
+    return res
+
+
+def _judge_message(episode: dict, spec: dict, judge) -> dict:
+    """Grade one message's text quality with a frontier judge. **Fail-closed** (F5):
+    returns ``judged="fail"`` on any malformed spec, missing/empty message text, or
+    unparseable judge output - a judged check can only ever TIGHTEN a deterministic
+    pass, never invent one."""
+    tool = spec.get("tool")
+    criteria = spec.get("criteria")
+    threshold = spec.get("pass_threshold", 6.0)
+    field = _MSG_FIELD.get(tool)
+    if (field is None or not isinstance(criteria, str) or not criteria.strip()
+            or isinstance(threshold, bool) or not isinstance(threshold, (int, float))):
+        return {"judged": "fail", "score": None, "rationale": "invalid judge_message spec"}
+    # the LAST non-skipped call of the named tool = the agent's final word
+    text = ""
+    for tc in reversed(episode.get("tool_calls", [])):
+        if tc.get("name") == tool and not tc.get("skipped"):
+            text = str((tc.get("args") or {}).get(field, "")).strip()
+            break
+    if not text:
+        return {"judged": "fail", "score": None, "rationale": f"no {tool}.{field} text to judge"}
+    task = (episode.get("transcript") or [{}])[0].get("text", "")
+    jres = llm_judge.score(task, text, criteria, judge, pass_threshold=float(threshold))
+    return {"judged": "pass" if jres.get("correct") else "fail",
+            "score": jres.get("score"), "rationale": jres.get("rationale")}
 

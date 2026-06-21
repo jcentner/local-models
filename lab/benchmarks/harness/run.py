@@ -139,6 +139,9 @@ def load_benchmark(bench_dir: Path) -> dict:
 
 VALID_METHODS = {"equivalence", "code_tests", "llm_judge", "agentic"}
 
+# Message-bearing tools eligible for an optional judge_message check, per toolset.
+JUDGE_MSG_TOOLS = {"support": {"reply", "escalate"}, "home_automation": {"ask", "say"}}
+
 
 def validate_benchmark(manifest: dict) -> None:
     """Fail closed BEFORE any model call. A benchmark that scores silently-wrong
@@ -193,6 +196,21 @@ def validate_benchmark(manifest: dict) -> None:
             if bad_tools:
                 raise SystemExit(f"agentic key {kid!r} references unknown tools {sorted(bad_tools)} "
                                  f"(valid for {toolset_name}: {sorted(valid_tools)})")
+        # optional judge_message (A1) must name a message-bearing tool + carry valid criteria/threshold
+        msg_tools = JUDGE_MSG_TOOLS.get(toolset_name, set())
+        for kid, krow in manifest["_key"].items():
+            jm = krow.get("judge_message")
+            if jm is None:
+                continue
+            if not isinstance(jm, dict):
+                raise SystemExit(f"agentic key {kid!r} judge_message must be an object")
+            if jm.get("tool") not in msg_tools:
+                raise SystemExit(f"agentic key {kid!r} judge_message.tool must be one of {sorted(msg_tools)}")
+            if not str(jm.get("criteria", "")).strip():
+                raise SystemExit(f"agentic key {kid!r} judge_message needs non-empty criteria")
+            thr = jm.get("pass_threshold", 6.0)
+            if isinstance(thr, bool) or not isinstance(thr, (int, float)):
+                raise SystemExit(f"agentic key {kid!r} judge_message.pass_threshold must be numeric")
         if toolset_name == "support":
             for kid, krow in manifest["_key"].items():
                 if krow.get("expected_terminal") not in {"reply", "escalate"}:
@@ -284,6 +302,12 @@ def main(argv: list[str] | None = None) -> int:
                          "per step (model-agnostic); 'native' = provider function-calling "
                          "(Ollama/OpenAI `tools` + message.tool_calls), a fair footing for "
                          "thinking/XML-tool models (needs a tool-capable model/template).")
+    ap.add_argument("--judge-messages", action="store_true",
+                    help="agentic only: additionally grade message TEXT quality with the "
+                         "frontier judge on items whose key carries judge_message (e.g. a "
+                         "fabrication check on reply). Default off - the deterministic "
+                         "state/policy result is the backbone; this only TIGHTENS it. Costs "
+                         "k x judge calls on judged items; reuses --judge-model/--judge-effort.")
     ap.add_argument("--slice-by", default=None,
                     help="meta field to break metrics down by (e.g. 'tier' or 'category'); "
                          "prints per-group pass^k / observed_pass@k. The results.csv row is "
@@ -320,6 +344,9 @@ def main(argv: list[str] | None = None) -> int:
     judge = None
     if method == "llm_judge":
         judge = CopilotCLIJudge(model=args.judge_model, effort=args.judge_effort)
+    msg_judge = None
+    if method == "agentic" and args.judge_messages:
+        msg_judge = CopilotCLIJudge(model=args.judge_model, effort=args.judge_effort)
 
     print(f"benchmark={manifest['name']} v{manifest.get('version','?')} method={method} "
           f"items={len(prompts)} k={args.k}")
@@ -365,7 +392,8 @@ def main(argv: list[str] | None = None) -> int:
                     user_sim = CopilotCLIUser(persona=item["meta"]["persona"], model=args.user_model)
                     episode = run_episode(client, user_sim, item, protocol=args.tool_protocol,
                                           toolset=agentic_toolset)
-                    res = agentic_scorer.score(episode, manifest["_key"].get(item["id"], {}))
+                    res = agentic_scorer.score(episode, manifest["_key"].get(item["id"], {}),
+                                               judge=msg_judge)
                     perf = episode["perf"]
                     total_samples += 1
                     prompt_tok_sum += perf["prompt_tokens"]
@@ -456,7 +484,9 @@ def main(argv: list[str] | None = None) -> int:
         "wall_s_total": round(wall_sum, 1),
         "cost_usd": cost_usd,
         "judge": (f"copilot:{args.judge_model}" if method == "llm_judge"
-                  else f"usersim:copilot:{args.user_model}:{args.tool_protocol}" if method == "agentic" else ""),
+                  else (f"usersim:copilot:{args.user_model}:{args.tool_protocol}"
+                        + (f"+msgjudge:{args.judge_model}" if args.judge_messages else ""))
+                  if method == "agentic" else ""),
         "code_sandbox": args.code_sandbox or "",
         "raw_file": raw_path.name,
         "platform": platform.platform(),
