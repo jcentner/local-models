@@ -67,8 +67,7 @@ One checkpoint, two modes via the chat template's `enable_thinking` flag (built-
 
 Like any thinking model, in Think mode the `<think>` CoT consumes output tokens —
 budget a generous `num_predict` / `max_tokens` or the final answer can be
-truncated (the same trap noted for [VibeThinker](vibethinker-3b.md) and qwen3.5
-in [the harness notes](../../lab/benchmarks/harness/README.md)). RL+OPD
+truncated. RL+OPD
 post-training specifically **cut overlong responses by ~29 pts**, so Think mode is
 less runaway than a pure-CoT specialist, but still budget headroom.
 
