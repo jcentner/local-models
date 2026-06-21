@@ -443,6 +443,11 @@ def main(argv: list[str] | None = None) -> int:
                                           "episode": {"resolution": episode["resolution"],
                                                       "protocol": episode.get("protocol"),
                                                       "toolset": episode.get("toolset"),
+                                                      # did_* are scorer inputs for support
+                                                      # (reply vs escalate) - persist so a raw
+                                                      # line can be re-scored offline.
+                                                      "did_reply": episode.get("did_reply"),
+                                                      "did_escalate": episode.get("did_escalate"),
                                                       "tools_used": episode.get("tools_used"),
                                                       "tool_calls": episode["tool_calls"],
                                                       "final_state": episode.get("final_state"),

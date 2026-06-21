@@ -350,6 +350,21 @@ def test_agentic():
           agentic_scorer.score(ep2, {"expected_terminal": "escalate", "required_tools": [],
                                       "forbidden_tools": []})["correct"])
 
+    # the SAVED raw line (run.py's episode subset) must re-score the same as the live
+    # episode - support needs did_reply/did_escalate persisted, not just final_state.
+    def _saved(ep):  # mirror the episode dict run.py writes to runs/*.jsonl
+        return {"resolution": ep["resolution"], "protocol": ep.get("protocol"),
+                "toolset": ep.get("toolset"), "did_reply": ep.get("did_reply"),
+                "did_escalate": ep.get("did_escalate"), "tools_used": ep.get("tools_used"),
+                "tool_calls": ep["tool_calls"], "final_state": ep.get("final_state"),
+                "transcript": ep["transcript"]}
+    rk = {"expected_terminal": "reply", "required_tools": ["search_kb"], "forbidden_tools": ["escalate"]}
+    check("saved support reply re-scores identically",
+          agentic_scorer.score(_saved(ep), rk)["correct"] == agentic_scorer.score(ep, rk)["correct"] is True)
+    ek = {"expected_terminal": "escalate", "required_tools": [], "forbidden_tools": []}
+    check("saved support escalate re-scores identically",
+          agentic_scorer.score(_saved(ep2), ek)["correct"] == agentic_scorer.score(ep2, ek)["correct"] is True)
+
     ep3 = ag.run_episode(_MockAgent(['{"tool":"reply","args":{"text":"sure, refunded!"}}']),
                          _MockUser("DONE"), scen_esc)
     check("scorer fails wrong terminal (replied, should escalate)",
