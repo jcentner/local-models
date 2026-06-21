@@ -631,3 +631,27 @@ ask, while still rejecting a silent no-op) and **list-form `judge_message.tool`*
 +12 -> **163 ALL PASS**. bench.json 0.3->0.4; prior h5 scores no longer comparable ->
 re-baseline pending. Commit 9cdd266 (code+bench); docs/wiki in a follow-up. gpt-5.5
 background review kicked off (tmp/review-ha-v04.md).
+
+## [2026-06-21] note | Record think/no-think axis in results.csv + raw + viewer (schema v4)
+The think/no-think control was captured **nowhere**, so runs weren't comparable on
+that axis (gemma ran template-default, qwen ran `--no-think` - invisible). Added a
+**`think` column** (after `sampling`) recording the run-time CoT control as
+**`on|off|default`** (`--think`/`--no-think`; `default` = no flag, the
+template/provider default governs - interpret with `provider` + the model page).
+`args.think` is tri-state and `None` is **not** "off" (for a template that thinks
+by default `None` meant thinking-ON), so a module-level `think_label()` maps it
+unambiguously; written to the results row and **both** raw-jsonl writes (agentic +
+generative). results.csv -> **schema v4**; the 12 existing rows back-annotated from
+the run log + raw evidence (`tmp/migrate_results_v4.py`): qwen `--no-think` rows =
+`off`; no-flag template-default rows = `default` (incl. the gemma rows, whose output
+shows no thinking - a correction over the backlog's "gemma=on" shorthand; qwen code
+144449/144757 had empty completions = CoT exhausted the budget, also default). The
+**run-viewer** surfaces think in the run detail header + the run-list pill, and keys
+the base->variant comparison matrix on **(model, think)** so a model run both ways
+shows as two rows (think-vs-no-think at a glance). selftest +4 (`test_think_label`)
+-> **175 ALL PASS**; verified end-to-end (`--no-think` -> `think=off` in csv + raw,
+header aligned). Docs synced (AGENTS.md, benchmark-harness skill, lab/benchmarks +
+wiki/benchmarks READMEs, eval-reliability, /benchmark prompt, run-viewer README).
+The think write-path (run.py `think_label` + selftest) landed in 94e1d04 (swept into
+a parallel-agent commit); data+viewer in 025dbff, docs in 5cc009b. Unblocks the
+"thinking-as-default" policy: think vs no-think rows are now comparable.
