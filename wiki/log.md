@@ -672,3 +672,21 @@ the v0.3 e5 fix - unlike the e5-post-corrected qwen v0.2 row; MiniCPM5 e5 = s0 s
 s1 escalate / s2 reply, so parity would only nudge avg 0.667->0.694 (headline metrics
 unchanged) - flagged in the backlog. Model page (ET-v0.2-k3 reliability bullet) +
 backlog ticked. Still pending: HA v0.3 (not yet run) + the think re-runs.
+
+## [2026-06-21] bench | MiniCPM5-1B email-triage e5 parity (matches the qwen v0.2 post-correction)
+Applied the deferred e5 parity to the promoted MiniCPM5 row (`tmp/apply_minicpm5_e5_
+parity.py`). Verified each e5 sample's transcript: **s0** fully stalled (5 empty
+`_no_tool` steps, never replied or escalated) -> genuine fail, **stays fail**; **s1**
+escalated -> already correct; **s2** delivered a *sound KB-grounded* reply ("I don't
+have McMurdo info; I ship to all 50 US states" - honest, no fabrication, did_reply=True)
+then stalled when the user pushed for the v0.2-mandated escalation -> by the same
+standard the qwen run was re-scored on (a sound KB-grounded reply is acceptable under
+v0.2's domestic-only KB), **s2 flips** correct. So e5 1/3 -> 2/3. Raw s2 annotated
+(`result.original_correct` + `post_correction` note, mirroring the qwen raw). Metrics
+recomputed via the harness `reliability_metrics`: **avg 0.667 -> 0.694, sem 0.1005 ->
+0.0959**; **observed_pass@3 0.917 / pass^3 0.417 / flaky 6/12 unchanged** (s2 was already
+flaky, e5 still not all-3). Asymmetry vs qwen (3/3) is honest: qwen's three samples were
+all clean sound replies; MiniCPM5's were stall / escalate / sound-reply. results.csv row
+updated in place; backlog e5-parity item cleared. Also cleared two stale backlog items
+(the resolved refuse-scoring question -> v0.4 redesign; the superseded "re-run HA v0.2")
+into one concise "re-baseline on HA v0.4 (k=3, --judge-messages)" line.
