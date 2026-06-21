@@ -52,9 +52,12 @@ committed and reviewed in turn (the recursive cadence is now first-class in
 - **Phase 2 — the core.** Refactored the serial `for item: for k:` loop into a
   **pure per-sample worker** plus a **single-threaded ordered collector**, run
   through a `ThreadPoolExecutor` (inline at `--concurrency 1`). Results are keyed
-  `(item, sample)` and folded/written in order, so scoring and raw output are
-  byte-for-byte unchanged vs serial — the determinism guarantee is proven with
-  mocked clients in the selftest. A worker exception or Ctrl-C cancels pending
+  `(item, sample)` and folded/written in **deterministic order**, and the
+  scoring/aggregation code is untouched — concurrency changes only wall-clock,
+  not scoring logic. With **deterministic (mocked) clients** the raw output is
+  byte-for-byte identical regardless of N (proven in the selftest); **live**
+  model/Copilot outputs are stochastic (temp > 0), so observed scores vary
+  run-to-run by chance, not by concurrency. A worker exception or Ctrl-C cancels pending
   work and writes no results row (fail-closed). `--concurrency auto` = 3 for the
   Copilot-bound methods, 1 for equivalence/code_tests.
 
@@ -67,11 +70,16 @@ A/B on the full email-triage v0.3 set, qwen3.5:4b, same seed:
 | `--concurrency 1` | **123.7s** | 55.9s | 0.833 |
 | `--concurrency auto` (3) | **81.7s** | 70.0s | 0.917 |
 
-**~34% faster** (1.51×), scoring unchanged. The N=1 row is perfectly additive
-(`123.7 ≈ 67.7 model + 55.9 copilot`), confirming zero overlap serially. At N=3 the
+**~34% faster** (1.51×); the scoring *logic* is unchanged — the obs@1 0.833 vs
+0.917 is run-to-run sampling variance (temp > 0), not a concurrency effect. The
+N=1 row is perfectly additive (`123.7 ≈ 67.7 model + 55.9 copilot`), confirming
+zero overlap serially. At N=3 the
 Copilot waits collapse into other episodes' generation, landing the run near the
 **Ollama serial-GPU floor** (~68s of actual GPU+load time). That floor is the
 honest ceiling on the win here: the GPU work can't parallelize, only the waits can.
+(In `results.csv` these two rows carry no concurrency column — it's a perf knob,
+not a scoring input — but they're unambiguous via `wall_clock_s`: 123.7 =
+`--concurrency 1`, 81.7 = `auto`.)
 
 ## Insights & open questions
 
@@ -79,13 +87,14 @@ honest ceiling on the win here: the GPU work can't parallelize, only the waits c
   per-request wall absorbs Ollama queue time, so `request_wall_sum` inflates and a
   naive "overlap_saved" overstates. The review and I both flagged it; the only
   honest "time saved" number is the N=1-vs-default `wall_clock_s` delta.
-- **A batching server would win bigger.** Ollama is the worst case (serial). On
-  SGLang / llama.cpp the GPU floor itself drops (continuous batching), so concurrency
-  would buy more than 34% — bounded by the 8 GB KV budget. The MiniCPM5/SGLang
-  generalization is deferred (SGLang was down; the Ollama result already proves the
-  thesis).
-- **Bigger benchmarks, bigger absolute savings.** home-automation (more turns, more
-  Copilot calls) would show a larger wall-clock drop than email-triage.
+- **A batching server would likely win bigger** (hypothesis, unmeasured here).
+  Ollama is the worst case (serial). On SGLang / llama.cpp the GPU floor itself
+  drops (continuous batching), so concurrency *should* buy more than 34% — bounded
+  by the 8 GB KV budget. The MiniCPM5/SGLang generalization is deferred (SGLang was
+  down; the Ollama result already proves the thesis).
+- **Bigger benchmarks, bigger absolute savings** (expected, pending measurement).
+  home-automation (more turns, more Copilot calls) *should* show a larger
+  wall-clock drop than email-triage.
 - The review loop keeps paying off: every phase's cross-model review found a *real*
   issue (ordering, classifier scope, misleading metric). Authoring with the working
   model and reviewing with a different one is cheap insurance.
