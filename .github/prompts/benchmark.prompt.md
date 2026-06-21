@@ -77,9 +77,20 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model <api-model> \
   subagent judge for interactive runs.
 - For `agentic` (tool-use) benchmarks the harness runs a model-agnostic rollout:
   the agent under test + a **Copilot-CLI user-simulator** (`--user-model`, default
-  `claude-opus-4.8`) over mocked tools, scored on terminal action + tool policy.
-  Use `--no-think` for thinking models (short JSON actions). The flexible
-  alternative to registered-model benchmarks like BFCL.
+  `claude-opus-4.8`; pass `gpt-5.5` for a cheaper user-sim) over mocked tools,
+  scored on terminal action + tool policy. The flexible alternative to
+  registered-model benchmarks like BFCL.
+  - **`--tool-protocol prompt|native`** (default `prompt`): `prompt` injects a
+    JSON tool protocol in the system message (any model, day one); `native` uses
+    the provider's function-calling (`message.tool_calls`). Prefer **`native`**
+    for tool-capable models — it's the fair path and what recent baselines use;
+    some models *require* it (e.g. MiniCPM5 via SGLang + the harness XML fallback).
+  - **`--judge-messages`** (default off): an opt-in hybrid layer that grades one
+    message's text with the frontier judge as an **AND gate** over the
+    deterministic result (catches verbal-only fabrication/injection a state check
+    misses; can tighten a pass, never relax one). Recommended ON for the
+    home-automation v0.4 baseline.
+  - Use `--no-think` for thinking models so the CoT doesn't eat the action budget.
 - **Code execution is gated.** Run `code_tests` with `--code-sandbox podman`
   (recommended - locked-down container) or `local-unsafe` (host exec, opt-in). For
   thinking models add `--no-think` so CoT doesn't eat the token budget before the

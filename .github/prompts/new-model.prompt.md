@@ -113,7 +113,7 @@ instructions.
 
 - Create or update `wiki/models/<slug>.md` (kebab-case slug). Start with YAML
   frontmatter: `title`, `tags`, `updated` (today), `status` (`to-try` until run).
-  Match the shape of [models/diffusiongemma.md](../../wiki/models/diffusiongemma.md):
+  Match the shape of [models/gemma-4-12b-agentic-fable5.md](../../wiki/models/gemma-4-12b-agentic-fable5.md):
   what it is, the size/footprint table per quant, support status, how to run it,
   any sampling/template caveats, and benchmarks. Keep these **machine-independent**.
   Cross-link generously to relevant [stacks](../../wiki/stacks/) and

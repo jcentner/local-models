@@ -18,20 +18,47 @@ page, wired into the [harness](../../lab/benchmarks/harness/README.md).
 ## 1. Interview me (don't skip — design before drafting)
 Ask a focused set of questions (`vscode_askQuestions`):
 - **Capability under test** — what exactly are we measuring? (one sentence)
-- **Scoring method** — `equivalence` / `code_tests` / `llm_judge`? This is the
-  **gate**: if there's no reliable way to verify an answer, redesign the scenario
-  until there is. State how each item will be scored *before* writing items.
+- **Scoring method** — `equivalence` / `code_tests` / `llm_judge` / `agentic`?
+  This is the **gate**: if there's no reliable way to verify an answer, redesign
+  the scenario until there is. State how each item will be scored *before* writing
+  items.
 - Format (input shape, output shape, length), difficulty target + spread, number
   of items, any tools/environment needed (for agentic).
 - For `llm_judge`: which rubric (reuse/adapt
   [creative-writing](../../benchmarks/_rubrics/creative-writing.md) or write a new
   one), and the judge model (opus-4.8 / gpt-5.5).
+- For `agentic` (tool-use, the home-automation/email-triage shape): which
+  **toolset** (`support` | `home_automation`), and per item the **terminal
+  action** + **tool policy** that score it — see the agentic manifest in step 2.
 
 ## 2. Draft
 Write candidate items: `prompts.jsonl` (id + prompt) and the **separate**
 `answer_key.jsonl` (equivalence: `answer`; code_tests: `tests`; llm_judge: rubric
-in `rubric.md`). Make items **fresh** — original wording/scenarios, not copies of
-known public items. Keep the answer key out of the prompts.
+in `rubric.md`; agentic: see the manifest below). Make items **fresh** — original
+wording/scenarios, not copies of known public items. Keep the answer key out of
+the prompts.
+
+### Authoring an `agentic` set (if scoring is agentic)
+`bench.json` declares `{"scoring":"agentic", "toolset":"support"|"home_automation",
+"max_steps":N}`. Each `prompts.jsonl` item carries `meta.persona` (the user-sim's
+goal). Each `answer_key.jsonl` row is scored **deterministically** on end-state +
+tool policy; the keys to know:
+- **`expected_terminal`** — the required terminal action (`reply`/`escalate` for
+  `support`; `say` for a home refusal).
+- **`expected_state`** — required device end-state (`home_automation`); a value may
+  be a scalar **or a list** of acceptable scalars (e.g. alarm `[disarmed,off,disabled]`).
+- **`required_tools`** / **`required_any`** / **`forbidden_tools`** — tool policy
+  (a refusal that changes nothing still needs `required_tools:["say"]`).
+- **device guards** — `ask.device` (confirm *that* device) vs `require_clarify`
+  (clarify ambiguity), a `device.requires` precondition, and
+  `forbidden_device_attempts` (an *attempted* forbidden change fails even if BLOCKED
+  left state unchanged).
+- **`judge_message`** `{tool, criteria, pass_threshold}` (optional) — grades one
+  message's text via the frontier judge as an **AND gate** (fabrication/injection
+  checks); only active when the run passes `--judge-messages`.
+- **`meta` / `slice_fields`** — declare `category`/`tier` for per-slice reporting;
+  `slice_fields` may only *narrow* the `meta` whitelist, never widen it (persona/
+  policy/devices never leak).
 
 ## 3. Critic loop (generate -> critique -> revise)
 Spawn a subagent critic via `runSubagent` on **gpt-5.5** (and optionally a second
@@ -60,8 +87,9 @@ Dry-run the dataset through the harness to confirm it loads and scores:
 cd lab/benchmarks
 python3 -m harness.run --benchmark ../../benchmarks/<name> --model <tag> --dry-run
 ```
-For `equivalence`/`code_tests`, sanity-check the scorer against a known-good and
-known-bad sample answer.
+For `equivalence`/`code_tests`/`agentic`, sanity-check the scorer against a
+known-good and known-bad sample — for agentic, an **ideal episode** that scores
+correct plus an **adversarial control** that correctly fails, through the real scorer.
 
 ## 5. Write it down
 - Save `benchmarks/<name>/` (bench.json, prompts.jsonl, answer_key.jsonl,

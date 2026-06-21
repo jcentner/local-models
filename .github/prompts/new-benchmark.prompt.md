@@ -44,9 +44,12 @@ Reference scores / **Contamination-freshness** / Relevant model-types / How to r
 (exact wrap command) / Gotchas. Keep it **machine-independent**. Cite provenance.
 
 ## 3. Wire into the harness (if applicable)
-- If it maps to our harness scoring (`equivalence` / `code_tests` / `llm_judge`)
-  and the dataset is freely available, note how to fetch it into `benchmarks/<slug>/`
-  (respecting size/license - large/copyrighted data stays out of git, like `raw/`).
+- If it maps to our harness scoring (`equivalence` / `code_tests` / `llm_judge` /
+  `agentic`) and the dataset is freely available, note how to fetch it into
+  `benchmarks/<slug>/` (respecting size/license - large/copyrighted data stays out
+  of git, like `raw/`). An external **agentic / tool-use** set (e.g. tau2-bench)
+  maps to the `agentic` scorer via a `toolset` — see
+  [/author-benchmark](./author-benchmark.prompt.md) for the agentic manifest shape.
 - If it's best run via an upstream framework, document that command on the page
   and in [lab/benchmarks/harness/README.md](../../lab/benchmarks/harness/README.md)
   if it's a new framework we haven't wrapped before.
