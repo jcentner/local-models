@@ -66,8 +66,9 @@ serve the **matching GGUF** in Ollama under the registered name. Scope with
 
 External tools write their own score files. Add a row to
 [results.csv](../../../lab/benchmarks/README.md) by hand with our schema (model,
-provider, benchmark+version, the subset as `scoring`, the accuracy as
-`observed_pass_at_k`/`avg_correct` (set `pass_hat_k`=`observed_pass_at_k`,
+`base_model` (=model for a plain tag), provider, benchmark+version, the subset as
+`scoring`, `think`=`default` (the upstream tool controls CoT, not our flag), the
+accuracy as `observed_pass_at_k`/`avg_correct` (set `pass_hat_k`=`observed_pass_at_k`,
 `flaky_items`=0, `sem` blank for a single-pass upstream run), cost if API,
 machine/endpoint, date), and link
 the raw upstream output (kept under the gitignored `runs/<tool>/`).

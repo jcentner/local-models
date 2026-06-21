@@ -690,3 +690,18 @@ all clean sound replies; MiniCPM5's were stall / escalate / sound-reply. results
 updated in place; backlog e5-parity item cleared. Also cleared two stale backlog items
 (the resolved refuse-scoring question -> v0.4 redesign; the superseded "re-run HA v0.2")
 into one concise "re-baseline on HA v0.4 (k=3, --judge-messages)" line.
+
+## [2026-06-21] note | Journal backfill (3 catch-up entries) + prompt/skill doc sync
+Caught the narrative journal up from the 06-20 run-viewer entry (the blog/Twitter
+feedstock had fallen ~5 arcs behind). Three run-viewer-style entries:
+2026-06-20-controlled-serving-and-minicpm5 (SGLang/llama.cpp containers + Blackwell
+torch venv + the MiniCPM5 "the Ollama score was a serving artifact" reveal + XML
+fallback -> two verdicts), 2026-06-20-gemma-first-strong-agent (v2 ingest + 5-cell
+quant sweep -> first strong local agent, Q3_K_M wins the ~6.8 GB budget), and
+2026-06-21-reliability-and-aide-track (pass^k in practice + the gpt-5.5 cross-review
+HA v0.4 hardening + opening the aide-model track with LFM2.5-ColBERT). Also synced the
+agentic surface into the docs that had lagged it: the four `.github/prompts` (agentic
+scoring + `--tool-protocol`/`--judge-messages` in /benchmark, agentic manifest in
+/author-benchmark, gemma exemplar in /new-model) and the benchmark-harness +
+wrap-external skills (`base_model` schema column + `--judge-messages`). Docs/journal
+only; no code or results change.
