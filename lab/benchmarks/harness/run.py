@@ -208,6 +208,8 @@ def validate_benchmark(manifest: dict) -> None:
             if ra is not None:
                 if not isinstance(ra, list) or not all(isinstance(g, list) and g for g in ra):
                     raise SystemExit(f"agentic key {kid!r} required_any must be a list of non-empty tool-name groups")
+                if any(not isinstance(t, str) or not t for g in ra for t in g):
+                    raise SystemExit(f"agentic key {kid!r} required_any tool names must be non-empty strings")
                 bad_any = {t for g in ra for t in g} - valid_tools
                 if bad_any:
                     raise SystemExit(f"agentic key {kid!r} required_any references unknown tools {sorted(bad_any)} "
@@ -222,8 +224,10 @@ def validate_benchmark(manifest: dict) -> None:
                 raise SystemExit(f"agentic key {kid!r} judge_message must be an object")
             jt = jm.get("tool")
             jts = jt if isinstance(jt, list) else [jt]
-            if not jts or any(t not in msg_tools for t in jts):
+            if not jts or any(not isinstance(t, str) for t in jts) or any(t not in msg_tools for t in jts):
                 raise SystemExit(f"agentic key {kid!r} judge_message.tool must be one or more of {sorted(msg_tools)}")
+            if len(jts) != len(set(jts)):
+                raise SystemExit(f"agentic key {kid!r} judge_message.tool has duplicate entries")
             if not str(jm.get("criteria", "")).strip():
                 raise SystemExit(f"agentic key {kid!r} judge_message needs non-empty criteria")
             thr = jm.get("pass_threshold", 6.0)
@@ -258,8 +262,12 @@ def validate_benchmark(manifest: dict) -> None:
                 if not isinstance(krow.get("expected_state"), dict):
                     raise SystemExit(f"home_automation key {kid!r} needs expected_state (a dict, may be empty)")
                 for dname, dstate in krow["expected_state"].items():
-                    if isinstance(dstate, (dict, list)):
-                        raise SystemExit(f"home_automation key {kid!r} expected_state[{dname!r}] must be a scalar state")
+                    if isinstance(dstate, dict):
+                        raise SystemExit(f"home_automation key {kid!r} expected_state[{dname!r}] must be a scalar "
+                                         "state or a list of scalar states")
+                    if isinstance(dstate, list) and (not dstate or any(isinstance(e, (dict, list)) for e in dstate)):
+                        raise SystemExit(f"home_automation key {kid!r} expected_state[{dname!r}] list must be "
+                                         "non-empty and contain only scalar states")
                 if "require_clarify" in krow and not isinstance(krow.get("require_clarify"), bool):
                     raise SystemExit(f"home_automation key {kid!r} require_clarify must be true/false")
                 for fld in ("forbidden_devices", "require_confirm", "forbidden_device_attempts"):
@@ -287,6 +295,17 @@ def score_one(method: str, manifest: dict, item: dict, completion: str, judge=No
         return llm_judge.score(item["prompt"], completion, manifest["_rubric"], judge,
                                pass_threshold=manifest.get("judge", {}).get("pass_threshold", 6.0))
     raise SystemExit(f"unknown scoring method: {method}")
+
+
+def think_label(think: bool | None) -> str:
+    """Unambiguous record of the think control state for results.csv / raw.
+
+    args.think is tri-state and None is NOT 'off': for a template that thinks by
+    default (e.g. gemma over llama.cpp --jinja) None meant thinking-ON. So persist
+    on|off|default (interpret 'default' alongside provider + the model page)
+    rather than a bare bool, so think-vs-no-think rows stay comparable.
+    """
+    return {True: "on", False: "off", None: "default"}[think]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -374,6 +393,11 @@ def main(argv: list[str] | None = None) -> int:
         num_predict=args.num_predict, num_ctx=args.num_ctx, seed=args.seed,
         think=args.think,
     )
+    # Unambiguous record of the think axis. args.think is tri-state and None is
+    # NOT "off": for a template that thinks by default (e.g. gemma over llama.cpp
+    # --jinja) None meant thinking-ON. So persist on|off|default (interpret
+    # 'default' alongside provider/model) rather than a bare bool.
+    think_lbl = think_label(args.think)
     resolved_base = args.base_url or (
         "http://localhost:11434/v1" if args.provider == "openai-compatible"
         else "http://localhost:11434")
@@ -451,6 +475,7 @@ def main(argv: list[str] | None = None) -> int:
                         correct_this_item += 1
                     raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
                                           "meta": item_meta,
+                                          "think": think_lbl,
                                           "episode": {"resolution": episode["resolution"],
                                                       "protocol": episode.get("protocol"),
                                                       "toolset": episode.get("toolset"),
@@ -478,6 +503,7 @@ def main(argv: list[str] | None = None) -> int:
                     correct_this_item += 1
                 raw.write(json.dumps({"id": item["id"], "sample_index": s, "result": res,
                                       "meta": item_meta,
+                                      "think": think_lbl,
                                       "prompt_tokens": comp.prompt_tokens,
                                       "gen_tokens": comp.gen_tokens,
                                       "wall_s": comp.wall_s,
@@ -521,6 +547,7 @@ def main(argv: list[str] | None = None) -> int:
         "num_ctx": args.num_ctx,
         "num_predict": args.num_predict,
         "sampling": f"t={args.temperature},top_p={args.top_p},top_k={args.top_k}",
+        "think": think_lbl,
         "seed": args.seed,
         "k": args.k,
         "n_items": len(prompts),
