@@ -82,12 +82,17 @@ telecom; v3 *guessed* at 60–70%; some remaining misses are a **bug in the
 benchmark's own APN tool**, not the model. **No independent verification yet** —
 this is the prime reason to run our own [agentic harness](../benchmarks/README.md).
 
-**Verified locally (2026-06-20, our harness, Q3_K_M full-GPU):** **11/12**
-home-automation (v0.2 agentic, native Gemma 4 tools) and **4/4** code-basics — a
-genuinely strong local agent, and quant-robust (10–11/12 across every sweep config).
-Caveat: we measured **v2's absolute capability** (what we care about), not a base
-head-to-head — so the author's relative ~3.5× claim is simply not something we
-tested. Full
+**Verified locally (2026-06-20, our harness, Q3_K_M full-GPU):** the 5-cell quant
+sweep gave **11/12** home-automation (v0.2, k=1) and **4/4** code-basics; a follow-up
+**`--k 3`** re-baseline (native tools, gpt-5.5 user-sim) put proper reliability numbers
+on the two agentic sets: **home-automation v0.3 observed_pass@3 0.889 / pass^3 0.722**
+(flaky 3/18 — hard fails h4 all-lights-off and h7 "good night" scene both end mid-task
+without closing) and **email-triage v0.2 observed_pass@3 0.917 / pass^3 0.833** (flaky
+1/12 — e4 stalls without replying). A genuinely strong local agent, quant-robust
+(10–11/12 across every sweep config), and ahead of qwen3.5:4b (HA 0.778/0.667, ET
+0.833/0.750) — though the qwen rows used an opus-4.8 user-sim, so the cross-model gap is
+indicative, not apples-to-apples. Caveat: we measured **v2's absolute capability**, not a
+base head-to-head — the author's relative ~3.5× claim is not something we tested. Full
 [sweep](../../lab/experiments/2026-06-20-gemma-4-12b-v2-quant-config-sweep/README.md).
 
 ## Size & resource requirements (machine-independent)

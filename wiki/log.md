@@ -575,3 +575,22 @@ can't vacuously pass (f1f5e1c); (3) h3/h9/h18 confirm items now forbid every non
 device so qwen's stray set(light/thermostat) over-actuation fails (f1f5e1c). Re-ran HA
 v0.3 with the tightened keys (0.722->0.667 honest drop) and replaced the stale row.
 selftest 151 ALL PASS. Commits: 9fa7d20 (first rows), c5aaf8d, f1f5e1c, d7d2afb (corrected HA).
+
+## [2026-06-20] bench | gemma-4-12B v2 on email-triage v0.2 + home-automation v0.3 (k=3, gpt-5.5 user-sim)
+Re-baselined gemma-4-12b-agentic-fable5 (Q3_K_M, f16 KV, full-GPU, llama.cpp CUDA
+container, native Gemma 4 tools) on the two agentic sets at `--k 3` with a **gpt-5.5**
+user-simulator - cheaper than opus-4.8 (top premium-request tier), frontier + pinned,
+recorded in the judge column (`usersim:copilot:gpt-5.5:native`). **email-triage v0.2:
+observed_pass@3 0.917 / pass^3 0.833**, flaky 1/12 (only e4 0/3 - searches the KB then
+stalls without issuing the required reply). **home-automation v0.3: observed_pass@3 0.889
+/ pass^3 0.722**, flaky 3/18 (hard fails h4 all-lights-off leaves the kitchen light on,
+h7 "good night" scene leaves the front door unlocked; both end mid-task without a closing
+response; flaky h5 refuse / h13 dependency / h14). Ahead of qwen3.5:4b (ET 0.833/0.750,
+HA 0.778/0.667) - but the qwen rows used an opus-4.8 user-sim, so the cross-model gap is
+indicative, not apples-to-apples (the user-sim is recorded per row). Hand-verified every
+hard fail as a real model error (state_ok / terminal_ok), not a harness bug. Rows appended
+to results.csv; gemma model page + both wiki/benchmarks pages updated. **decision-reasoning
+re-runs DEFERRED** this pass: thinking-mode CoT exploded cost (qwen ~6.9k-token CoT/item,
+~4.4 min/sample -> ~4.6 h for 21xk3, judge only scores the visible Recommendation) -
+needs a `--no-think` methodology call (see backlog). Containers run sequentially (8 GB
+VRAM): gemma llama.cpp up -> runs -> torn down.

@@ -51,6 +51,12 @@ with the frontier judge. See
   the ambiguous account request WITHOUT the required clarifying `ask`), `e2` 2/3 (one
   sample stalls searching for an order number and never escalates). `e9` injection ->
   escalate 3/3. The first `pass^k` baseline on v0.2.
+- [gemma-4-12b-agentic-fable5](../models/gemma-4-12b-agentic-fable5.md) (2026-06-20,
+  **v0.2 / 12 items**, native, **k=3**, gpt-5.5 user-sim): **observed_pass@3 0.917 /
+  pass^3 0.833**, flaky 1/12. Only fail `e4` 0/3 (searches the KB but stalls without
+  ever issuing the required `reply` -> `no_response`); `e6` 2/3 flaky. Ahead of
+  qwen3.5:4b, but its user-sim is gpt-5.5 vs qwen's opus-4.8 (recorded in the `judge`
+  column) - indicative, not apples-to-apples.
 - [qwen3.5:4b](../models/) (2026-06-19, **v0.1 / 5 items**, k=1): **4/5 native** ·
   **3/5 prompt**. Native correctly escalates the refund (e2) that prompt-mode flubbed;
   both miss e5 (fabricated "we don't ship to Antarctica" instead of escalating an
