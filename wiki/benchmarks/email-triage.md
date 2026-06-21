@@ -66,6 +66,11 @@ with the frontier judge. See
   unreliable**, the small-model pattern reliability metrics exist to expose. Promoted
   from a held-out raw once the `think` column shipped (perf fields blank - the raw
   predates them).
+- [MiniCPM5-1B](../models/minicpm5-1b.md) (2026-06-21, **v0.3 / 12 items**, SGLang +
+  XML fallback, native, **k=3**, **Think** (`think=on`), gpt-5.5 user-sim + msg-judge):
+  **observed_pass@3 0.833 / pass^3 0.333**, flaky 6/12. Think mode did **not** help
+  (below the v0.2 No-Think 0.917 / 0.417): **38% of steps were prose no-ops**. `e7`
+  never escalates; `e12` over-escalates a KB-answerable question.
 - [qwen3.5:4b](../models/) (2026-06-19, **v0.1 / 5 items**, k=1): **4/5 native** ·
   **3/5 prompt**. Native correctly escalates the refund (e2) that prompt-mode flubbed;
   both miss e5 (fabricated "we don't ship to Antarctica" instead of escalating an

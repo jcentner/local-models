@@ -1,7 +1,7 @@
 ---
 title: MiniCPM5-1B
 tags: [model, dense, small, on-device, llama-arch, hybrid-reasoning, tool-use, code, to-try]
-updated: 2026-06-19
+updated: 2026-06-21
 status: tried
 ---
 
@@ -274,6 +274,33 @@ of the confounded 2026-06-19 Ollama runs.
   (the headline 2/5 above was the older v0.1 5-item k=1 set).
 
 Writeup: [lab/experiments/2026-06-20-minicpm5-sglang-controlled](../../lab/experiments/2026-06-20-minicpm5-sglang-controlled/README.md).
+
+## Think-mode agentic finding (2026-06-21)
+
+Re-ran the agentic suite with **Think mode on** (`enable_thinking=true`, temp 0.9 /
+top_p 0.95) to test the **thinking-as-default** policy — and got the **first
+home-automation v0.4 datapoint** for this model. Verdict: **thinking does not help a
+1B here; it makes it narrate instead of act.**
+
+| Benchmark | mode | observed_pass@3 | pass^3 | flaky |
+|---|---|---|---|---|
+| home-automation **v0.4** | Think | **0.632** | **0.210** | 8/19 |
+| email-triage **v0.3** | Think | **0.833** | **0.333** | 6/12 |
+| email-triage v0.2 | No-Think | 0.917 | 0.417 | 6/12 |
+
+The mechanism is a **`_no_tool` no-op**: in Think mode the model writes prose
+narration of its intent into the answer channel — *"I need to clarify which light…"*,
+*"I don't have a tool to place orders…"* — instead of emitting the `<function>` tool
+call. **268 of 530 home-automation steps (51%)** and **63 of 166 email-triage steps
+(38%)** were such prose no-ops, with **zero** unparsed tool markup (so it's the
+model, not the harness). It **under-acts** (`h4` over-clarifies an unambiguous "turn
+off all the lights"; `h5`/`h10` narrate a refusal instead of using the `say` tool;
+`e7` never escalates), **confirm-loops** (`h17` asks "are you sure?" ×4, never
+refuses the smoke detector), or **mis-routes** (`e12` over-escalates a KB-answerable
+question). **Recommend `--no-think` for MiniCPM5 agentic runs.** (Caveat: the ET row
+is v0.3-Think vs the v0.2 No-Think row, so not a pure A/B; the narration mechanism
+is clean regardless — a No-Think v0.4/v0.3 run is the clean follow-up.) Writeup:
+[lab/experiments/2026-06-21-minicpm5-think-agentic](../../lab/experiments/2026-06-21-minicpm5-think-agentic/README.md).
 
 ## Open questions
 - Does the agentic/tool-use strength survive on its **native tool path**?

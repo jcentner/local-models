@@ -719,3 +719,17 @@ index.md, its own commit pattern) but **undocumented in AGENTS.md** - added a
 `### wiki/backlog.md` convention codifying it as the living, prunable forward queue
 (vs the append-only log/journal). Docs/backlog only; no code or results change.
 ## [2026-06-21] note | Tool-protocol policy: default native, do not run both (/benchmark prompt + backlog)
+
+## [2026-06-21] bench | MiniCPM5-1B think-mode agentic (home-automation v0.4 + email-triage v0.3)
+Ran the agentic suite with **Think on** (SGLang + XML fallback, native, k=3, temp 0.9,
+gpt-5.5 user-sim + msg-judge) to test thinking-as-default. **HA v0.4** (first MiniCPM5
+datapoint): observed_pass@3 **0.632** / pass^3 **0.210**, flaky 8/19. **ET v0.3**:
+**0.833** / **0.333**, flaky 6/12 — *below* the v0.2 No-Think 0.917 / 0.417. Mechanism:
+Think makes the 1B **narrate intent as prose instead of emitting the tool call** —
+**268/530 HA steps (51%)** and **63/166 ET steps (38%)** were `_no_tool` no-ops with
+**zero** unparsed markup (model, not harness): it under-acts (h4 over-clarifies "all
+lights off"; h5/h10 narrate a refusal; e7 never escalates), confirm-loops (h17 asks
+×4, never refuses the smoke detector), mis-routes (e12 over-escalates a KB-answerable
+question). Verdict: **`--no-think` is better for MiniCPM5 agentic**; a No-Think v0.4/v0.3
+run is the clean A/B follow-up. Both rows in results.csv (think=on, msgjudge:gpt-5.5).
+Writeup: lab/experiments/2026-06-21-minicpm5-think-agentic.

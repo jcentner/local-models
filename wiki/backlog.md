@@ -11,10 +11,10 @@ The single "what's next" view. Each item links to its authoritative page (the
 detail to the linked experiment/model page, and tick items here as they land.
 
 ## Now (in progress)
-- *(nothing actively running)* — last completed: the **2026-06-21** batch — [home-automation v0.4](../benchmarks/home-automation/README.md) (h5 grounding + h19 compound double-confirm), the [think/no-think axis](log.md) recorded in results.csv (schema v4), and the MiniCPM5-1B email-triage no-think promotion + e5 parity.
+- *(nothing actively running)* — last completed: the **MiniCPM5-1B think-mode agentic suite** (2026-06-21) — home-automation v0.4 (first datapoint, pass^3 0.210) + email-triage v0.3 (pass^3 0.333) with Think on; finding: thinking makes the 1B **narrate instead of act** (`--no-think` recommended). Prior same-day batch: the HA v0.4 redesign, the think-axis schema v4, and the MiniCPM5 ET no-think promotion + e5 parity.
 
 ## Next (queued / staged)
-- **MiniCPM5 agentic suite — HA v0.4 + think re-runs** — ET v0.2 no-think is done (in results.csv; see Recently done). **Pending:** home-automation v0.4 (not yet run for MiniCPM5) and the think re-runs once the thinking-default policy is set. SGLang recipe (forward-useful): serve WITHOUT `--tool-call-parser` (the `minicpm5` parser swallows the XML) + harness `parse_xml_tool_calls()`; `--no-think` works — [experiment](../lab/experiments/2026-06-20-minicpm5-sglang-controlled/README.md).
+- **MiniCPM5 agentic suite — No-Think v0.4/v0.3 A/B** — **Think runs DONE** (2026-06-21: HA v0.4 obs 0.632 / pass^3 0.210, ET v0.3 obs 0.833 / pass^3 0.333; [experiment](../lab/experiments/2026-06-21-minicpm5-think-agentic/README.md)) and showed Think *hurts* (51% / 38% of steps were prose no-ops — narrates instead of calling the tool). **Pending:** the matching **No-Think** HA v0.4 + ET v0.3 run (same `--judge-messages`, k=3) to isolate the think axis cleanly (strong prior: No-Think wins). SGLang recipe (forward-useful): serve WITHOUT `--tool-call-parser` (the `minicpm5` parser swallows the XML) + harness `parse_xml_tool_calls()` — [experiment](../lab/experiments/2026-06-20-minicpm5-sglang-controlled/README.md).
 - **Re-baseline all models on home-automation v0.4** (k=3, **with `--judge-messages`** so the h5/h17/h18 message content is graded) — the v0.4 grounding + double-confirm redesign means prior h5 scores aren't comparable; this **subsumes** re-running any model still on an older HA version (qwen/gemma are on v0.3; MiniCPM5 ET done, HA pending).
 - **[lfm2.5-colbert tool-selection](../lab/experiments/2026-06-20-lfm2.5-colbert-tool-selection/README.md)** — the router-aide eval (N tools → top-k), staged, not run.
 - **MiniCPM5 native tool-parser on a newer SGLang build** — `--tool-call-parser minicpm5` is broken in 0.5.13 ([sglang findings](stacks/sglang.md)); current path uses the harness XML fallback.
@@ -39,6 +39,7 @@ detail to the linked experiment/model page, and tick items here as they land.
 - Candidate experiments not yet scoped: [lab/experiments/README.md](../lab/experiments/README.md#candidate-experiments).
 
 ## Recently done (rolling, last few)
+- **MiniCPM5-1B think-mode agentic suite** — HA v0.4 (obs 0.632 / pass^3 0.210, first v0.4 datapoint) + ET v0.3 (0.833 / 0.333), Think on; thinking makes the 1B narrate instead of act (51% / 38% prose no-ops) → `--no-think` recommended (2026-06-21).
 - **MiniCPM5-1B email-triage no-think promoted to results.csv** (`think=off`) + **e5 parity** (s2 flip, matches the qwen v0.2 post-correction) — avg 0.667→0.694, headline obs/pass^3/flaky unchanged (2026-06-21).
 - **Journal backfill** (3 catch-up entries) + prompt/skill doc sync (2026-06-21).
 - **Record think/no-think axis (results.csv schema v4 + raw + run-viewer)** — new `think` column (`on|off|default`) after `sampling`; harness `think_label()` + both raw writes; 12 rows back-annotated (`tmp/migrate_results_v4.py`); viewer surfaces it in the header/pill + keys the variant matrix on (model, think); docs synced; selftest 175 ALL PASS. Unblocks thinking-as-default comparability (2026-06-21).
