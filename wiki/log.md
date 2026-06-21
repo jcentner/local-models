@@ -752,3 +752,19 @@ user-sim replay showed every gen short, `finish=stop`). Think stayed lean under 
 because its CoT lands in `reasoning_content` (not re-fed). Dropped the 0/19 artifact
 row (parser-present attempt) from results.csv; kept the real 0.474 No-Think row.
 Model page + experiment + HA benchmark page + backlog corrected.
+
+## [2026-06-21] note | harness concurrency — overlap Copilot-CLI waits with GPU work
+The agentic/llm_judge runners block on Copilot-CLI subprocesses (user-sim / judge)
+while the GPU idles. Phased, each committed + gpt-5.5-reviewed: **P0** measurement
+(`wall_clock_s` results.csv col schema v5 + a gen-vs-Copilot breakdown; the idle was
+previously unmeasured); **P1** retry/backoff on the Copilot CLI (a transient
+rate-limit/auth/empty blip recovers, a permanent bad-`--model` fails fast - and real
+model text saying "429"/"temporarily" is never misread); **P2** the concurrency core
+(serial loop → a pure per-sample worker + an ordered `(item,sample)` collector via
+`ThreadPoolExecutor`; `--concurrency auto` = 3 for the Copilot-bound methods, 1 for
+equivalence/code_tests; a worker error / Ctrl-C cancels pending work and writes no
+results row). Overlaps Copilot waits with GPU generation; does NOT parallelize the
+(serial) Ollama GPU. **A/B: email-triage v0.3 qwen3.5:4b 123.7s → 81.7s (~34%),
+scoring unchanged.** Reviews folded 3 real findings (classifier false-transient,
+overstated `overlap_saved`, mislabel). selftest 171 → 215 ALL PASS. Plan:
+tmp/harness-concurrency-plan.md.

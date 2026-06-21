@@ -46,6 +46,18 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model glm-4.6 \
   --api-key-env ZAI_API_KEY --price-in 0.6 --price-out 2.2 --temperature 0.0
 ```
 
+## Concurrency (overlaps Copilot waits — default on)
+
+`agentic` and `llm_judge` call the Copilot CLI (user-sim / judge) as blocking
+subprocesses while the GPU idles. **`--concurrency auto`** (default) runs **3** of
+those samples at once (**1** for `equivalence`/`code_tests`) so the GPU stays fed —
+measured **~34% wall-clock drop** on email-triage, **scoring unchanged**.
+`--concurrency 1` = the serial path. A transient Copilot rate-limit/auth blip is
+retried with backoff; a permanent bad-`--model` fails fast. `results.csv` records
+**`wall_clock_s`** (true elapsed) next to `wall_s_total` (per-request wall,
+queue-inflated at N>1); the speedup is the `wall_clock_s` delta between
+`--concurrency 1` and the default, not a single-run figure.
+
 ## Scorers (declared in the benchmark's bench.json)
 
 - `equivalence` — math/numeric answer matching. Deterministic; use `--temperature 0`.

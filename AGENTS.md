@@ -210,7 +210,14 @@ quants → `gemma-4-12b-agentic-fable5`). It also records the **`think`** contro
 state (`on|off|default`, from `--think`/`--no-think`; `default` = no flag so the
 template/provider default governs, interpret alongside provider + the model page)
 so think-vs-no-think runs stay comparable - the setting was previously captured
-nowhere. The viewer ([tools/run-viewer](tools/run-viewer/README.md))
+nowhere. Agentic/llm_judge runs default to **`--concurrency auto`** (3 Copilot-bound
+samples in flight, 1 for equivalence/code_tests) to **overlap the frontier
+user-sim/judge waits with GPU generation** - the run records true elapsed
+**`wall_clock_s`** (schema v5) next to `wall_s_total` (per-request wall, queue-
+inflated at N>1); scoring is unchanged vs serial (`--concurrency 1`), the GPU is just
+kept fed instead of idle (email-triage v0.3 qwen3.5:4b 123.7s->81.7s, ~34%). A
+transient Copilot rate-limit/auth blip is retried with backoff; a permanent
+bad-`--model` fails fast. The viewer ([tools/run-viewer](tools/run-viewer/README.md))
 reads `results.csv` to browse run content grouped by base model. Each raw run line
 also carries a small whitelisted flat **`meta`** ({`tier`,`category`}) - emitted by
 the harness, identical across an item's `k` samples - so the viewer can slice

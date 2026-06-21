@@ -111,6 +111,38 @@ created with `/author-benchmark`. Output: a row appended to
   totals (local default 0 -> `cost_usd=0.0`). Running the same benchmark local vs
   API and comparing capability + `cost_usd` is a first-class goal.
 
+## Concurrency & timing
+
+`--concurrency` overlaps the **Copilot-CLI waits** (the user-simulator and the
+llm_judge are blocking ~10-15s subprocesses) with GPU generation, so the GPU isn't
+idle while a frontier model thinks. It does **not** parallelize the GPU — Ollama
+serves generation serially; concurrency just keeps that one slot fed while other
+samples wait on Copilot.
+
+- **`--concurrency auto`** (default) = **3** for the Copilot-bound methods
+  (`agentic`, `llm_judge`), **1** for `equivalence` / `code_tests` (no Copilot to
+  overlap; `code_tests` also spawns podman). An int overrides; **`--concurrency 1`**
+  is the serial path. Keep it modest — Ollama is serial and Copilot **rate-limits**
+  on heavy fan-out. A *local* OpenAI-compatible server (SGLang/llama.cpp) can batch,
+  so a higher N may help there, but watch the 8 GB KV budget.
+- Each `(item, sample)` runs in a worker thread; results are folded + written in
+  deterministic `(item, sample)` order, so **scoring and raw output are unchanged**
+  vs serial (`--concurrency 1`). A worker error or Ctrl-C cancels pending work and
+  writes **no** `results.csv` row (fail-closed).
+- **Retry/backoff:** a transient Copilot failure (timeout, empty output, auth /
+  rate-limit text) is retried with exponential backoff + jitter; a **permanent**
+  config error (e.g. an invalid `--model`) fails fast. A real model reply that
+  merely *mentions* "429"/"temporarily" is never misread as transient.
+
+**Timing.** The end-of-run line prints `wall_clock` (true elapsed), `gen_compute`
+(Ollama queue-free `eval_duration`), `request_wall_sum` (sum of per-request wall —
+**queue-inflated** at concurrency>1), and `copilot_wall` (the user-sim + judge
+GPU-idle time). `results.csv` records **`wall_clock_s`** (true elapsed) next to
+`wall_s_total` (= `request_wall_sum`). The concurrency speedup is the **`wall_clock_s`
+delta between `--concurrency 1` and the default**, not a single-run figure —
+measured: email-triage v0.3 on qwen3.5:4b fell **123.7s -> 81.7s (~34%)** at the
+default vs serial, scoring unchanged.
+
 ## Scoring methods
 
 - **equivalence** — extracts `\boxed{}` / "answer is" / last number, compares

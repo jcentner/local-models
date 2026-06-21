@@ -98,6 +98,13 @@ faithfully (`enable_thinking`, native tool parsers incl. `minicpm5`).
   reliability, the home-agent signal) + `flaky_items` + `sem`. Run reliability
   passes at the recommended temp, not temp=0. See
   [eval-reliability](../concepts/eval-reliability.md).
+- **Concurrency is free speed, not a result:** agentic/llm_judge runs default to
+  `--concurrency auto` (3 Copilot-bound samples in flight, 1 for equivalence/
+  code_tests) to overlap the frontier user-sim/judge waits with GPU generation —
+  `wall_clock_s` drops (measured **~34%** on email-triage) with **scoring unchanged**
+  vs serial. It does not parallelize the (serial) Ollama GPU; `results.csv`
+  `wall_clock_s` is true elapsed (vs `wall_s_total` = per-request wall, queue-
+  inflated at N>1). A transient Copilot blip is retried; a bad `--model` fails fast.
 - **Pin everything:** model+quant, **provider** (local/API), runner+version,
   sampling (temp/top_p/top_k), **think** (`on|off|default` CoT control), context
   length, seed, n-samples/k, judge config, machine/endpoint, **cost** (`cost_usd`),
