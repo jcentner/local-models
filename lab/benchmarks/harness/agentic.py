@@ -411,7 +411,8 @@ def run_episode(agent, user_sim, scenario: dict, *, max_turns: int = 4,
     messages = [{"role": "user", "content": opening}]
     tool_calls: list[dict] = []
     resolution = None
-    perf = {"prompt_tokens": 0, "gen_tokens": 0, "wall_s": 0.0, "agent_calls": 0}
+    perf = {"prompt_tokens": 0, "gen_tokens": 0, "wall_s": 0.0, "compute_s": 0.0,
+            "agent_calls": 0, "user_sim_wall_s": 0.0, "user_sim_calls": 0}
 
     def _emit(name, args, call=None) -> str:
         """Apply one tool call; returns 'act' | 'respond' | 'terminal'."""
@@ -440,6 +441,7 @@ def run_episode(agent, user_sim, scenario: dict, *, max_turns: int = 4,
             perf["prompt_tokens"] += getattr(comp, "prompt_tokens", 0)
             perf["gen_tokens"] += getattr(comp, "gen_tokens", 0)
             perf["wall_s"] += getattr(comp, "wall_s", 0.0)
+            perf["compute_s"] += getattr(comp, "compute_s", 0.0)
 
             if native:
                 calls = getattr(comp, "tool_calls", None) or []
@@ -505,7 +507,10 @@ def run_episode(agent, user_sim, scenario: dict, *, max_turns: int = 4,
         if not yielded:
             resolution = resolution or "no_response"
             break
+        _t_us = time.monotonic()
         user_msg = user_sim.reply(transcript)
+        perf["user_sim_wall_s"] += round(time.monotonic() - _t_us, 2)
+        perf["user_sim_calls"] += 1
         if user_msg.strip().upper().startswith("DONE"):
             resolution = "done"
             break

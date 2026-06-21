@@ -21,6 +21,7 @@ import json
 import platform
 import socket
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -462,6 +463,9 @@ def main(argv: list[str] | None = None) -> int:
     prompt_tok_sum = 0
     gen_tok_sum = 0
     wall_sum = 0.0
+    compute_sum = 0.0          # queue-free model compute (Ollama eval_duration); 0 on openai-compatible
+    usersim_wall_sum = 0.0     # agentic user-sim (Copilot) wall - the GPU-idle time concurrency overlaps
+    judge_wall_sum = 0.0       # llm_judge / --judge-messages (Copilot) wall
     per_item_correct: list[int] = []          # correct count (0..k) per item -> reliability
     slice_groups: dict[str, list[int]] = {}   # meta[slice_by] value -> per-item correct counts
     agentic_toolset = resolve_toolset(manifest.get("toolset")) if method == "agentic" else None
@@ -470,6 +474,7 @@ def main(argv: list[str] | None = None) -> int:
     ep_max_steps = int(manifest.get("max_steps", 5))
     ep_max_turns = int(manifest.get("max_turns", 4))
     fields = slice_fields(manifest)
+    run_start = time.monotonic()
     with raw_path.open("w") as raw:
         for item in prompts:
             item_meta = meta_slice(item, fields)
@@ -488,6 +493,9 @@ def main(argv: list[str] | None = None) -> int:
                     prompt_tok_sum += perf["prompt_tokens"]
                     gen_tok_sum += perf["gen_tokens"]
                     wall_sum += perf["wall_s"]
+                    compute_sum += perf.get("compute_s", 0.0)
+                    usersim_wall_sum += perf.get("user_sim_wall_s", 0.0)
+                    judge_wall_sum += res.get("judge_wall_s") or 0.0
                     tok_s_sum += (perf["gen_tokens"] / perf["wall_s"]) if perf["wall_s"] else 0.0
                     if res.get("correct"):
                         sample_correct += 1
@@ -496,6 +504,10 @@ def main(argv: list[str] | None = None) -> int:
                                           "meta": item_meta,
                                           "think": think_lbl,
                                           "system_suffix": args.system_suffix,
+                                          "compute_s": perf.get("compute_s"),
+                                          "user_sim_wall_s": perf.get("user_sim_wall_s"),
+                                          "user_sim_calls": perf.get("user_sim_calls"),
+                                          "judge_wall_s": res.get("judge_wall_s"),
                                           "episode": {"resolution": episode["resolution"],
                                                       "protocol": episode.get("protocol"),
                                                       "toolset": episode.get("toolset"),
@@ -518,6 +530,8 @@ def main(argv: list[str] | None = None) -> int:
                 prompt_tok_sum += comp.prompt_tokens
                 gen_tok_sum += comp.gen_tokens
                 wall_sum += comp.wall_s
+                compute_sum += comp.compute_s
+                judge_wall_sum += res.get("judge_wall_s") or 0.0
                 if res.get("correct"):
                     sample_correct += 1
                     correct_this_item += 1
@@ -528,6 +542,8 @@ def main(argv: list[str] | None = None) -> int:
                                       "prompt_tokens": comp.prompt_tokens,
                                       "gen_tokens": comp.gen_tokens,
                                       "wall_s": comp.wall_s,
+                                      "compute_s": comp.compute_s,
+                                      "judge_wall_s": res.get("judge_wall_s"),
                                       "gen_tok_per_s": comp.gen_tok_per_s,
                                       "completion": comp.text}) + "\n")
             per_item_correct.append(correct_this_item)
@@ -537,9 +553,11 @@ def main(argv: list[str] | None = None) -> int:
             mark = "OK " if correct_this_item == args.k else "XX " if correct_this_item == 0 else "~~ "
             print(f"  {mark}{item['id']} ({correct_this_item}/{args.k})")
 
+    wall_clock_s = round(time.monotonic() - run_start, 1)
     metrics = reliability_metrics(per_item_correct, args.k)
     mean_tok_s = round(tok_s_sum / (total_samples or 1), 2)
     cost_usd = compute_cost(prompt_tok_sum, gen_tok_sum, args.price_in, args.price_out)
+    copilot_wall = round(usersim_wall_sum + judge_wall_sum, 1)
     print(f"\nobserved_pass@{args.k}={metrics['observed_pass_at_k']:.3f}  "
           f"pass^{args.k}={metrics['pass_hat_k']:.3f}  avg_correct={metrics['avg_correct']:.3f}  "
           f"flaky={metrics['flaky_items']}/{len(per_item_correct)}  sem={metrics['sem']}  "
@@ -547,6 +565,14 @@ def main(argv: list[str] | None = None) -> int:
     print("  (observed_pass@k = >=1 correct in k [best-of-k capability ceiling]; "
           "pass^k = ALL k correct [tau-bench reliability]; flaky = items inconsistent "
           "across k; sem = standard error of the per-item mean)")
+    compute_str = f"{round(compute_sum, 1)}s" if compute_sum > 0 else "n/a(non-ollama)"
+    print(f"  wall_clock={wall_clock_s}s  gen_compute={compute_str}  "
+          f"request_wall_sum={round(wall_sum, 1)}s  copilot_wall={copilot_wall}s  "
+          f"overlap_saved~={round(wall_sum + copilot_wall - wall_clock_s, 1)}s "
+          f"(usersim={round(usersim_wall_sum, 1)}s judge={round(judge_wall_sum, 1)}s)")
+    print("  (wall_clock = true elapsed; request_wall_sum = sum of per-request wall "
+          "[includes server queue wait when --concurrency>1]; gen_compute = Ollama "
+          "queue-free eval time; copilot_wall = user-sim + judge GPU-idle time)")
     if args.slice_by and slice_groups:
         print(f"  by meta.{args.slice_by}:")
         for gv in sorted(slice_groups):
@@ -581,6 +607,7 @@ def main(argv: list[str] | None = None) -> int:
         "prompt_tokens_total": prompt_tok_sum,
         "gen_tokens_total": gen_tok_sum,
         "wall_s_total": round(wall_sum, 1),
+        "wall_clock_s": wall_clock_s,
         "cost_usd": cost_usd,
         "judge": (f"copilot:{args.judge_model}" if method == "llm_judge"
                   else (f"usersim:copilot:{args.user_model}:{args.tool_protocol}"

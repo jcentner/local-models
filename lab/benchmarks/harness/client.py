@@ -65,6 +65,7 @@ class Completion:
     gen_tokens: int = 0
     gen_tok_per_s: float = 0.0
     wall_s: float = 0.0
+    compute_s: float = 0.0   # queue-free model compute (Ollama eval+prompt_eval); 0 = unknown (openai-compatible)
     tool_calls: list = field(default_factory=list)   # list[ToolCall], native mode
     raw_message: dict = field(default_factory=dict)  # provider-native assistant msg to echo back
 
@@ -138,7 +139,9 @@ class OllamaClient:
         text = msg.get("content", "")
         gen_tokens = int(body.get("eval_count") or 0)
         eval_ns = int(body.get("eval_duration") or 0)
+        prompt_eval_ns = int(body.get("prompt_eval_duration") or 0)
         tok_s = (gen_tokens / (eval_ns / 1e9)) if eval_ns else 0.0
+        compute_s = (eval_ns + prompt_eval_ns) / 1e9   # queue-free GPU compute (excludes request/queue wait)
         calls = []
         for tc in (msg.get("tool_calls") or []):
             fn = tc.get("function") or {}
@@ -164,6 +167,7 @@ class OllamaClient:
             gen_tokens=gen_tokens,
             gen_tok_per_s=round(tok_s, 2),
             wall_s=round(wall, 2),
+            compute_s=round(compute_s, 2),
             tool_calls=calls,
             raw_message=msg,
         )

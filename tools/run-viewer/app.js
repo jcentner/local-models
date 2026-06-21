@@ -566,6 +566,7 @@ function RunDetail({ runs, runIndex, run, data, wikiHas, onOpenWiki, onCompare }
   const wp = `models/${base}.md`;
   const meta = [
     ['provider', run.provider], ['think', run.think], ['tok/s', fmt(run.mean_gen_tok_s, 1)],
+    ['wall', (run.wall_clock_s ? fmt(run.wall_clock_s, 1) + 's' : 'n/a')],
     ['cost', '$' + fmt(run.cost_usd, 4)], ['ctx', run.num_ctx], ['date', run.date],
   ];
   const sub = (base !== run.model ? base : '') ;

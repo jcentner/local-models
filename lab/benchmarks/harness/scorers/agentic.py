@@ -214,6 +214,7 @@ def score(episode: dict, key: dict, judge=None) -> dict:
     res["judged"] = jr["judged"]
     res["judge_message_score"] = jr.get("score")
     res["judge_message_rationale"] = jr.get("rationale")
+    res["judge_wall_s"] = jr.get("judge_wall_s")
     res["correct"] = bool(res["deterministic_correct"] and jr["judged"] == "pass")
     return res
 
@@ -244,5 +245,6 @@ def _judge_message(episode: dict, spec: dict, judge) -> dict:
     task = (episode.get("transcript") or [{}])[0].get("text", "")
     jres = llm_judge.score(task, text, criteria, judge, pass_threshold=float(threshold))
     return {"judged": "pass" if jres.get("correct") else "fail",
-            "score": jres.get("score"), "rationale": jres.get("rationale")}
+            "score": jres.get("score"), "rationale": jres.get("rationale"),
+            "judge_wall_s": jres.get("judge_wall_s")}
 

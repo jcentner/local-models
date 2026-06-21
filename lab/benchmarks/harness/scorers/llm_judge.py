@@ -51,6 +51,7 @@ def score(task: str, response: str, rubric: str, judge_client, pass_threshold: f
     prompt = build_prompt(task, response, rubric)
     out = judge_client.complete([{"role": "user", "content": prompt}], system=JUDGE_SYSTEM)
     judgement = parse_judgement(getattr(out, "text", str(out)))
+    judgement["judge_wall_s"] = getattr(out, "wall_s", None)
     s = judgement.get("score")
     try:
         judgement["correct"] = (s is not None and float(s) >= pass_threshold)

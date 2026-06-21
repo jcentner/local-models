@@ -129,6 +129,7 @@ def test_judge():
     with mock.patch.object(subprocess, "run", return_value=_Proc('{"score": 8, "rationale": "good"}')):
         res = llm_judge.score("task", "response", "rubric", judge, pass_threshold=6.0)
     check("judge JSON parsed + passes threshold", res.get("correct") is True and res.get("score") == 8)
+    check("judge surfaces judge_wall_s (Phase 0)", "judge_wall_s" in res)
 
     with mock.patch.object(subprocess, "run", return_value=_Proc('{"score": 3, "rationale": "weak"}')):
         res = llm_judge.score("task", "response", "rubric", judge, pass_threshold=6.0)
@@ -413,6 +414,10 @@ def test_agentic():
         _MockUser("DONE"), scen_reply)
     check("episode reply resolution", ep["resolution"] == "done" and ep["did_reply"] and not ep["did_escalate"])
     check("search_kb used", "search_kb" in ep["tools_used"])
+    check("perf has Phase-0 timing fields",
+          all(k in ep["perf"] for k in ("compute_s", "user_sim_wall_s", "user_sim_calls")))
+    check("user-sim call timed", ep["perf"]["user_sim_calls"] >= 1)
+    check("Completion has compute_s", hasattr(Completion(text=""), "compute_s"))
     check("scorer passes good reply",
           agentic_scorer.score(ep, {"expected_terminal": "reply", "required_tools": ["search_kb"],
                                      "forbidden_tools": ["escalate"]})["correct"])
@@ -558,6 +563,7 @@ def test_agentic_judge_message():
     r = agentic_scorer.score(ep, jm_key, judge=_MockJudge('{"score": 8, "rationale": "ok"}'))
     check("judge pass -> judged pass + correct",
           r["judged"] == "pass" and r["correct"] and r["deterministic_correct"])
+    check("judged result surfaces judge_wall_s (Phase 0)", "judge_wall_s" in r)
     # judge fails -> correct goes False even though deterministic passed
     r = agentic_scorer.score(ep, jm_key, judge=_MockJudge('{"score": 3, "rationale": "fabricated"}'))
     check("judge fail -> correct False, deterministic True",
