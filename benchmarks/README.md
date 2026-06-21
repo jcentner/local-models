@@ -14,7 +14,10 @@ benchmarks/<name>/
   prompts.jsonl   one JSON object per line: {"id", "prompt", "meta": {...}}
   answer_key.jsonl   {"id", "answer"|"tests"|"rubric_ref"} — SEPARATE from prompts
                      (agentic support: {"id","expected_terminal","required_tools","forbidden_tools"};
-                      agentic home: {"id","expected_state","forbidden_devices","require_confirm"})
+                      agentic home: {"id","expected_state","forbidden_devices","require_confirm",
+                        "require_clarify"?,"forbidden_device_attempts"?};
+                      either toolset may add "judge_message":{tool,criteria,pass_threshold}
+                      for the optional --judge-messages text check)
   rubric.md       for LLM-judged (open-ended) benchmarks
 ```
 
@@ -41,7 +44,7 @@ Declared in `wiki/benchmarks/<name>.md` and consumed by the harness:
 - `equivalence` — short-answer/numeric matching (sympy + normalizer)
 - `code_tests` — execute candidate against `tests` in a locked-down **Podman** sandbox (`--code-sandbox podman`; `local-unsafe` host exec is opt-in)
 - `llm_judge` — rubric-scored by a **frontier** judge (claude-opus-4.8 via Copilot CLI; never a local small model)
-- `agentic` — model-agnostic tau-bench-style rollout (agent + Copilot-CLI user-simulator + mocked tools); deterministic state/policy scoring. Two **tool sets** (set by `bench.json`'s `toolset`): **support** (act/ask/escalate over a KB — [email-triage](email-triage/README.md)) and **home_automation** (act/confirm/refuse over a device world — [home-automation](home-automation/README.md), the lighthouse set). `prompt` or `native` tool protocol.
+- `agentic` — model-agnostic tau-bench-style rollout (agent + Copilot-CLI user-simulator + mocked tools); deterministic state/policy scoring, plus an optional `--judge-messages` text check. Two **tool sets** (set by `bench.json`'s `toolset`): **support** (act/ask/escalate over a KB — [email-triage](email-triage/README.md) v0.2) and **home_automation** (act/confirm/refuse over a device world, with device-aware `ask.device` confirmation + `device.requires` preconditions + prompt-injection items — [home-automation](home-automation/README.md) v0.3, the lighthouse set). `prompt` or `native` tool protocol.
 
 ## Creating one
 

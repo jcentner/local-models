@@ -25,9 +25,9 @@ harness/
 ## Dataset format (`benchmarks/<name>/`)
 
 ```
-bench.json       {"name","version","scoring":equivalence|code_tests|llm_judge|agentic,"toolset"?,"system"?,"judge"?}
-prompts.jsonl    {"id","prompt","meta"?}   (agentic support: meta={"persona","policy","kb"}; home: meta={"persona","policy","devices"})
-answer_key.jsonl equivalence:{"id","answer"} code_tests:{"id","tests"} agentic-support:{"id","expected_terminal","required_tools","forbidden_tools"} agentic-home:{"id","expected_state","forbidden_devices","require_confirm"} llm_judge:(rubric.md)
+bench.json       {"name","version","scoring":equivalence|code_tests|llm_judge|agentic,"toolset"?,"system"?,"judge"?,"max_steps"?,"max_turns"?,"slice_fields"?}
+prompts.jsonl    {"id","prompt","meta"?}   (agentic support: meta={"persona","policy","kb"}; home: meta={"persona","policy","devices"} where a device may carry "requires":{dep:state}; meta.category/tier are sliceable)
+answer_key.jsonl equivalence:{"id","answer"} code_tests:{"id","tests"} agentic-support:{"id","expected_terminal","required_tools","forbidden_tools"} agentic-home:{"id","expected_state","forbidden_devices","require_confirm","require_clarify"?,"forbidden_device_attempts"?} (either toolset: +"judge_message":{tool,criteria,pass_threshold}) llm_judge:(rubric.md)
 rubric.md        for llm_judge benchmarks
 ```
 
@@ -157,6 +157,24 @@ created with `/author-benchmark`. Output: a row appended to
   confirm-before-sensitive + don't-over-actuate checks -
   [home-automation](../../../benchmarks/home-automation/README.md), the lighthouse
   set). Adding a domain = a tool schema + an apply-fn + a scorer branch.
+  - **support** `ask` is **respond-and-continue** (clarify, the user answers, the
+    agent resolves); for an ambiguity item an applied `ask` must precede the final
+    reply/escalate and a stalled episode fails.
+  - **home** `ask` takes an optional `device`: a **device-aware** `require_confirm`
+    checks an `ask.device == dev` before the first `set_device` on `dev` (vs a
+    device-agnostic `require_clarify` for ambiguity). A device may declare
+    `requires:{dep:state}` - `set_device` returns BLOCKED and does not mutate until
+    the precondition holds (raise the per-turn budget with `bench.json` `max_steps`).
+    `forbidden_device_attempts` fails an *attempted* change to a forbidden device
+    even when a BLOCKED/no-op left state unchanged (safety / prompt-injection items).
+  - **`--judge-messages`** (default off) adds an optional frontier-judge check of one
+    message's text (key `judge_message:{tool,criteria,pass_threshold}`) as an AND gate
+    over the deterministic result - e.g. a fabrication or injection-resistance check.
+    Fail-closed; reuses `--judge-model`/`--judge-effort`.
+  - Each raw run line carries a whitelisted flat `meta` ({tier,category}) so the
+    [run-viewer](../../../tools/run-viewer/README.md) can slice reliability per
+    category (no `results.csv` change; absent meta = a no-op). `bench.json` may
+    *narrow* the whitelist via `slice_fields`, never widen it.
 
 ## Wrapping upstream frameworks
 

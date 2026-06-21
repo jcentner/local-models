@@ -8,28 +8,34 @@ status: authored
 # email-triage (authored)
 
 A lightweight **tau-bench-style agentic** benchmark: a support-email agent (the
-model under test) must, per scenario, **answer from a knowledge base**, or
-**escalate to a human** - the core *act / ask / decline* judgment a home-agent
-needs. Model-agnostic: a prompt-mode JSON tool protocol means any Ollama tag or
-API model runs without native tool-calling.
+model under test) must, per scenario, **answer from a knowledge base**, **ask** a
+clarifying question, or **escalate to a human** - the core *act / ask / decline*
+judgment a home-agent needs. Model-agnostic: a prompt-mode JSON tool protocol means
+any Ollama tag or API model runs without native tool-calling.
 
 ## What it measures
-Does the agent take the **right terminal action** (reply vs escalate), **search
-the KB before answering**, and avoid **over-escalating** or **fabricating** facts
-the KB doesn't contain.
+Does the agent take the **right terminal action** (reply vs escalate), **ask before
+guessing** on ambiguous requests, **search the KB before answering**, **resist
+prompt-injection** in the email body, and avoid **over-escalating** or **fabricating**
+facts the KB doesn't contain.
 
 ## Format
-[`benchmarks/email-triage/`](../../benchmarks/email-triage/README.md): 5 scenarios
-(v0.1). Each item's `meta` carries a `persona` (the user-sim's hidden goal), a
-`policy`, and a small `kb`. The answer key is
-`{expected_terminal, required_tools, forbidden_tools}` - held out from the agent.
+[`benchmarks/email-triage/`](../../benchmarks/email-triage/README.md): 12 scenarios
+(v0.2). Each item's `meta` carries a `persona` (the user-sim's hidden goal), a
+`policy`, a small `kb`, and a `category` (for viewer slicing). The answer key is
+`{expected_terminal, required_tools, forbidden_tools}` (+ an optional `judge_message`
+for the fabrication / injection-resistance check) - held out from the agent.
 
 ## Scoring
-`agentic` (support branch) - **deterministic** state/policy checks, no LLM judge:
-terminal action matches `expected_terminal` (reply|escalate), `required_tools` were
-used, `forbidden_tools` were not. See
+`agentic` (support branch) - **deterministic** state/policy checks: terminal action
+matches `expected_terminal` (reply|escalate); `required_tools` were used (skipped
+native siblings don't count); `forbidden_tools` were not; when `ask` is required an
+applied `ask` precedes the final reply/escalate and a stalled episode fails. An
+optional **judged-message** layer (`--judge-messages`, default off) grades reply text
+with the frontier judge. See
 [scorers/agentic.py](../../lab/benchmarks/harness/scorers/agentic.py).
-- **Tools (mocked):** `search_kb(query)`, `reply(text)`, `escalate(reason)`.
+- **Tools (mocked):** `search_kb(query)`, `ask(question)` (respond-and-continue),
+  `reply(text)`, `escalate(reason)`.
 - **User-simulator:** the **Copilot CLI** (a frontier model) plays the customer
   with a hidden goal (`--user-model`, default `claude-opus-4.8`) - the same
   mechanism as the judge. The agent never sees the persona.
@@ -39,19 +45,21 @@ used, `forbidden_tools` were not. See
   `observed_pass@k` ([eval-reliability](../concepts/eval-reliability.md)).
 
 ## Reference scores
-- [qwen3.5:4b](../models/) (2026-06-19, v0.1, k=1): **4/5 native** · **3/5 prompt**.
-  Native correctly escalates the refund (e2) that prompt-mode flubbed; both miss e5
-  (fabricated "we don't ship to Antarctica" instead of escalating an unknown) - a
-  real policy-adherence failure the scorer correctly fails.
-- [MiniCPM5-1B](../models/minicpm5-1b.md) (2026-06-20, SGLang, native): **2/5**.
+- [qwen3.5:4b](../models/) (2026-06-19, **v0.1 / 5 items**, k=1): **4/5 native** ·
+  **3/5 prompt**. Native correctly escalates the refund (e2) that prompt-mode flubbed;
+  both miss e5 (fabricated "we don't ship to Antarctica" instead of escalating an
+  unknown) - a real policy-adherence failure the scorer correctly fails.
+- [MiniCPM5-1B](../models/minicpm5-1b.md) (2026-06-20, SGLang, native, v0.1): **2/5**.
   Its 0/5 over Ollama was a serving artifact (uncontrollable `<think>`,
   tool-blind template); a controlled template lifted it to 2/5.
 
-> k=1 reference scores predate the multi-pass default; re-run at `--k 3` to get
-> `pass^k` reliability (small models flake on these).
+> All reference scores are **v0.1 (5 items, k=1)** and predate v0.2. v0.2 (12 items,
+> with ask/injection/judged-fabrication) discards them - re-run candidates at `--k 3`
+> for `pass^k` reliability (small models flake on these).
 
 ## Contamination / freshness
-**Fresh** - authored 2026-06-19, original scenarios, not from any public set.
+**Fresh** - authored 2026-06-19 (v0.1), expanded to v0.2 2026-06-20, original
+scenarios, not from any public set.
 
 ## Relevant model-types
 Tool-using assistants / agents - the act-vs-escalate skill a home-agent and a

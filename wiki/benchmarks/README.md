@@ -23,9 +23,15 @@ and `home_automation` (act/confirm/refuse) — over a `prompt` or `native`
 function-calling protocol). Authored benchmarks run end to end:
 [decision-reasoning](decision-reasoning.md) (VibeThinker 1/6, MiniCPM5 0/6),
 `code-basics` (qwen3.5:4b 3/4), [email-triage](../../benchmarks/email-triage/README.md)
-(qwen3.5:4b 4/5 native · 3/5 prompt; MiniCPM5 2/5 native),
-[home-automation](../../benchmarks/home-automation/README.md) (v0.2, 12 scenarios;
-qwen3.5:4b v0.1 6/6 prompt · 5/6 native; MiniCPM5-1B 7/12 native).
+(**v0.2, 12 scenarios** - ask/ambiguity, prompt-injection, judged fabrication),
+[home-automation](../../benchmarks/home-automation/README.md) (**v0.3, 18 scenarios** -
+device-aware `ask.device` confirm, a dependency precondition, injection-via-status,
+judged refuse/confirm). The agentic scorer gained a respond-and-continue `ask`,
+structured `ask.device` confirmation, `device.requires` preconditions,
+`forbidden_device_attempts`, and an optional `--judge-messages` hybrid layer; each
+raw run line now carries a sliceable `meta` ({tier,category}) for the run-viewer.
+Pre-v0.2/v0.3 reference numbers (qwen3.5:4b, gemma-4-12b 11/12, MiniCPM5-1B 7/12) are
+superseded - re-run at `--k 3`.
 **MiniCPM5-1B was re-tested over [SGLang](../stacks/sglang.md)** (container,
 controllable thinking) — its Ollama scores were a serving artifact: a **weak
 abstract reasoner** (decision 0/6, now coherent) but a **decent home-automation

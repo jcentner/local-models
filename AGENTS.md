@@ -142,7 +142,17 @@ against tests **in a sandbox** (Podman, `--code-sandbox podman`); **agentic/tool
 tools over a **tool set** - `support` act/ask/escalate or `home_automation`
 act/confirm/refuse - via a `prompt` or `native` function-calling protocol; scored
 deterministically on end-state + tool policy; `harness/agentic.py` - the flexible
-alternative to registered-model benchmarks like BFCL); open-ended
+alternative to registered-model benchmarks like BFCL). The agentic scorer is
+deterministic by design but supports a few sharper checks: a respond-and-continue
+`ask` (clarify on ambiguity, then resolve) with an ask-before-terminal ordering;
+structured **`ask.device`** confirmation in home (did the agent confirm *that*
+device, not just pause to ask) vs device-agnostic `require_clarify` for ambiguity;
+a `device.requires` precondition (`set_device` returns BLOCKED until satisfied);
+`forbidden_device_attempts` (an *attempted* forbidden change fails even if BLOCKED
+left state unchanged); and an **optional hybrid judged-message** layer
+(`--judge-messages`, default off) that grades one message's text with the frontier
+judge as an AND gate over the deterministic result (e.g. a fabrication or
+injection-resistance check). open-ended
 (creative writing, reasoning) =
 rubric LLM-judge by a **frontier model** (claude-opus-4.8 via the Copilot CLI -
 never a local small model; see `.github/skills/copilot-cli`), pinned (model +
@@ -162,7 +172,12 @@ Each result row records a **`base_model`** (canonical id, `--base-model`, defaul
 to `--model`; matches the `wiki/models/<id>.md` slug) alongside the variant
 `model` label, so runs group across quant/serving variants (e.g. all `g4v2-*`
 quants → `gemma-4-12b-agentic-fable5`). The viewer ([tools/run-viewer](tools/run-viewer/README.md))
-reads `results.csv` to browse run content grouped by base model.
+reads `results.csv` to browse run content grouped by base model. Each raw run line
+also carries a small whitelisted flat **`meta`** ({`tier`,`category`}) - emitted by
+the harness, identical across an item's `k` samples - so the viewer can slice
+reliability per category interactively (no `results.csv` change; absent meta = a
+no-op). A `bench.json` may declare `category`/`tier` on items and may *narrow* the
+whitelist via `slice_fields`, never widen it (persona/policy/devices never leak).
 Definitions are machine-independent (wiki); results are **per-environment** (lab):
 per-machine for local, per-provider + per-date for API (prices/models drift).
 Workflow verbs: `/new-benchmark` (ingest an existing one),
