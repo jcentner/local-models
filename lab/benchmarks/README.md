@@ -30,10 +30,13 @@ Numbers, captured consistently so they're comparable over time.
 
 **The harness writes most of this automatically** (`harness/run.py` -> `results.csv`):
 date, machine, model, **provider**, runner, **runner_version**, **endpoint**,
-benchmark+version, scoring, num_ctx, num_predict, sampling, seed, k, n_items,
+benchmark+version, scoring, num_ctx, num_predict, sampling, **think**, seed, k, n_items,
 observed_pass_at_k, **pass_hat_k**, avg_correct, **flaky_items**, **sem**,
 mean_gen_tok_s, prompt/gen token totals, wall_s_total, **cost_usd**, judge,
-code_sandbox, raw_file, platform. Add the few it can't know (quant, VRAM/RAM, -ngl,
+code_sandbox, raw_file, platform. `think` is the run-time CoT control
+(`on|off|default`, from `--think`/`--no-think`; `default` = no flag, the
+template/provider default governs - interpret with `provider` + the model page),
+so think-vs-no-think runs stay comparable. Add the few it can't know (quant, VRAM/RAM, -ngl,
 notes) by hand. Results are **per-environment**: per-machine for local, per-provider
 + per-date for API (prices drift).
 **Two capability metrics, always reported together** (see

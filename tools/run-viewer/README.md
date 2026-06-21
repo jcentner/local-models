@@ -38,7 +38,10 @@ config/quant variant label) and has a **filter box** (token match, so "gemma 4"
 finds `gemma-4-12b-…`). Runs whose raw `.jsonl` is absent on this machine
 show `no raw` and are disabled. Clicking a **base-model header** opens a comparison
 matrix (variants × benchmarks, best pass^k per cell) — handy for quant/serving
-sweeps. Clicking a **run** renders one card per item, adapted to the scorer:
+sweeps. Variant rows are keyed on **(model, think)**, so a model run both
+think-on and `--no-think` shows as two rows and think-vs-no-think compares at a
+glance (a `no-think`/`think`/`default` tag marks the row). Clicking a **run**
+renders one card per item, adapted to the scorer:
 
 | scoring | card content |
 |---------|--------------|

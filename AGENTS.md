@@ -171,7 +171,11 @@ reported next to capability ([wiki/concepts/eval-reliability.md](wiki/concepts/e
 Each result row records a **`base_model`** (canonical id, `--base-model`, defaults
 to `--model`; matches the `wiki/models/<id>.md` slug) alongside the variant
 `model` label, so runs group across quant/serving variants (e.g. all `g4v2-*`
-quants → `gemma-4-12b-agentic-fable5`). The viewer ([tools/run-viewer](tools/run-viewer/README.md))
+quants → `gemma-4-12b-agentic-fable5`). It also records the **`think`** control
+state (`on|off|default`, from `--think`/`--no-think`; `default` = no flag so the
+template/provider default governs, interpret alongside provider + the model page)
+so think-vs-no-think runs stay comparable - the setting was previously captured
+nowhere. The viewer ([tools/run-viewer](tools/run-viewer/README.md))
 reads `results.csv` to browse run content grouped by base model. Each raw run line
 also carries a small whitelisted flat **`meta`** ({`tier`,`category`}) - emitted by
 the harness, identical across an item's `k` samples - so the viewer can slice

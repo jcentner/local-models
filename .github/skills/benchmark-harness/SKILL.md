@@ -99,10 +99,12 @@ ALL k correct — reliability, weight this for the home agent), plus `flaky_item
 ## After a run
 
 The row is written automatically (schema: date, machine, model, provider, runner,
-runner_version, endpoint, benchmark, scoring, num_ctx, num_predict, sampling, seed,
+runner_version, endpoint, benchmark, scoring, num_ctx, num_predict, sampling, think, seed,
 k, n_items, observed_pass_at_k, pass_hat_k, avg_correct, flaky_items, sem,
 mean_gen_tok_s, token totals,
-wall_s_total, cost_usd, judge, code_sandbox, raw_file, platform). Results are
+wall_s_total, cost_usd, judge, code_sandbox, raw_file, platform). `think` is the
+run-time CoT control (`on|off|default`; `default` = no flag, template/provider
+default governs - interpret alongside provider + model). Results are
 **per-environment** (per-machine for local; per-provider + per-date for API).
 Add what the harness can't know (quant, VRAM) by hand, then log it: an experiment
 folder + a `## [date] bench | …` line in `wiki/log.md`. The full recommend → run →

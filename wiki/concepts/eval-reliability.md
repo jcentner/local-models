@@ -70,8 +70,8 @@ over-reading. Per Anthropic's *Adding Error Bars to Evals*
 - **Slice when structured.** `--slice-by <meta field>` (e.g. `tier`, `category`)
   prints per-group reliability so a score is diagnostic ("steady on prioritization,
   flaky under-specified"), not one opaque number.
-- **Pin everything** (model+quant, provider, sampling, seed, k, judge config,
-  machine/endpoint, cost, date) — see the
+- **Pin everything** (model+quant, provider, sampling, **think** (`on|off|default`
+  CoT control), seed, k, judge config, machine/endpoint, cost, date) — see the
   [results schema](../../lab/benchmarks/README.md).
 
 ## Cost

@@ -89,7 +89,8 @@ python3 -m harness.run --benchmark ../../benchmarks/<name> --model <api-model> \
 ## 5. Record
 - The harness appends a row to [lab/benchmarks/results.csv](../../lab/benchmarks/README.md)
   (raw output in git-ignored `runs/`). Verify the row; add any missing fields
-  (quant, VRAM from `ollama ps`, tok/s).
+  (quant, VRAM from `ollama ps`, tok/s). The `think` column records the CoT
+  control (`on|off|default`) so think-vs-no-think runs stay comparable.
 - **Report both** `observed_pass@k` (best-of-k ceiling) **and** `pass^k`
   (`pass_hat_k`, all-k reliability), plus `flaky_items` and `sem`. For the
   home-agent verdict weight **pass^k** and read the `flaky_items` raw episodes. See

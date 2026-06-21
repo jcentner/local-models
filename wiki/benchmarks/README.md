@@ -99,9 +99,9 @@ faithfully (`enable_thinking`, native tool parsers incl. `minicpm5`).
   passes at the recommended temp, not temp=0. See
   [eval-reliability](../concepts/eval-reliability.md).
 - **Pin everything:** model+quant, **provider** (local/API), runner+version,
-  sampling (temp/top_p/top_k), context length, seed, n-samples/k, judge config,
-  machine/endpoint, **cost** (`cost_usd`), date. See the
-  [results schema](../../lab/benchmarks/README.md).
+  sampling (temp/top_p/top_k), **think** (`on|off|default` CoT control), context
+  length, seed, n-samples/k, judge config, machine/endpoint, **cost** (`cost_usd`),
+  date. See the [results schema](../../lab/benchmarks/README.md).
 - **Contamination is the whole game.** Public benchmarks leak into training data
   (we hit this with [VibeThinker](../models/vibethinker-3b.md) — "benchmaxxing"
   skepticism). Every benchmark page records a freshness/contamination note, and
