@@ -106,6 +106,8 @@ a { color: inherit; }
 .matrix th { color: var(--dim); font-family: var(--mono); font-weight: 500; font-size: 11px; }
 .matrix th:first-child, .matrix td.vname { text-align: left; }
 .matrix td.vname { font-family: var(--mono); color: var(--fg); }
+.matrix td.vname .thinktag { color: var(--dim); font-size: 10px; padding: 1px 5px;
+  border: 1px solid var(--border); border-radius: 3px; margin-left: 4px; }
 .matrix td .pill { cursor: pointer; border: none; }
 .matrix .dash { color: var(--dimmer); }
 .hint { font-family: var(--mono); font-size: 11px; color: var(--dim); margin-top: 10px; }

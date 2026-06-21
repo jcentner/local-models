@@ -159,7 +159,7 @@ function GroupedRail({ runs, sel, expanded, onToggle, onSelectRun, onSelectBase,
                       <span class="m">${r.benchmark.split(' ')[0]}</span>
                       ${disabled ? html`<span class="missing">no raw</span>`
                         : html`<span class=${'pill ' + passClass(r.observed_pass_at_k)}>${fmt(r.observed_pass_at_k)}</span>`}
-                      <span class="b">${r.scoring}${r.provider === 'openai-compatible' ? ' · api' : ''}</span>
+                      <span class="b">${r.scoring}${r.provider === 'openai-compatible' ? ' · api' : ''}${r.think && r.think !== 'default' ? ' · ' + (r.think === 'off' ? 'no-think' : r.think) : ''}</span>
                     </button>`;
                 })}
               </div>`) : null}
@@ -348,14 +348,18 @@ function SampleGroup({ g, Renderer, expectedK }) {
 // ---------- base-model overview (variant x benchmark matrix) ----------
 function BaseOverview({ runs, base, wikiHas, onOpenWiki, onSelectRun }) {
   const idxs = runs.map((r, i) => i).filter((i) => (runs[i].base_model || runs[i].model) === base);
+  // Variant identity = (model, think) so a model run both think-on and -off
+  // appears as two rows -> think-vs-no-think compares directly in the matrix.
   const variants = [], benches = [], vset = new Set(), bset = new Set();
   idxs.forEach((i) => {
-    const v = runs[i].model; if (!vset.has(v)) { vset.add(v); variants.push(v); }
+    const th = runs[i].think || '—';
+    const vkey = runs[i].model + '\u0000' + th;
+    if (!vset.has(vkey)) { vset.add(vkey); variants.push({ key: vkey, model: runs[i].model, think: th }); }
     const bn = runs[i].benchmark; if (!bset.has(bn)) { bset.add(bn); benches.push(bn); }
   });
   const cell = (v, bn) => {
-    const ms = idxs.filter((i) => runs[i].model === v && runs[i].benchmark === bn
-      && Number.isFinite(relK(runs[i])));
+    const ms = idxs.filter((i) => runs[i].model === v.model && (runs[i].think || '—') === v.think
+      && runs[i].benchmark === bn && Number.isFinite(relK(runs[i])));
     if (!ms.length) return null;
     ms.sort((a, b) => (runK(runs[b]) - runK(runs[a])) || (relK(runs[b]) - relK(runs[a])));
     const i = ms[0];
@@ -376,7 +380,7 @@ function BaseOverview({ runs, base, wikiHas, onOpenWiki, onSelectRun }) {
         <thead><tr><th>variant</th>${benches.map((bn) => html`<th>${bn}</th>`)}</tr></thead>
         <tbody>
           ${variants.map((v) => html`<tr>
-            <td class="vname">${v}</td>
+            <td class="vname">${v.model}${v.think && v.think !== '—' ? html` <span class="thinktag">${v.think === 'off' ? 'no-think' : v.think === 'on' ? 'think' : v.think}</span>` : ''}</td>
             ${benches.map((bn) => { const c = cell(v, bn); return html`<td>${c
               ? (c.openable
                   ? html`<button class=${'pill ' + passClass(c.ph)} onClick=${() => onSelectRun(c.i)} title=${`open run · pass^${c.k} ${fmt(c.ph)} · pass@${c.k} ${fmt(c.pk)}`}>${lbCell(c)}</button>`
@@ -561,7 +565,7 @@ function RunDetail({ runs, runIndex, run, data, wikiHas, onOpenWiki, onCompare }
   const base = run.base_model || run.model;
   const wp = `models/${base}.md`;
   const meta = [
-    ['provider', run.provider], ['tok/s', fmt(run.mean_gen_tok_s, 1)],
+    ['provider', run.provider], ['think', run.think], ['tok/s', fmt(run.mean_gen_tok_s, 1)],
     ['cost', '$' + fmt(run.cost_usd, 4)], ['ctx', run.num_ctx], ['date', run.date],
   ];
   const sub = (base !== run.model ? base : '') ;
