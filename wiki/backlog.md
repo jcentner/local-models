@@ -26,6 +26,7 @@ detail to the linked experiment/model page, and tick items here as they land.
 - **gemma-4-12B v3** (announced) and the **Qwen3.6-27B** agentic sibling ([v2 page](models/gemma-4-12b-agentic-fable5.md)).
 
 ## Infra / maintenance
+- **Investigate qwen3.5:4b low GPU utilization** — `ollama ps` reports `100% GPU` (fully offloaded) yet the NVIDIA app / `nvidia-smi` shows only **~24-33% GPU utilization (~33 W)** during decode on the [ProArt P16](hardware/proart-p16.md) (observed 2026-06-20 mid dec-reasoning re-baseline, ~68 tok/s). Likely just memory-bandwidth-bound single-stream decode of a small model (low util is expected there), but confirm against WSL2 overhead, the 32K `num_ctx` KV, and thinking-mode stalls before concluding. Low priority.
 - Periodic **lint pass** (contradictions, orphans, stale claims) — see [AGENTS.md](../AGENTS.md) workflow.
 - Candidate experiments not yet scoped: [lab/experiments/README.md](../lab/experiments/README.md#candidate-experiments).
 
