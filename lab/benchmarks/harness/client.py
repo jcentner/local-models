@@ -168,7 +168,7 @@ class OllamaClient:
             gen_tokens=gen_tokens,
             gen_tok_per_s=round(tok_s, 2),
             wall_s=round(wall, 2),
-            compute_s=round(compute_s, 2),
+            compute_s=compute_s,   # full precision: summed before any rounding (run.py)
             tool_calls=calls,
             raw_message=msg,
         )
@@ -293,7 +293,7 @@ class OpenAICompatibleClient:
             gen_tokens=gen_tokens,
             gen_tok_per_s=round(tok_s, 2),
             wall_s=round(wall, 2),
-            compute_s=round(compute_s, 2),
+            compute_s=compute_s,   # full precision: summed before any rounding (run.py)
             tool_calls=calls,
             raw_message=msg,
         )

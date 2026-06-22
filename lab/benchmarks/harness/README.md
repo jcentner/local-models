@@ -89,7 +89,8 @@ created with `/author-benchmark`. Output: a row appended to
   (`num_ctx`, `think`) + native `eval_count`/`eval_duration` tok/s.
 - `--provider openai-compatible` — `{--base-url}/chat/completions` (base_url ends
   in `/v1`). Targets hosted APIs **or** Ollama's `:11434/v1` shim **or** a local
-  **[SGLang](../../../wiki/stacks/sglang.md)** server. tok/s is wall-based. The API
+  **[SGLang](../../../wiki/stacks/sglang.md)** server. tok/s is queue-free when the
+  server returns llama.cpp `timings` (`predicted_ms`), else wall-based. The API
   key is read from the env var named by `--api-key-env` (**never** put a key on the
   CLI or in `results.csv`); localhost needs none.
 - **Thinking control over `openai-compatible`:** `--think/--no-think` is sent as
