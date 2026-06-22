@@ -135,13 +135,16 @@ samples wait on Copilot.
   merely *mentions* "429"/"temporarily" is never misread as transient.
 
 **Timing.** The end-of-run line prints `wall_clock` (true elapsed), `gen_compute`
-(Ollama queue-free `eval_duration`), `request_wall_sum` (sum of per-request wall —
-**queue-inflated** at concurrency>1), and `copilot_wall` (the user-sim + judge
-GPU-idle time). `results.csv` records **`wall_clock_s`** (true elapsed) next to
-`wall_s_total` (= `request_wall_sum`). The concurrency speedup is the **`wall_clock_s`
-delta between `--concurrency 1` and the default**, not a single-run figure —
-measured: email-triage v0.3 on qwen3.5:4b fell **123.7s -> 81.7s (~34%)** at the
-default vs serial, scoring unchanged.
+(queue-free model eval: Ollama `eval_duration` / llama.cpp `timings.predicted_ms`),
+`request_wall_sum` (sum of per-request wall — **queue-inflated** at concurrency>1),
+and `copilot_wall` (the user-sim + judge GPU-idle time). **`mean_gen_tok_s` is
+queue-free** — `gen_tokens / gen_compute` — so it stays comparable across
+`--concurrency` values; it falls back to wall-based (and is flagged as such) only
+when the provider reports no eval timing (e.g. a hosted API or SGLang). `results.csv`
+records **`wall_clock_s`** (true elapsed) next to `wall_s_total` (= `request_wall_sum`).
+The concurrency speedup is the **`wall_clock_s` delta between `--concurrency 1` and
+the default**, not a single-run figure — measured: email-triage v0.3 on qwen3.5:4b
+fell **123.7s -> 81.7s (~34%)** at the default vs serial, scoring unchanged.
 
 ## Scoring methods
 

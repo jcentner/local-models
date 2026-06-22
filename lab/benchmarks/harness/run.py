@@ -516,7 +516,7 @@ def main(argv: list[str] | None = None) -> int:
     prompt_tok_sum = 0
     gen_tok_sum = 0
     wall_sum = 0.0
-    compute_sum = 0.0          # queue-free model compute (Ollama eval_duration); 0 on openai-compatible
+    compute_sum = 0.0          # queue-free generation compute (Ollama eval_duration / llama.cpp predicted_ms); 0 if unreported
     usersim_wall_sum = 0.0     # agentic user-sim (Copilot) wall - the GPU-idle time concurrency overlaps
     judge_wall_sum = 0.0       # llm_judge / --judge-messages (Copilot) wall
     per_item_correct: list[int] = []          # correct count (0..k) per item -> reliability
@@ -629,13 +629,19 @@ def main(argv: list[str] | None = None) -> int:
 
     wall_clock_s = round(time.monotonic() - run_start, 1)
     metrics = reliability_metrics(per_item_correct, args.k)
-    mean_tok_s = round(tok_s_sum / (total_samples or 1), 2)
+    # tok/s = queue-free generation rate (gen tokens / model eval seconds) when the
+    # provider reports compute timing (Ollama eval_duration / llama.cpp predicted_ms);
+    # else fall back to wall-based, which is queue-inflated at concurrency>1.
+    tok_s_queue_free = compute_sum > 0
+    mean_tok_s = round(gen_tok_sum / compute_sum, 2) if tok_s_queue_free \
+        else round(tok_s_sum / (total_samples or 1), 2)
+    tok_s_note = "" if tok_s_queue_free else " (wall-based; no provider eval timing)"
     cost_usd = compute_cost(prompt_tok_sum, gen_tok_sum, args.price_in, args.price_out)
     copilot_wall = round(usersim_wall_sum + judge_wall_sum, 1)
     print(f"\nobserved_pass@{args.k}={metrics['observed_pass_at_k']:.3f}  "
           f"pass^{args.k}={metrics['pass_hat_k']:.3f}  avg_correct={metrics['avg_correct']:.3f}  "
           f"flaky={metrics['flaky_items']}/{len(per_item_correct)}  sem={metrics['sem']}  "
-          f"mean_gen_tok/s={mean_tok_s}  cost_usd={cost_usd}  raw={raw_path.name}")
+          f"mean_gen_tok/s={mean_tok_s}{tok_s_note}  cost_usd={cost_usd}  raw={raw_path.name}")
     print("  (observed_pass@k = >=1 correct in k [best-of-k capability ceiling]; "
           "pass^k = ALL k correct [tau-bench reliability]; flaky = items inconsistent "
           "across k; sem = standard error of the per-item mean)")
@@ -644,9 +650,10 @@ def main(argv: list[str] | None = None) -> int:
           f"request_wall_sum={round(wall_sum, 1)}s  copilot_wall={copilot_wall}s "
           f"(usersim={round(usersim_wall_sum, 1)}s judge={round(judge_wall_sum, 1)}s)")
     print("  (wall_clock = true elapsed; copilot_wall = GPU-idle user-sim+judge time; "
-          "gen_compute = Ollama queue-free eval; request_wall_sum = per-request wall, "
-          "queue-inflated at concurrency>1. The concurrency speedup is the wall_clock "
-          "delta between --concurrency 1 and >1, NOT a single-run figure.)")
+          "gen_compute = queue-free model eval (Ollama eval_duration / llama.cpp "
+          "predicted_ms) and the basis for mean_gen_tok/s; request_wall_sum = "
+          "per-request wall, queue-inflated at concurrency>1. The concurrency speedup "
+          "is the wall_clock delta between --concurrency 1 and >1, NOT a single-run figure.)")
     if args.slice_by and slice_groups:
         print(f"  by meta.{args.slice_by}:")
         for gv in sorted(slice_groups):
