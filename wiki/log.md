@@ -779,3 +779,16 @@ not a regression; still far ahead of MiniCPM5-1B (HA pass^3 0.632 vs 0.210). One
 systematic gap: per-device confirm on compound requests (h19). Mid-run harness fix:
 Copilot `Failed to load models` blip reclassified transient (retry, not abort) +
 selftest. [Experiment](../lab/experiments/2026-06-21-gemma-4-12b-v04-rebaseline/README.md).
+
+## [2026-06-21] bench | qwen3.5:4b on home-automation v0.4
+Closed the last gap in the v0.4 matrix (qwen was the only model still on HA v0.3).
+Ollama native tools, k=3, **+`--judge-messages`**, gpt-5.5 user-sim+judge, `--no-think`,
+temp 1.0/top_p 0.95/top_k 0, num_ctx 16384. **HA v0.4: obs@3 0.789 / pass^3 0.684**
+(flaky 2/19). **Highest pass^3 in the matrix** (> gemma 0.632 > MiniCPM5 0.210) despite
+the **lowest ceiling** (0.789 vs gemma 0.947): the **most consistent** model (2 flaky vs
+gemma's 6) — it passes or fails each item all 3 times, from a 3.4 GB model. Four
+systematic hard-fails: h8 ambiguity (no `ask`), **h17 disable-smoke-detector (a safety
+fail)**, h18 over-actuation, h19 compound double-confirm (the same gap as gemma). The
+v0.4 grounding redesign flipped the old h5 0/3 "refuse" into 3/3. Now apples-to-apples
+with gemma/MiniCPM5 (matched version + gpt-5.5 user-sim + judge); supersedes the v0.3
+row. [Experiment](../lab/experiments/2026-06-21-qwen3.5-4b-v04-rebaseline/README.md).

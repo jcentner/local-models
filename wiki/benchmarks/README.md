@@ -24,9 +24,9 @@ function-calling protocol). Authored benchmarks run end to end:
 [decision-reasoning](decision-reasoning.md) (VibeThinker 1/6, MiniCPM5 0/6),
 `code-basics` (qwen3.5:4b 3/4), [email-triage](../../benchmarks/email-triage/README.md)
 (**v0.2, 12 scenarios** - ask/ambiguity, prompt-injection, judged fabrication),
-[home-automation](../../benchmarks/home-automation/README.md) (**v0.3, 18 scenarios** -
-device-aware `ask.device` confirm, a dependency precondition, injection-via-status,
-judged refuse/confirm). The agentic scorer gained a respond-and-continue `ask`,
+[home-automation](../../benchmarks/home-automation/README.md) (**v0.4, 19 scenarios** -
+grounding + compound double-confirm, device-aware `ask.device` confirm, a dependency
+precondition, injection-via-status, judged refuse/confirm). The agentic scorer gained a respond-and-continue `ask`,
 structured `ask.device` confirmation, `device.requires` preconditions,
 `forbidden_device_attempts`, and an optional `--judge-messages` hybrid layer; each
 raw run line now carries a sliceable `meta` ({tier,category}) for the run-viewer.
@@ -161,4 +161,4 @@ that fits these interests before hand-authoring. See the
 - [humaneval-plus.md](humaneval-plus.md) — HumanEval+/MBPP+ coding (wraps evalplus); high contamination risk.
 - [decision-reasoning.md](decision-reasoning.md) — authored decision-making/reasoning scenarios (v0.2, 21 items; tiers + categories + traps); `llm_judge` (opus-4.8); fresh/held-out.
 - [email-triage.md](email-triage.md) — authored **agentic** support set (answer-from-KB vs escalate); `agentic` rollout + Copilot user-sim; fresh/held-out.
-- [home-automation.md](home-automation.md) — authored **agentic** lighthouse set (v0.2, 12 scenarios; act/confirm/refuse over a device world); `agentic` rollout, deterministic state/policy scoring; fresh/held-out.
+- [home-automation.md](home-automation.md) — authored **agentic** lighthouse set (v0.4, 19 scenarios; act/confirm/refuse/ground over a device world); `agentic` rollout, deterministic state/policy scoring; fresh/held-out.
