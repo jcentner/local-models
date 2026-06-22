@@ -23,7 +23,7 @@ and `home_automation` (act/confirm/refuse) — over a `prompt` or `native`
 function-calling protocol). Authored benchmarks run end to end:
 [decision-reasoning](decision-reasoning.md) (VibeThinker 1/6, MiniCPM5 0/6),
 `code-basics` (qwen3.5:4b 3/4), [email-triage](../../benchmarks/email-triage/README.md)
-(**v0.2, 12 scenarios** - ask/ambiguity, prompt-injection, judged fabrication),
+(**v0.3, 12 scenarios** - ask/ambiguity, prompt-injection, judged fabrication),
 [home-automation](../../benchmarks/home-automation/README.md) (**v0.4, 19 scenarios** -
 grounding + compound double-confirm, device-aware `ask.device` confirm, a dependency
 precondition, injection-via-status, judged refuse/confirm). The agentic scorer gained a respond-and-continue `ask`,

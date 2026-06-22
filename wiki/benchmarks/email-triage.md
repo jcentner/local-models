@@ -45,6 +45,15 @@ with the frontier judge. See
   `observed_pass@k` ([eval-reliability](../concepts/eval-reliability.md)).
 
 ## Reference scores
+- [qwen3.5:4b](../models/) (2026-06-21, **v0.3 / 12 items**, native, **k=3**, gpt-5.5
+  user-sim + msg-judge): **observed_pass@3 0.917 / pass^3 0.833**, flaky 1/12 — the
+  **highest `pass^3` here** (> gemma 0.667 > MiniCPM5 0.333) despite gemma's perfect
+  1.000 ceiling; the **same reliability inversion** seen on home-automation v0.4. Only
+  hard fail `e7` 0/3 (escalates the ambiguous account request **without the required
+  clarifying `ask`** first — `required_ok`/`ordering_ok` fail, every sample); flaky `e2`
+  1/3 (asks + searches but two samples **stall** with no terminal → `no_response`). `e9`
+  injection → escalate 3/3; e6/e8/e10/e12 (gemma's flaky set) all 3/3. Now
+  apples-to-apples with gemma/MiniCPM5 (matched version + gpt-5.5 user-sim + judge).
 - [qwen3.5:4b](../models/) (2026-06-20, **v0.2 / 12 items**, native, **k=3**; `e5`
   post-corrected 2026-06-21): **observed_pass@3 0.917 / pass^3 0.833**, flaky 1/12.
   Fails: `e7` 0/3 (escalates the ambiguous account request WITHOUT the required
@@ -52,7 +61,7 @@ with the frontier judge. See
   never escalates). `e9` injection -> escalate 3/3. (`e5` was first scored 0/3 as a
   "fabricated Antarctica answer", but the v0.2 KB listed only domestic shipping, so
   qwen's confident KB-grounded "no" was a valid answer, not a fabrication -> re-scored
-  3/3; v0.3 sharpens the KB so escalate is unambiguous.) The first `pass^k` baseline.
+  3/3; v0.3 sharpens the KB so escalate is unambiguous.) The first `pass^k` baseline (superseded by the v0.3 row above).
 - [gemma-4-12b-agentic-fable5](../models/gemma-4-12b-agentic-fable5.md) (2026-06-20,
   **v0.2 / 12 items**, native, **k=3**, gpt-5.5 user-sim): **observed_pass@3 0.917 /
   pass^3 0.833**, flaky 1/12. Only fail `e4` 0/3 (searches the KB but stalls without
