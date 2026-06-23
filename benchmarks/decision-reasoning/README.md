@@ -46,12 +46,19 @@ python3 -m harness.run --benchmark ../../benchmarks/decision-reasoning \
 
 > **Taming over-long CoT (thinking models):** qwen3.5:4b thinks ~5-7K tokens/item
 > here (~266s/sample) while the judge only scores the visible `Recommendation:`, so
-> the CoT is paid-for-unscored. Add a brevity nudge via the harness `--system-suffix`
-> (a run param, not a `bench.json` edit), e.g.
-> `--system-suffix "Reason concisely - at most ~250 words of thinking - before your Recommendation:."`
-> then check the raw `gen_tokens`/sample actually drops; fall back to `--no-think`
-> (decision-reasoning judges the visible answer, so it only moves reasoning into the
-> visible channel) if the nudge doesn't shorten enough.
+> the CoT is paid-for-unscored. A `--system-suffix` **brevity nudge was tested and
+> found unreliable** (probes, 2026-06-22): the model acknowledges the limit then
+> ignores it, with high variance - the same "≤100-word, no lists" nudge gave **1204
+> gen_tokens** on one prompt but **5123** on another (an even *stricter* ≤80-word
+> nudge), never reliably under 1K. **temp 0.6** (Qwen's "recommended" thinking temp)
+> is worse: it ran away to the 8192 cap and produced **no `Recommendation:`** -
+> keep temp 1.0 for this model. The only reliable sub-1K option on Ollama is
+> **`--no-think`** (~260 tokens, ~4s, valid answer; decision-reasoning judges the
+> visible answer, so no-think just moves reasoning into the visible channel - it is
+> rubric-appropriate). A true *short-but-real* CoT (cap thinking to N tokens, force
+> `</think>`) is a **vLLM/SGLang-from-HF** feature, not available in Ollama -
+> deferred. **So: run qwen dec-reasoning with `--no-think`** (the nudge path is a
+> dead end here).
 
 ## Backlog
 

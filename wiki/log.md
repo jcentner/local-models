@@ -795,3 +795,20 @@ only hard-fail e7 (escalates without the required clarifying `ask`). Now apples-
 with gemma/MiniCPM5 (matched version + gpt-5.5 user-sim + judge) on both agentic sets;
 completes qwen's pair on the current versions.
 [Experiment](../lab/experiments/2026-06-21-qwen3.5-4b-v04-rebaseline/README.md).
+
+## [2026-06-22] note | qwen3.5:4b dec-reasoning brevity-nudge tested — DEAD END, use --no-think
+Probed whether a `--system-suffix` brevity nudge can tame qwen3.5:4b's over-long CoT
+on decision-reasoning (the judge only scores the visible `Recommendation:`, so CoT is
+paid-for-unscored). **Finding: the nudge is unreliable.** The model acknowledges the
+word limit then ignores it, with high variance: the same "≤100-word, no lists" nudge
+gave **1204 gen_tokens** on one prompt but **5123** on another (an even stricter
+≤80-word nudge); the ≤250-word nudge only halved it (~6882 → ~3300). Never reliably
+<1K (target was a few hundred). **temp 0.6** (Qwen's "recommended" thinking temp) is
+worse — it ran away to the 8192 cap and emitted **no `Recommendation:`**; keep
+**temp 1.0** for this model. Only **`--no-think`** reliably gets sub-1K (~260 tokens,
+~4s, valid answer) and is rubric-appropriate (reasoning just moves into the visible
+channel). A true short-but-real CoT (cap thinking, force `</think>`) is a
+vLLM/SGLang-from-HF feature, not in Ollama — deferred. **Next action: run qwen
+dec-reasoning v0.2 with `--no-think`, k=3, temp 1.0** (not yet run — wrapped for the
+night). Updated [decision-reasoning README](../benchmarks/decision-reasoning/README.md)
++ [backlog](backlog.md).
