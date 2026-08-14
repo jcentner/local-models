@@ -812,3 +812,46 @@ vLLM/SGLang-from-HF feature, not in Ollama — deferred. **Next action: run qwen
 dec-reasoning v0.2 with `--no-think`, k=3, temp 1.0** (not yet run — wrapped for the
 night). Updated [decision-reasoning README](../benchmarks/decision-reasoning/README.md)
 + [backlog](backlog.md).
+
+## [2026-08-13] note | Session restart on torrent: host page + last30days bring-up
+First session since 2026-06-22, first ever on **torrent** (desktop, RTX 3070 Ti
+8 GB Ampere, WSL2). Generated wiki/hardware/torrent.md via scripts/host-profile.sh
+and filled the prose (same 8 GB fit math as the P16, no Blackwell quirks; NO
+serving stack installed yet — no Ollama/containers/venv, so the next model run
+doubles as bring-up). Installed the last30days engine (~/.agents/last30days-repo,
+symlinked to ~/.agents/skills/last30days so the /new-model recipe path works);
+credentials (~/.config/last30days/.env) still pending — copy from daedalus + add
+X burner cookies (AUTH_TOKEN/CT0, Bird backend).
+
+## [2026-08-13] ingest | LFM2.5-2.6B model page
+Liquid AI's on-device agentic flagship (2026-08-04): 2.69B conv/attention hybrid
+(22 conv + 8 GQA), 128K ctx, 128K vocab, ~34T tokens, LFM Open License. An
+ALWAYS-thinking reasoning model (template opens <think>; no off switch — do not
+repeat the qwen brevity-nudge detour) with tool calling as a first-class training
+target (Pythonic protocol between special tokens; agentic RL inside Hermes Agent
+/ OpenClaw). Vendor tables: leads instruction-following + most tool-use benches
+vs bigger Gemma-4-E2B/E4B and Qwen3.5-4B/9B (ToolSandbox 77.83 > Qwen3.5-9B
+76.44); weak side = coding/knowledge (vendor-explicit). Q8_0 = 2.87 GB. The
+direct challenger to qwen3.5:4b (reliability champ) for home-agent brain.
+Harness caveats flagged on the page: verify template fidelity over Ollama hf.co
+pull (MiniCPM5 lesson), probe whether any server parses the Pythonic tool
+protocol (may need a parse fallback à la parse_xml_tool_calls), temp-0.1
+recommended sampling skews pass^k comparisons. Researched WITHOUT last30days
+(not yet credentialed here) — web + primary sources only; re-scan community
+signal later. Staged lab/experiments/2026-08-13-lfm2.5-2.6b-first-run (also the
+torrent serving bring-up). No weights pulled.
+
+## [2026-08-13] ingest | LFM2.5-VL-3B model page (first vision model)
+Liquid AI's edge VLM (2026-08-12, release-day+1 ingest): SigLIP2-NaFlex-400M
+encoder + the LFM2.5-2.6B backbone = 3.1B, 32K ctx (not 128K), NON-thinking,
+same Pythonic tool protocol — including tool calls from image input. Strengths
+are the agentic-vision axes: ScreenSpot-v2 80.7, RefCOCO 87.9, ChartQA 81.3;
+avg 69.4/28 benches ≈ InternVL-3.5-4B, −0.7 vs Qwen3.5-4B (both ~1.5× larger).
+~3.3 GB; GGUF + mmproj on llama.cpp mtmd (Ollama unverified). First vision
+model in the wiki — the eyes slot. Key connection: homeview's production vision
+pipeline (photo → propose_assets) has a ready-made 18-photo ground-truth eval
+whose backlog explicitly awaits a local VLM behind VisionProvider — wrapping it
+is the natural first vision benchmark (external-first, deterministic scoring)
+instead of authoring one from scratch; penciled in backlog. Harness is text-only
+today. Staged lab/experiments/2026-08-13-lfm2.5-vl-3b-first-look (manual smoke:
+HomeView-shaped fixture probe + screen/OCR). No weights pulled.

@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-06-20
+updated: 2026-08-13
 ---
 
 # Index
@@ -15,6 +15,7 @@ local-agent **suite** (home automation, email triage, a website/product support 
 - [hardware/proart-p16.md](hardware/proart-p16.md) — this machine (ASUS ProArt P16): verified specs, WSL2 setup, what fits.
 - [hardware/blackwell-rtx5070.md](hardware/blackwell-rtx5070.md) — RTX 5070 Laptop (Blackwell, 8 GB): specs + the CUDA 12.8 / sm_120 gotcha.
 - [hardware/xdna2-npu.md](hardware/xdna2-npu.md) — Ryzen AI 9 HX 370 NPU (XDNA 2): what it can do and why it's a Windows-side experiment.
+- [hardware/torrent.md](hardware/torrent.md) — desktop dev box (RTX 3070 Ti 8 GB, Ampere, WSL2): same 8 GB fit math as the P16, minus the Blackwell quirks; no serving stack installed yet.
 
 ## Stacks
 - [stacks/podman-gpu.md](stacks/podman-gpu.md) — **shared foundation**: run GPU LLM servers (SGLang, llama.cpp) as official CUDA images under rootless Podman + NVIDIA CDI; no host toolkit. The page to reproduce the setup on a new box.
@@ -30,6 +31,8 @@ local-agent **suite** (home automation, email triage, a website/product support 
 - [models/vibethinker-3b.md](models/vibethinker-3b.md) — WeiboAI 3B dense reasoning specialist (Qwen2.5-based, MIT); frontier-ish math/code scores, runs full-GPU here.
 - [models/minicpm5-1b.md](models/minicpm5-1b.md) — OpenBMB 1B dense on-device model (Llama-arch, Apache-2.0); via SGLang: weak abstract reasoner (decision-reasoning 0/6) but a decent home-automation **tool-executor** (7/12) — a home-agent executor, not the deliberation brain.
 - [models/gemma-4-12b-agentic-fable5.md](models/gemma-4-12b-agentic-fable5.md) — yuxinlu1 community **coding + agentic** finetune of Gemma 4 12B v2 (dense, `gemma4_unified`, Apache-2.0, 256K ctx, native tool-use + thinking); **local-verified strongest local agent: HA v0.4 obs@3 0.947 / pass^3 0.632, ET v0.3 1.000 / 0.667, 4/4 code-basics (Q3_K_M)**; needs llama.cpp `--jinja`; runs full-GPU on 8 GB.
+- [models/lfm2.5-2.6b.md](models/lfm2.5-2.6b.md) — Liquid AI's **on-device agentic flagship** (2026-08-04; 2.69B conv/attention hybrid, 128K ctx, always-thinking, Pythonic tool protocol, LFM Open License); vendor tables lead IF + tool-use vs bigger Qwen3.5/Gemma-4 — the direct challenger to qwen3.5:4b as home-agent brain; Q8_0 2.87 GB.
+- [models/lfm2.5-vl-3b.md](models/lfm2.5-vl-3b.md) — Liquid AI **vision-language** sibling (2026-08-12; SigLIP2-400M + the 2.6B backbone, 32K ctx, non-thinking, tool calls from image); **first vision model in the wiki** — screens/grounding/OCR strengths, candidate for HomeView's local-VLM slot; harness has no image support yet.
 
 ### Aide models (STT / TTS / embeddings / retrieval)
 The non-generative support models for the home agent — see [concepts/aide-models.md](concepts/aide-models.md) for the track; ingest with [`/new-aide`](../.github/prompts/new-aide.prompt.md).
