@@ -1,7 +1,7 @@
 ---
 title: Backlog / status board
 tags: [backlog, planning, index]
-updated: 2026-08-13
+updated: 2026-08-14
 ---
 
 # Backlog / status board
@@ -14,6 +14,7 @@ detail to the linked experiment/model page, and tick items here as they land.
 - **LFM2.5 pair ingested (2026-08-13), first runs staged** — [LFM2.5-2.6B](models/lfm2.5-2.6b.md) (on-device agentic flagship, the direct qwen3.5:4b challenger) + [LFM2.5-VL-3B](models/lfm2.5-vl-3b.md) (first vision model in the wiki). Session context: first session on **torrent** ([new host page](hardware/torrent.md)) — **no serving stack installed here yet**, so the 2.6B first run doubles as bring-up. Prior completed milestone: the full v0.4/v0.3 agentic re-baseline (qwen HA 0.789/0.684 + ET 0.917/0.833; the reliability-inversion finding vs gemma).
 
 ## Next (queued / staged)
+- **[Weight archive downloads on torrent](archive.md)** — pull the priority list (Qwen3.8-27B BF16+FP8 first — landed 2026-08-14, ungated; then Qwen3.5-4B/9B originals, Bonsai set, VibeThinker/MiniCPM5, LFM trio) onto the 2TB NTFS archive dir; sha256 + manifest rows as they land. Open: the two 50-GiB Bonsai F16 masters (Jake to decide). All verified live 2026-08-14.
 - **[LFM2.5-2.6B first run](../lab/experiments/2026-08-13-lfm2.5-2.6b-first-run/README.md)** — serving bring-up on torrent → tool-protocol probe (Pythonic special tokens; fallback parser if no server handles it) → HA v0.4 + ET v0.3 at k=3 against the standing matrix. The bar: qwen pass^3 0.684/0.833.
 - **[LFM2.5-VL-3B first look](../lab/experiments/2026-08-13-lfm2.5-vl-3b-first-look/README.md)** — manual vision smoke (HomeView-shaped fixture probe + screen/OCR); feeds the vision-benchmark go/no-go below.
 - **[Bonsai 27B ternary vs 1-bit test-system comparison](../lab/experiments/2026-07-17-bonsai-27b-test-systems-comparison/README.md)** — run both PrismML GGUF operating points under matched settings on the available test systems: ternary `Q2_0_g128` is the quality target (borderline 7.8 GiB peak on the RTX 5070 8 GB); phone-size binary `Q1_0_g128` is the comfortable compact comparison. Phone deployment is deferred. No weights downloaded yet.

@@ -888,3 +888,18 @@ writes, deny-by-default allowlist) for later evaluation. (5) last30days on
 torrent fully credentialed: .env copied from daedalus over tailscale ssh (X
 cookies included); doctor probe pending. PAPERCUTS.md and STATUS.md considered
 and deliberately skipped (backlog Now + hardware pages cover status here).
+
+## [2026-08-14] note | Merge resolution + weight-archive plan (Qwen3.8 recon)
+Resolved the daedalus/torrent divergence: the uncommitted 2026-07-17 Bonsai
+ingest rebased onto the 2026-08-13 torrent-session commits (backlog Next gained
+the Bonsai item inside the newer rewrite; log entries ordered chronologically).
+CLAUDE.md now says commit-and-push-as-you-go — the Bonsai ingest sat unpushed a
+month and caused exactly this. Then scoped a weight archive against upstream
+removal (US-blocks-Chinese-models fear + PrismML startup risk): plan + priority
+list + manifest in [archive.md](archive.md). Key recon: **Qwen3.8-27B landed on
+HF today** (BF16 51.8 GiB + FP8 28.8 GiB, ungated) — top of the list; the 2.4T
+A95B flagship (open-weighted 08-12) is ~2.4 TB at FP8, not archivable here.
+All candidate repos verified live + ungated via the HF API. Decided: canonical
+archive on torrent's 2TB NTFS + Backblaze mirror (30-day-retention caveat
+noted), originals-over-quants, daedalus keeps working copies only. Downloads
+to run on torrent (Jake pulling this repo there next).

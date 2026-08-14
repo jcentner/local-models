@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-08-13
+updated: 2026-08-14
 ---
 
 # Index
@@ -10,6 +10,7 @@ on every ingest. Timeline lives in [log.md](log.md). **Forward queue / "what's
 next" lives in [backlog.md](backlog.md).** North-star
 [vision](../README.md#vision): evaluate models (local **and** API) toward a
 local-agent **suite** (home automation, email triage, a website/product support bot).
+Weight-archival plan + manifest: [archive.md](archive.md).
 
 ## Hardware
 - [hardware/proart-p16.md](hardware/proart-p16.md) — this machine (ASUS ProArt P16): verified specs, WSL2 setup, what fits.
