@@ -71,15 +71,19 @@ next turn.** The cadence:
 1. Implement one focused step.
 2. **Commit it** (small, descriptive multi-`-m` body).
 3. **Kick off a READ-ONLY background review of that commit** with a *different*
-   model than authored it (cross-model critique; we author with the working
-   model, review with `gpt-5.5`). Write to `tmp/review-<topic>.md`.
+   model than authored it — **cross-vendor when possible** (different training =
+   different blind spots). Current model routing lives in the global
+   `copilot-worker` skill; models rotate, don't hardcode them here. Write to
+   `tmp/review-<topic>.md`.
 4. **Start the next step while the review runs** — don't block on it.
 5. On return: **validate each finding** (confirm with file:line, or push back),
    **fix the real ones**, and **commit the fixes**.
 6. That fix commit is the next review target → repeat from 3.
 
-Mechanism + the read-only invocation live in the global
-`copilot-cli-background-tasks` skill. Rules: never give a reviewer
+Dispatch mechanics + the read-only invocation live in the global
+**`copilot-worker`** skill (in `~/skills`, symlinked into the agent's skill dir;
+successor of the earlier `copilot-cli-background-tasks` skill some older log
+entries name). Rules: never give a reviewer
 `--allow-all-tools` or write access (`--deny-tool 'write'`); give it scope +
 commit SHAs + "read these files first" (it has no chat context); run
 `selftest`/dry-runs **here**, not trusting the reviewer's sandbox. This
@@ -163,73 +167,59 @@ Two model tracks, two ingest verbs:
 A benchmark = **prompts + a scoring harness**, not just a list of questions. The
 two halves split across the wiki/lab boundary:
 - `wiki/benchmarks/<name>.md` — the **definition** (machine-independent): what it
-  measures, format, scoring method + harness command, reference/SOTA scores,
-  **contamination/freshness status**, which model-types it's relevant for, gotchas.
+  measures, format, scoring method + harness command, reference scores,
+  contamination/freshness status, which model-types it's relevant for, gotchas.
 - `benchmarks/<name>/` — **authored custom datasets** (version-controlled): the
   prompts, a **separate answer key** (never pasted into model context except via
   the harness), an optional rubric, and a README with provenance + critic sign-off.
-- `lab/benchmarks/` — the **harness** (`harness/`) and **results** (`results.csv`,
-  per-environment; raw run output in git-ignored `runs/`).
+- `lab/benchmarks/` — the **harness** (runner + scorers; **all mechanics, flags,
+  and scorer semantics live in [lab/benchmarks/harness/README.md](lab/benchmarks/harness/README.md)** —
+  that page is the authority, don't restate it here) and **results**
+  (`results.csv`, per-environment; raw runs in git-ignored `runs/`).
 
-Scoring is per-domain: math = answer extraction + equivalence; code = execute
-against tests **in a sandbox** (Podman, `--code-sandbox podman`); **agentic/tool-use
-= a model-agnostic rollout** (agent under test + Copilot-CLI user-simulator + mocked
-tools over a **tool set** - `support` act/ask/escalate or `home_automation`
-act/confirm/refuse - via a `prompt` or `native` function-calling protocol; scored
-deterministically on end-state + tool policy; `harness/agentic.py` - the flexible
-alternative to registered-model benchmarks like BFCL). The agentic scorer is
-deterministic by design but supports a few sharper checks: a respond-and-continue
-`ask` (clarify on ambiguity, then resolve) with an ask-before-terminal ordering;
-structured **`ask.device`** confirmation in home (did the agent confirm *that*
-device, not just pause to ask) vs device-agnostic `require_clarify` for ambiguity;
-a `device.requires` precondition (`set_device` returns BLOCKED until satisfied);
-`forbidden_device_attempts` (an *attempted* forbidden change fails even if BLOCKED
-left state unchanged); and an **optional hybrid judged-message** layer
-(`--judge-messages`, default off) that grades one message's text with the frontier
-judge as an AND gate over the deterministic result (e.g. a fabrication or
-injection-resistance check). open-ended
-(creative writing, reasoning) =
-rubric LLM-judge by a **frontier model** (claude-opus-4.8 via the Copilot CLI -
-never a local small model; see `.github/skills/copilot-cli`), pinned (model +
-version + rubric). **Prefer wrapping existing eval frameworks**
-(lm-eval-harness, evalplus, livecodebench, BFCL); hand-roll a scorer only when
-needed. **External** benchmarks where they fit my interests (decision-making,
-agentic/triage); **custom** benchmarks for my use-cases (home automation, email
-triage). Models under test run **local (Ollama, the daily driver) or API
-(OpenAI-compatible, e.g. Z.AI GLM)** via the harness `--provider` flag; record
-**capability and cost** (`cost_usd` from `--price-in/--price-out`). Running the
-same benchmark local vs API and comparing capability + cost is a first-class goal.
-Runs default to **`--k 3`** samples per item and record **both** `observed_pass_at_k`
-(best-of-k capability ceiling) and **`pass_hat_k`** (tau-bench pass^k = reliability),
-plus `flaky_items` and `sem` — small/quantized models flake, so reliability is
-reported next to capability ([wiki/concepts/eval-reliability.md](wiki/concepts/eval-reliability.md)).
-Each result row records a **`base_model`** (canonical id, `--base-model`, defaults
-to `--model`; matches the `wiki/models/<id>.md` slug) alongside the variant
-`model` label, so runs group across quant/serving variants (e.g. all `g4v2-*`
-quants → `gemma-4-12b-agentic-fable5`). It also records the **`think`** control
-state (`on|off|default`, from `--think`/`--no-think`; `default` = no flag so the
-template/provider default governs, interpret alongside provider + the model page)
-so think-vs-no-think runs stay comparable - the setting was previously captured
-nowhere. Agentic/llm_judge runs default to **`--concurrency auto`** (3 Copilot-bound
-samples in flight, 1 for equivalence/code_tests) to **overlap the frontier
-user-sim/judge waits with GPU generation** - the run records true elapsed
-**`wall_clock_s`** (schema v5) next to `wall_s_total` (per-request wall, queue-
-inflated at N>1); scoring is unchanged vs serial (`--concurrency 1`), the GPU is just
-kept fed instead of idle (email-triage v0.3 qwen3.5:4b 123.7s->81.7s, ~34%). A
-transient Copilot rate-limit/auth blip is retried with backoff; a permanent
-bad-`--model` fails fast. The viewer ([tools/run-viewer](tools/run-viewer/README.md))
-reads `results.csv` to browse run content grouped by base model. Each raw run line
-also carries a small whitelisted flat **`meta`** ({`tier`,`category`}) - emitted by
-the harness, identical across an item's `k` samples - so the viewer can slice
-reliability per category interactively (no `results.csv` change; absent meta = a
-no-op). A `bench.json` may declare `category`/`tier` on items and may *narrow* the
-whitelist via `slice_fields`, never widen it (persona/policy/devices never leak).
+**Strategy.** **External** benchmarks where they fit my interests (decision-making,
+agentic/triage); **custom** for my use-cases (home automation, email triage).
+**Prefer wrapping existing eval frameworks** (evalplus, lm-eval-harness); hand-roll
+a scorer only when needed — BFCL's registered-models-only design is why the
+model-agnostic `agentic` rollout is ours. Models under test run **local (Ollama,
+the daily driver) or API (OpenAI-compatible)** via `--provider`; record
+**capability AND cost** (`cost_usd`). Running the same benchmark local vs API and
+comparing both is a first-class goal.
+
+**Scoring per domain** (details: harness README): math = `equivalence`; code =
+`code_tests` (sandboxed execution, Podman, gated); open-ended = `llm_judge` by a
+**pinned frontier model via the Copilot CLI — never a local small model**
+(see `.github/skills/copilot-cli`); agentic/tool-use = the model-agnostic
+`agentic` rollout (Copilot-CLI user-simulator + mocked tools over a tool set,
+deterministic end-state/policy scoring, optional `--judge-messages` frontier
+AND-gate).
+
+**House policies (standing):**
+- **`--k 3` default.** Report `observed_pass_at_k` (best-of-k ceiling) AND
+  `pass_hat_k` (all-k reliability, the home-agent signal) + `flaky_items` + `sem` —
+  small/quantized models flake ([eval-reliability](wiki/concepts/eval-reliability.md)).
+  Reliability runs use the model's recommended sampling, not temp 0.
+- **Tool protocol: default `native`** (the faithful test — a deployed agent uses
+  real function-calling); `prompt` mode is a portability fallback for tool-blind
+  templates only. Run both only when the protocol contrast is itself the question
+  (decided 2026-06-21; the contrast is a banked, model+task-dependent finding).
+- **Thinking: prefer the model's recommended/default mode**; the recorded `think`
+  column (`on|off|default`) keeps runs comparable across the axis. `--no-think`
+  where CoT is paid-for-unscored (decided for qwen3.5:4b on decision-reasoning —
+  the brevity-nudge alternative was tested and is a dead end, 2026-06-22). Models
+  with unsuppressible thinking (LFM2.5) run and record their default.
+- **Comparability:** every row records `base_model` (canonical id = the
+  `wiki/models/<id>.md` slug) so quant/serving variants group; the judge/user-sim
+  config is recorded per row and LLM-judged/user-sim scores only compare within a
+  config; `wall_clock_s` is the honest elapsed under `--concurrency` (scoring is
+  concurrency-invariant).
+
 Definitions are machine-independent (wiki); results are **per-environment** (lab):
 per-machine for local, per-provider + per-date for API (prices/models drift).
-Workflow verbs: `/new-benchmark` (ingest an existing one),
-`/benchmark <model>` (run + recommend), `/author-benchmark` (create a custom one
-with a critic loop). Log type: `bench`. (Model-ingest verbs `/new-model` and
-`/new-aide` are in the Models & aide models subsection above.)
+Workflow verbs: `/new-benchmark` (ingest an existing one), `/benchmark <model>`
+(run + recommend), `/author-benchmark` (create custom with a critic loop);
+model-ingest verbs `/new-model` and `/new-aide` are in the subsection above.
+Log type: `bench`. Browse runs: [tools/run-viewer](tools/run-viewer/README.md).
 
 Per-host facts: one page per machine under test in `wiki/hardware/` (first:
 [wiki/hardware/proart-p16.md](wiki/hardware/proart-p16.md)); generate a new host's

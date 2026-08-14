@@ -855,3 +855,26 @@ is the natural first vision benchmark (external-first, deterministic scoring)
 instead of authoring one from scratch; penciled in backlog. Harness is text-only
 today. Staged lab/experiments/2026-08-13-lfm2.5-vl-3b-first-look (manual smoke:
 HomeView-shaped fixture probe + screen/OCR). No weights pulled.
+
+## [2026-08-13] note | Operating-model sync: CLAUDE.md, AGENTS.md trim, backlog policy graduation
+Aligned the repo with the current orchestration setup (checked against the
+~/skills project-bootstrap skill; the repo predates it and already embodied most
+of it — this pass closed the drift). (1) New two-line CLAUDE.md importing
+AGENTS.md so Claude Code sessions load the schema (the repo was Copilot-only on
+that front). (2) AGENTS.md review-loop: repointed the dead
+`copilot-cli-background-tasks` reference to the canonical `copilot-worker` skill
+and de-hardcoded the reviewer model (cross-VENDOR review, routing lives in the
+skill — models rotate). (3) AGENTS.md Benchmarks section trimmed ~40%: harness
+mechanics now live only in lab/benchmarks/harness/README.md (named the
+authority); AGENTS keeps schema + a new "House policies (standing)" block —
+k=3/pass^k, tool-protocol=native-by-default, thinking=model-default with
+--no-think where CoT is paid-for-unscored, comparability rules — graduated OUT
+of backlog Infra (which is contractually future-work-only; the two DECIDED
+mega-bullets there are pruned to pointers, evidence trail stays in the
+decision-reasoning README + log). (4) Backlog: penciled the home-automation
+v0.5 direction (re-skin the device world onto homeview's real 37-type/30-room
+house; adopt Iris's ratified confirm/refuse idioms — proposals-never-silent-
+writes, deny-by-default allowlist) for later evaluation. (5) last30days on
+torrent fully credentialed: .env copied from daedalus over tailscale ssh (X
+cookies included); doctor probe pending. PAPERCUTS.md and STATUS.md considered
+and deliberately skipped (backlog Now + hardware pages cover status here).
