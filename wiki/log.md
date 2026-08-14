@@ -813,6 +813,16 @@ dec-reasoning v0.2 with `--no-think`, k=3, temp 1.0** (not yet run — wrapped f
 night). Updated [decision-reasoning README](../benchmarks/decision-reasoning/README.md)
 + [backlog](backlog.md).
 
+## [2026-07-17] ingest | Bonsai 27B model page
+Researched PrismML's Qwen3.6-27B low-bit family via last30days plus the official
+announcement, whitepaper, model cards, docs, runtime repo, and App Store release.
+Documented both operating points: ternary `Q2_0_g128` (~7.2 GB deployed) for the
+laptop quality target and binary `Q1_0_g128` (~3.9 GB) for phone/constrained
+hardware. Staged a matched ternary-versus-1-bit comparison on the available test
+systems without downloading weights. On Daedalus, ternary is a borderline 7.8
+GiB 4K full-GPU fit; the phone-size 1-bit build is comfortable. Actual phone
+deployment via Locally AI / MLX Swift is documented but deferred.
+
 ## [2026-08-13] note | Session restart on torrent: host page + last30days bring-up
 First session since 2026-06-22, first ever on **torrent** (desktop, RTX 3070 Ti
 8 GB Ampere, WSL2). Generated wiki/hardware/torrent.md via scripts/host-profile.sh

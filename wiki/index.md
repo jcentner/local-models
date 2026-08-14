@@ -27,6 +27,7 @@ local-agent **suite** (home automation, email triage, a website/product support 
 - [stacks/unsloth.md](stacks/unsloth.md) — fine-tuning + Unsloth Studio; easiest path to DiffusionGemma.
 
 ## Models
+- [models/bonsai-27b.md](models/bonsai-27b.md) — PrismML's low-bit Qwen3.6-27B family: ternary quality build (~7.2 GB deployed) + phone-size 1-bit build (~3.9 GB); multimodal, thinking, native tools, Apache-2.0; matched test-system comparison staged, phone deployment deferred.
 - [models/diffusiongemma.md](models/diffusiongemma.md) — diffusion/block-AR MoE (26B-A4B); first model to try.
 - [models/vibethinker-3b.md](models/vibethinker-3b.md) — WeiboAI 3B dense reasoning specialist (Qwen2.5-based, MIT); frontier-ish math/code scores, runs full-GPU here.
 - [models/minicpm5-1b.md](models/minicpm5-1b.md) — OpenBMB 1B dense on-device model (Llama-arch, Apache-2.0); via SGLang: weak abstract reasoner (decision-reasoning 0/6) but a decent home-automation **tool-executor** (7/12) — a home-agent executor, not the deliberation brain.
