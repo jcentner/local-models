@@ -919,3 +919,17 @@ dataset + before/after probe with confidence-calibration (ECE) as a first-
 class result** — can a gated 14MB model route Iris's routine slice and defer
 the GPU? Page: [models/needle2.md](models/needle2.md); experiment staged (no
 weights): lab/experiments/2026-08-14-needle2-finetune-household/.
+
+## [2026-08-14] note | Weight archive: reduced set downloaded + upstream-verified (~107G)
+Ran the archive.md plan on torrent, reduced per Jake to Bonsai + LFM trio +
+Qwen3.8-27B (BF16 18 shards 52G + FP8 29G). Landed at /mnt/c/model-archive/
+(plan said D: — torrent has no D:; C: is the 2TB NTFS volume, page corrected).
+Per-repo SHA256SUMS, then all 95 LFS files verified against HF's upstream LFS
+sha256 digests — 0 mismatches. Manifest rows + a fetch gotcha recorded in
+archive.md: `hf download --include 'a' 'b'` binds only 'a' to --include, then
+IGNORES it (stderr warning, exit 0) and treats the rest as positional
+filenames — the first run silently dropped the main GGUF of every include-based
+repo; fixed with explicit positional filenames. Second lesson, cheap this time:
+don't edit a script a running bash is still executing (offset garbage killed
+the driver between items; markers made the rerun free). LFM2.5 Q8_0 GGUFs now
+local → the staged first-runs are unblocked.

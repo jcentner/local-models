@@ -71,6 +71,26 @@ hf download Qwen/Qwen3.8-27B --local-dir /mnt/d/model-archive/Qwen/Qwen3.8-27B
 
 ## Manifest
 
-| Date | Artifact | Location | sha256 | License |
+Downloads ran 2026-08-14 on torrent as a **reduced set (Jake): Bonsai + LFM
+trio + Qwen3.8-27B only**; Qwen3.5 originals, VibeThinker, MiniCPM5, and the
+gemma-4 finetune stay queued in the download list above. Per-file sha256s live
+in `SHA256SUMS` inside each repo dir; **every LFS file was verified against
+HF's upstream LFS sha256 digests (95 files, 0 mismatches, 2026-08-14)** — that
+file is also what verifies a Backblaze restore. Licenses snapshotted in-repo
+(LICENSE/NOTICE files downloaded alongside weights).
+
+| Date | Artifact | Location (under `/mnt/c/model-archive/`) | sha256 | License |
 |---|---|---|---|---|
-| *(fill as downloads land)* | | | | |
+| 2026-08-14 | Qwen3.8-27B BF16 (18 shards, 52G) | `Qwen/Qwen3.8-27B/` | SHA256SUMS (32 files) | Apache-2.0 |
+| 2026-08-14 | Qwen3.8-27B-FP8 (29G) | `Qwen/Qwen3.8-27B-FP8/` | SHA256SUMS | Apache-2.0 |
+| 2026-08-14 | Bonsai 27B `Q1_0` + mmproj-Q8_0 (4.2G) | `prism-ml/Bonsai-27B-gguf/` | SHA256SUMS | Apache-2.0 |
+| 2026-08-14 | Ternary Bonsai `Q2_0` + `Q2_g64` + mmproj-Q8_0 (15G) | `prism-ml/Ternary-Bonsai-27B-gguf/` | SHA256SUMS | Apache-2.0 |
+| 2026-08-14 | Bonsai-demo runtime (git clone, pinned CUDA binary) | `PrismML-Eng/Bonsai-demo/` | git history | — |
+| 2026-08-14 | LFM2.5-2.6B Q8_0 (2.7G) | `LiquidAI/LFM2.5-2.6B-GGUF/` | SHA256SUMS | LFM Open License v1.0 |
+| 2026-08-14 | LFM2.5-VL-3B Q8_0 + mmproj-Q8_0 (3.3G) | `LiquidAI/LFM2.5-VL-3B-GGUF/` | SHA256SUMS | LFM Open License v1.0 |
+| 2026-08-14 | LFM2.5-ColBERT-350M Q8_0 (361M) | `LiquidAI/LFM2.5-ColBERT-350M-GGUF/` | SHA256SUMS | LFM Open License v1.0 |
+
+Total on disk: **~107G**. Fetch gotcha for future runs: `hf download
+--include 'a' 'b'` binds only `'a'` to `--include`, then **ignores it** (the
+warning goes to stderr, exit code stays 0) and treats `'b'` onward as explicit
+filenames — pass explicit positional filenames instead of `--include`.
