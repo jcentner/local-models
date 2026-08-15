@@ -24,8 +24,10 @@ The threat is **upstream removal, not disk failure**. Consequences:
 
 ## Layout (decided)
 
-- **Canonical archive: torrent's 2TB, on NTFS** (e.g. `D:\model-archive\<org>\<repo>\`,
-  visible from WSL at `/mnt/d/model-archive/`). NOT inside the WSL vdisk:
+- **Canonical archive: torrent's 2TB, on NTFS** — `C:\model-archive\<org>\<repo>\`,
+  visible from WSL at `/mnt/c/model-archive/`. (The plan assumed a separate D:
+  drive; torrent has only C:, 2 TB NTFS with ~1.6 TB free — verified 2026-08-14.
+  Same design intent: Backblaze-visible NTFS, outside the vdisk.) NOT inside the WSL vdisk:
   Backblaze sees NTFS files individually; the vdisk is one opaque `.vhdx` blob
   (churn re-uploads, restore all-or-nothing). Copy a GGUF into ext4 when
   actually serving; NTFS read speed is fine for cold storage.
