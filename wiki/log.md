@@ -903,3 +903,19 @@ All candidate repos verified live + ungated via the HF API. Decided: canonical
 archive on torrent's 2TB NTFS + Backblaze mirror (30-day-retention caveat
 noted), originals-over-quants, daedalus keeps working copies only. Downloads
 to run on torrent (Jake pulling this repo there next).
+
+## [2026-08-14] ingest | Needle 2 model page + household fine-tune experiment staged
+Cactus Compute's Needle 2 (45M SAN, 14MB CQ2-bit binary, ~28MB RAM, grammar-
+constrained function calls + confidence head; arXiv 2607.18363, Show HN 527pts
+2026-08-10). Researched via last30days (X/HN/YouTube; reddit partial-429; the
+run also verified torrent's X cookies work) + HF card + HN thread. Community
+floor is real: off-topic → `lock_door`, "do not lock the door" → locks it —
+but every failure showed confidence 0. Initial verdict was pass (wrong
+constraint, structurally can't do confirm/clarify flows) until Jake reframed
+against olympus: **talos is CPU-only with a 16GB cap**, Iris rides a metered
+GPT-5.6 Luna key, and the standing decision is "local-model ⇒ talos gets a
+GPU". So the experiment is a **LoRA fine-tune on a Luna-synthesized household
+dataset + before/after probe with confidence-calibration (ECE) as a first-
+class result** — can a gated 14MB model route Iris's routine slice and defer
+the GPU? Page: [models/needle2.md](models/needle2.md); experiment staged (no
+weights): lab/experiments/2026-08-14-needle2-finetune-household/.
