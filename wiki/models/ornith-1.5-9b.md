@@ -111,6 +111,11 @@ Official GGUF ([Ornith-1.5-9B-GGUF](https://huggingface.co/ornith-ai/Ornith-1.5-
 | Q8_0 | 9.53 GB |
 | BF16 | 17.9 GB |
 
+**Format note:** the family's FP8/NVFP4 builds exist only for the 35B-A3B and
+397B MoEs — there is no 9B NVFP4/FP8. Moot for this fleet anyway: NVFP4 needs
+Blackwell FP4 kernels (vLLM/TensorRT-LLM) and the smallest NVFP4 artifact is
+the ~19 GB 35B; GGUF K-quants are the 9B's only sub-bf16 path.
+
 On the 8 GB class: **Q4_K_M full-GPU** is the target (5.63 GB + KV — smaller
 file than gemma's verified Q3_K_M 6.09 GB, so the same 16K-f16-KV envelope
 should close; measure at test time). Q5_K_M is the stretch at reduced context;
