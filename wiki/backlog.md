@@ -1,7 +1,7 @@
 ---
 title: Backlog / status board
 tags: [backlog, planning, index]
-updated: 2026-08-15
+updated: 2026-08-19
 ---
 
 # Backlog / status board
@@ -15,6 +15,7 @@ detail to the linked experiment/model page, and tick items here as they land.
 
 ## Next (queued / staged)
 - **[Weight archive — deferred remainder](archive.md)** — the reduced set landed 2026-08-14 (~107G, upstream-verified; see Recently done). Deferred (Jake, 2026-08-14): Qwen3.5-4B/9B originals, VibeThinker, MiniCPM5, gemma-4 finetune, and the two 50-GiB Bonsai F16 masters (revisit if extra cheap storage lands). One-time Backblaze check still open: confirm no size cap excludes the archive files.
+- **[Ornith-1.5-9B first run](../lab/experiments/2026-08-19-ornith-1.5-9b-first-run/README.md)** — serving bring-up on torrent (shared with the LFM2.5 item below) → template/tool-fidelity gate → HA v0.4 + ET v0.3 at k=3 + code-basics. The bar: gemma ceiling HA 0.947 / ET 1.000, qwen pass^3 0.684 / 0.833. Model page: [ornith-1.5-9b](models/ornith-1.5-9b.md).
 - **[LFM2.5-2.6B first run](../lab/experiments/2026-08-13-lfm2.5-2.6b-first-run/README.md)** — serving bring-up on torrent → tool-protocol probe (Pythonic special tokens; fallback parser if no server handles it) → HA v0.4 + ET v0.3 at k=3 against the standing matrix. The bar: qwen pass^3 0.684/0.833.
 - **[LFM2.5-VL-3B first look](../lab/experiments/2026-08-13-lfm2.5-vl-3b-first-look/README.md)** — manual vision smoke (HomeView-shaped fixture probe + screen/OCR); feeds the vision-benchmark go/no-go below.
 - **[Bonsai 27B ternary vs 1-bit test-system comparison](../lab/experiments/2026-07-17-bonsai-27b-test-systems-comparison/README.md)** — run both PrismML GGUF operating points under matched settings on the available test systems: ternary `Q2_0_g128` is the quality target (borderline 7.8 GiB peak on the RTX 5070 8 GB); phone-size binary `Q1_0_g128` is the comfortable compact comparison. Phone deployment is deferred. No weights downloaded yet.
@@ -32,6 +33,7 @@ detail to the linked experiment/model page, and tick items here as they land.
 
 ## Models to consider (future `/new-model`)
 - **gemma-4-12B v3** (announced) and the **Qwen3.6-27B** agentic sibling ([v2 page](models/gemma-4-12b-agentic-fable5.md)).
+- **Ornith-1.5-35B-A3B** — multimodal MoE sibling of the ingested [9B](models/ornith-1.5-9b.md) (~3B active, MIT, ~20 GB Q4): over the 8 GB VRAM and talos 16 GB envelopes, but 3B-active CPU/hybrid on a 31 GB box is plausible and it's vision-track relevant. Revisit after the 9B verdict (2026-08-19).
 
 ## Infra / maintenance
 - **Vision benchmark track (penciled 2026-08-13; go/no-go after the VL-3B smoke test).** The harness is text-only (no image field in `bench.json`, no image plumbing in the clients). When it's worth building, **external-first**: wrap homeview's `docs/reference/vision-eval/` (18 ground-truth house photos, required/optional fixtures with regex matchers, deterministic scoring, measured Claude/OpenAI comparison rows) rather than authoring a fresh set — it is simultaneously homeview's own "local vision provider behind `VisionProvider`" API-vs-local benchmark (their backlog names our future local VLM as the missing piece). First candidate model: [LFM2.5-VL-3B](models/lfm2.5-vl-3b.md).

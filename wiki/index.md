@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-08-14
+updated: 2026-08-19
 ---
 
 # Index
@@ -35,6 +35,7 @@ Weight-archival plan + manifest: [archive.md](archive.md).
 - [models/gemma-4-12b-agentic-fable5.md](models/gemma-4-12b-agentic-fable5.md) — yuxinlu1 community **coding + agentic** finetune of Gemma 4 12B v2 (dense, `gemma4_unified`, Apache-2.0, 256K ctx, native tool-use + thinking); **local-verified strongest local agent: HA v0.4 obs@3 0.947 / pass^3 0.632, ET v0.3 1.000 / 0.667, 4/4 code-basics (Q3_K_M)**; needs llama.cpp `--jinja`; runs full-GPU on 8 GB.
 - [models/lfm2.5-2.6b.md](models/lfm2.5-2.6b.md) — Liquid AI's **on-device agentic flagship** (2026-08-04; 2.69B conv/attention hybrid, 128K ctx, always-thinking, Pythonic tool protocol, LFM Open License); vendor tables lead IF + tool-use vs bigger Qwen3.5/Gemma-4 — the direct challenger to qwen3.5:4b as home-agent brain; Q8_0 2.87 GB.
 - [models/lfm2.5-vl-3b.md](models/lfm2.5-vl-3b.md) — Liquid AI **vision-language** sibling (2026-08-12; SigLIP2-400M + the 2.6B backbone, 32K ctx, non-thinking, tool calls from image); **first vision model in the wiki** — screens/grounding/OCR strengths, candidate for HomeView's local-VLM slot; harness has no image support yet.
+- [models/ornith-1.5-9b.md](models/ornith-1.5-9b.md) — Ornith AI's agentic-coding 9B dense (2026-08-18; Qwen-lineage, MIT, 256K ctx, thinking + native tools, official GGUF); vendor table claims ~2× Qwen3.5-9B on terminal/repo coding — the direct challenger to gemma-4-12b for strongest local agent; first run staged on torrent.
 - [models/needle2.md](models/needle2.md) — Cactus Compute **45M tool-calling specialist** in a 14MB binary (~28MB RAM, CPU-only, grammar-constrained JSON + confidence head; MIT/Apache-2.0); not harness-compatible (own Python runtime, 256-tok ctx, no text channel) — staged for a **household LoRA fine-tune + confidence-calibration probe** targeting talos-without-a-GPU.
 
 ### Aide models (STT / TTS / embeddings / retrieval)

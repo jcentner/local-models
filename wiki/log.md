@@ -933,3 +933,19 @@ repo; fixed with explicit positional filenames. Second lesson, cheap this time:
 don't edit a script a running bash is still executing (offset garbage killed
 the driver between items; markers made the rerun free). LFM2.5 Q8_0 GGUFs now
 local → the staged first-runs are unblocked.
+
+## [2026-08-19] ingest | Ornith-1.5-9B model page + first-run experiment staged
+Jake flagged the Ornith-1.5 release (X announcement, day-old). Family: 9B
+dense / 35B-A3B multimodal MoE / 397B MoE, MIT, trained with a closed
+self-improvement loop (model proposes tasks + scaffolds + rollouts, GRPO
+across all three). Ingested the 9B — Qwen-lineage, 256K ctx, thinking +
+OpenAI-style tools, official GGUF (Q4_K_M 5.63 GB → 8 GB-class full-GPU);
+vendor table claims ~2× Qwen3.5-9B on terminal/repo coding and GPQA 86.4.
+Community signal (last30days, release-day): benchmaxxing skepticism is the
+median take, but Ornith-1.0 survived an independent off-table Aider check;
+official GGUFs ship MTP heads (spec-decode possible). Page:
+[models/ornith-1.5-9b.md](models/ornith-1.5-9b.md); first run staged (HA v0.4
++ ET v0.3 k=3 + code-basics, torrent, no weights yet):
+lab/experiments/2026-08-19-ornith-1.5-9b-first-run/. 35B-A3B penciled under
+"Models to consider" (over the 8/16 GB envelopes; multimodal — vision-track
+relevant).
