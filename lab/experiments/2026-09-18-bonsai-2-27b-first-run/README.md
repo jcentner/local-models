@@ -1,7 +1,7 @@
 # Bonsai 2 27B first run
 
 - Date staged: 2026-09-18
-- Status: staged; `PTQ1_0` download to daedalus in progress, nothing run
+- Status: staged; `PTQ1_0` weights on daedalus (sha256 verified), nothing run
 - Supersedes: [Bonsai 27B ternary vs 1-bit comparison](../2026-07-17-bonsai-27b-test-systems-comparison/README.md)
   (never run; Bonsai 2 replaces the ternary arm and has no 1-bit build)
 - Hypothesis / question: the dense `PTQ1_0` packing (5.54 GiB) puts a 27B
@@ -31,7 +31,7 @@ that stays on the GPU, so that cost is accepted; Stage A measures it.
 
 ### Stage 0: artifacts
 
-Weights (download started 2026-09-18; verify against the HF LFS sha256 on the model page before use):
+Weights (done 2026-09-18; 5,946,648,928 bytes, sha256 `53107f53…fe33ee3` matches the HF LFS digest; `SHA256SUMS`, `LICENSE`, `NOTICE.txt` and the model card sit beside it):
 `~/models/prism-ml/Ternary-Bonsai-2-27B-gguf/Ternary-Bonsai-2-27B-PTQ1_0.gguf`.
 
 Binary, the release the demo pins (`prism-b10685-7dffb15`):

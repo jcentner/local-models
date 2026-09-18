@@ -965,6 +965,6 @@ different category table, noted on the page. Page:
 (`PTQ1_0` fits 8 GB at 4K by arithmetic: 5.54 GiB + ~1.2 GiB + KV):
 lab/experiments/2026-09-18-bonsai-2-27b-first-run/. The never-run 2026-07-17
 ternary-vs-1-bit comparison is superseded; [bonsai-27b](models/bonsai-27b.md)
-stays for the 1-bit build. `PTQ1_0` working copy downloading to daedalus
-`~/models/prism-ml/`; archive row 3c queued for torrent. No community scan yet
+stays for the 1-bit build. `PTQ1_0` working copy on daedalus `~/models/prism-ml/` (sha256 verified
+against HF LFS); archive row 3c queued for torrent. No community scan yet
 (one day old).
