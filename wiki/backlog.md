@@ -1,7 +1,7 @@
 ---
 title: Backlog / status board
 tags: [backlog, planning, index]
-updated: 2026-08-19
+updated: 2026-09-18
 ---
 
 # Backlog / status board
@@ -14,11 +14,11 @@ detail to the linked experiment/model page, and tick items here as they land.
 - **LFM2.5 pair ingested (2026-08-13), first runs staged** — [LFM2.5-2.6B](models/lfm2.5-2.6b.md) (on-device agentic flagship, the direct qwen3.5:4b challenger) + [LFM2.5-VL-3B](models/lfm2.5-vl-3b.md) (first vision model in the wiki). Session context: first session on **torrent** ([new host page](hardware/torrent.md)) — **no serving stack installed here yet**, so the 2.6B first run doubles as bring-up. Prior completed milestone: the full v0.4/v0.3 agentic re-baseline (qwen HA 0.789/0.684 + ET 0.917/0.833; the reliability-inversion finding vs gemma).
 
 ## Next (queued / staged)
+- **[Bonsai 2 27B first run](../lab/experiments/2026-09-18-bonsai-2-27b-first-run/README.md)** — ingested 2026-09-18 ([model page](models/bonsai-2-27b.md)); `PTQ1_0` (5.95 GB) is on daedalus at `~/models/prism-ml/`, nothing run. Stage A: fork binary `prism-b10685` (CUDA 12.8) → load, VRAM at 4K/8K, `llama-bench`, reasoning + native tool-call smokes. Stage B: HA v0.4 + ET v0.3 at k=3 + code-basics against the gemma ceiling and qwen `pass^3`. Windows-side CUDA or a Podman build of the fork are accepted fallbacks (Jake). Follow-ups: a last30days community scan once the release is a week old; archive copy to torrent (see [archive](archive.md)).
 - **[Weight archive — deferred remainder](archive.md)** — the reduced set landed 2026-08-14 (~107G, upstream-verified; see Recently done). Deferred (Jake, 2026-08-14): Qwen3.5-4B/9B originals, VibeThinker, MiniCPM5, gemma-4 finetune, and the two 50-GiB Bonsai F16 masters (revisit if extra cheap storage lands). One-time Backblaze check still open: confirm no size cap excludes the archive files.
 - **[Ornith-1.5-9B first run](../lab/experiments/2026-08-19-ornith-1.5-9b-first-run/README.md)** — serving bring-up on torrent (shared with the LFM2.5 item below) → template/tool-fidelity gate → HA v0.4 + ET v0.3 at k=3 + code-basics. The bar: gemma ceiling HA 0.947 / ET 1.000, qwen pass^3 0.684 / 0.833. Model page: [ornith-1.5-9b](models/ornith-1.5-9b.md).
 - **[LFM2.5-2.6B first run](../lab/experiments/2026-08-13-lfm2.5-2.6b-first-run/README.md)** — serving bring-up on torrent → tool-protocol probe (Pythonic special tokens; fallback parser if no server handles it) → HA v0.4 + ET v0.3 at k=3 against the standing matrix. The bar: qwen pass^3 0.684/0.833.
 - **[LFM2.5-VL-3B first look](../lab/experiments/2026-08-13-lfm2.5-vl-3b-first-look/README.md)** — manual vision smoke (HomeView-shaped fixture probe + screen/OCR); feeds the vision-benchmark go/no-go below.
-- **[Bonsai 27B ternary vs 1-bit test-system comparison](../lab/experiments/2026-07-17-bonsai-27b-test-systems-comparison/README.md)** — run both PrismML GGUF operating points under matched settings on the available test systems: ternary `Q2_0_g128` is the quality target (borderline 7.8 GiB peak on the RTX 5070 8 GB); phone-size binary `Q1_0_g128` is the comfortable compact comparison. Phone deployment is deferred. No weights downloaded yet.
 - **[Needle 2 household fine-tune](../lab/experiments/2026-08-14-needle2-finetune-household/README.md)** — probe set (negation/off-topic/ambiguity traps) → stock baseline + **confidence calibration (ECE)** → Luna-synthesized dataset → LoRA on torrent → talos CPU deploy check. The prize: defer the "talos gets a GPU" decision ([model page](models/needle2.md)).
 - **qwen3.5:4b dec-reasoning v0.2 `--no-think`, k=3, temp 1.0** — the decided next action from the brevity-nudge dead end (2026-06-22); still not run.
 - *Optional, low priority:* MiniCPM5 ET v0.3 No-Think run for a same-version think pair (the think-axis read is already clear: mixed/task-dependent, weak either way — see [experiment](../lab/experiments/2026-06-21-minicpm5-think-agentic/README.md); SGLang serving recipe lives in the [controlled-serving experiment](../lab/experiments/2026-06-20-minicpm5-sglang-controlled/README.md)).

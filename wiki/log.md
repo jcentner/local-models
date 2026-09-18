@@ -949,3 +949,22 @@ official GGUFs ship MTP heads (spec-decode possible). Page:
 lab/experiments/2026-08-19-ornith-1.5-9b-first-run/. 35B-A3B penciled under
 "Models to consider" (over the 8/16 GB envelopes; multimodal — vision-track
 relevant).
+
+## [2026-09-18] ingest | Bonsai 2 27B (ternary) model page
+PrismML shipped Ternary Bonsai 2 27B on 2026-09-17: Qwen3.8-27B, ternary g128
+in a Hadamard-rotated basis at a true 1.72 bpw, ternary only (no 1-bit build).
+Vendor claims 98.2% of FP16 over 14 thinking-mode benchmarks (84.78 vs 86.32;
+BFCL v3 74.92 vs 76.74; IFEval/IFBench above baseline), up from 95% for the
+first Bonsai. Two packings: dense `PTQ1_0` 5.95 GB and `PQ2_0` 7.21 GB (faster
+on Blackwell, the demo default). Needs PrismML's llama.cpp fork — stock rejects
+`PTQ1_0`/`PQ2_0` and silently garbles the dev `Q2_0`; the demo pins
+`prism-b10685-7dffb15` (the newer b10687 has Windows runtime zips only).
+Facts taken from the model card read directly; the announcement page prints a
+different category table, noted on the page. Page:
+[models/bonsai-2-27b.md](models/bonsai-2-27b.md); first run staged for daedalus
+(`PTQ1_0` fits 8 GB at 4K by arithmetic: 5.54 GiB + ~1.2 GiB + KV):
+lab/experiments/2026-09-18-bonsai-2-27b-first-run/. The never-run 2026-07-17
+ternary-vs-1-bit comparison is superseded; [bonsai-27b](models/bonsai-27b.md)
+stays for the 1-bit build. `PTQ1_0` working copy downloading to daedalus
+`~/models/prism-ml/`; archive row 3c queued for torrent. No community scan yet
+(one day old).

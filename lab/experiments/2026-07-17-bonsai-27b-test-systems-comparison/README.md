@@ -1,7 +1,9 @@
 # Bonsai 27B ternary vs 1-bit test-system comparison
 
 - Date: 2026-07-17
-- Status: staged; no weights downloaded
+- Status: **superseded 2026-09-18, never run** — the ternary arm is replaced by
+  [Bonsai 2 27B first run](../2026-09-18-bonsai-2-27b-first-run/README.md); a 1-bit
+  comparison can be revived from this page if phone-size deployment matters again
 - Hypothesis / question: Ternary Bonsai 27B should preserve more capability but
   fit the RTX 5070 Laptop only narrowly at 4K; 1-bit Bonsai 27B should trade
   measurable quality for a much safer memory margin on the same test systems.

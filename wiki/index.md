@@ -1,6 +1,6 @@
 ---
 title: Wiki Index
-updated: 2026-08-19
+updated: 2026-09-18
 ---
 
 # Index
@@ -28,7 +28,8 @@ Weight-archival plan + manifest: [archive.md](archive.md).
 - [stacks/unsloth.md](stacks/unsloth.md) — fine-tuning + Unsloth Studio; easiest path to DiffusionGemma.
 
 ## Models
-- [models/bonsai-27b.md](models/bonsai-27b.md) — PrismML's low-bit Qwen3.6-27B family: ternary quality build (~7.2 GB deployed) + phone-size 1-bit build (~3.9 GB); multimodal, thinking, native tools, Apache-2.0; matched test-system comparison staged, phone deployment deferred.
+- [models/bonsai-2-27b.md](models/bonsai-2-27b.md) — PrismML's second-generation **ternary Qwen3.8-27B** (2026-09-17; Apache-2.0, multimodal, thinking, native tools, 262K ctx): true 1.72 bpw with a Hadamard-rotated basis, vendor-claimed 98.2% of FP16 over 14 benchmarks (BFCL v3 74.92 vs 76.74); two packings — dense `PTQ1_0` 5.95 GB (**the first 27B that fits an 8 GB GPU fully**) and faster `PQ2_0` 7.21 GB; needs PrismML's llama.cpp fork (stock rejects or garbles); `PTQ1_0` working copy on daedalus, first run staged.
+- [models/bonsai-27b.md](models/bonsai-27b.md) — PrismML's first-generation low-bit Qwen3.6-27B family: ternary build (~7.2 GB) + phone-size 1-bit build (~3.9 GB); ternary superseded by Bonsai 2, page kept for the 1-bit build; its staged comparison was never run.
 - [models/diffusiongemma.md](models/diffusiongemma.md) — diffusion/block-AR MoE (26B-A4B); first model to try.
 - [models/vibethinker-3b.md](models/vibethinker-3b.md) — WeiboAI 3B dense reasoning specialist (Qwen2.5-based, MIT); frontier-ish math/code scores, runs full-GPU here.
 - [models/minicpm5-1b.md](models/minicpm5-1b.md) — OpenBMB 1B dense on-device model (Llama-arch, Apache-2.0); via SGLang: weak abstract reasoner (decision-reasoning 0/6) but a decent home-automation **tool-executor** (7/12) — a home-agent executor, not the deliberation brain.

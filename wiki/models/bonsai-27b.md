@@ -7,6 +7,13 @@ status: to-try
 
 # Bonsai 27B
 
+> **Superseded for the ternary build 2026-09-17** by [Bonsai 2 27B](bonsai-2-27b.md)
+> (Qwen3.8-based, 98.2% claimed retention, a 5.95 GB dense packing). This page
+> stays the record for the first generation and for the **1-bit** build, which
+> Bonsai 2 does not have. File naming also moved: on fork releases `prism-b10658`
+> and newer the legacy `*-Q2_0.gguf` is refused, and the ternary files are
+> `PQ2_0` (group 128) or `Q2_g64` (upstream group 64).
+
 PrismML's two low-bit deployments of **Qwen3.6-27B**. They keep the same dense
 27B architecture but target different memory budgets:
 
