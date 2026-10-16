@@ -1,6 +1,6 @@
 # AGENTS.md — operating schema for the local-models wiki + lab
 
-This file tells any agent (GitHub Copilot in VS Code or CLI, or others) how this
+This file tells any agent (Claude Code, Codex, or others) how this
 repository is structured and how to maintain it. It is the **schema** layer of
 the [LLM Wiki pattern](wiki/concepts/llm-wiki-method.md). Co-evolve it as the
 workflow matures. `.github/copilot-instructions.md` defers to this file.
@@ -28,7 +28,7 @@ intertwined jobs:
 2. **Lab** (`lab/`): actually run models, design experiments, record benchmarks,
    and keep a narrative journal that feeds blog / Twitter posts.
 
-The agent (Copilot) drives research and maintenance. The local models are the
+The agent drives research and maintenance. The local models are the
 **subject of study**, not the agent's own backend.
 
 ## The three layers
@@ -72,8 +72,8 @@ next turn.** The cadence:
 2. **Commit it** (small, descriptive multi-`-m` body).
 3. **Kick off a READ-ONLY background review of that commit** with a *different*
    model than authored it — **cross-vendor when possible** (different training =
-   different blind spots). Current model routing lives in the global
-   `copilot-worker` skill; models rotate, don't hardcode them here. Write to
+   different blind spots). Current model routing is the authority
+   `~/olympus/CLAUDE.md` names; models rotate, don't hardcode them here. Write to
    `tmp/review-<topic>.md`.
 4. **Start the next step while the review runs** — don't block on it.
 5. On return: **validate each finding** (confirm with file:line, or push back),
@@ -81,10 +81,10 @@ next turn.** The cadence:
 6. That fix commit is the next review target → repeat from 3.
 
 Dispatch mechanics + the read-only invocation live in the global
-**`copilot-worker`** skill (in `~/skills`, symlinked into the agent's skill dir;
-successor of the earlier `copilot-cli-background-tasks` skill some older log
-entries name). Rules: never give a reviewer
-`--allow-all-tools` or write access (`--deny-tool 'write'`); give it scope +
+**`dispatch`** skill, with `codex-worker` and `claude-worker` for the harnesses
+(in `~/skills`, symlinked into the agent's skill dir; older log entries name the
+retired `copilot-worker` and `copilot-cli-background-tasks` skills). Rules: never
+give a reviewer write access (each harness skill names its read-only mode); give it scope +
 commit SHAs + "read these files first" (it has no chat context); run
 `selftest`/dry-runs **here**, not trusting the reviewer's sandbox. This
 supersedes any earlier "don't re-review fix commits" note — the rolling cadence
@@ -192,7 +192,9 @@ comparing both is a first-class goal.
 (see `.github/skills/copilot-cli`); agentic/tool-use = the model-agnostic
 `agentic` rollout (Copilot-CLI user-simulator + mocked tools over a tool set,
 deterministic end-state/policy scoring, optional `--judge-messages` frontier
-AND-gate).
+AND-gate). **Open (2026-10-16):** Copilot was retired on 2026-10-09; the judge and
+the user-simulator still call `copilot -p`, so they need a new backend before the
+next `llm_judge` or `agentic` run.
 
 **House policies (standing):**
 - **`--k 3` default.** Report `observed_pass_at_k` (best-of-k ceiling) AND
